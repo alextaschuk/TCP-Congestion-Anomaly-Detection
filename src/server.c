@@ -7,55 +7,53 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include <netdb.h>
 
 int main(void) {
-    struct sockaddr_in sa = {
-        // Configure and define a socket to receive data (IP + port #)
+    struct addrinfo hints, *res;
+    int sockfd;
+    struct sockaddr_storage from;
 
-        .sin_family = AF_INET, // use IPv4 address; use AF_INET6 for IPv6
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // accept either IPv4 or IPv6
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE; // fill in my IP addr for me
 
-        /*
-         Most devices store bytes in big endian, but
-         some are in little-endian. All data sent over internet
-         protocols is sent in big-endian, so htonl (host to
-         network long) takes the data you want to send and
-         converts it to network byte order (ensures that data
-         is always sent as big endian).
-        */
-        .sin_addr.s_addr = htonl(INADDR_ANY), // 4 byte IP address
-        
-        // htons converts the unsigned short integer from host byte
-        // order to network byte order.
-        .sin_port = htons(4444) // port number
-    };
+    getaddrinfo(NULL, "7654", &hints, &res);
+
+    //make a socket (sockfd = socket file descriptor)
+    // sockfd is an int that refers to the socket obj in the kernel
+    sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     
-
     char buffer[1024];
-    ssize_t recsize;
-    socklen_t fromlen = sizeof(sa);
+    ssize_t recsize; // the number of bytes received, -1 on error
+    //socklen_t fromlen = sizeof(sockfd); // length of socket
 
-    /*
-    int bind(int sockfd, struct sockaddr *my_addr, int addrlen);
-     - sockfd: socket file descriptor returned by socket()
-     - my_addr: pointer to sockaddr struct (info about a socket)
-     - addrlen: length (in bytes) of socket addr
-    */
-    int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (bind(sock, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+    // prevent "address already in use" message when trying to rerun the server
+    int yes = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+
+    //bind it to the port passed in getaddrinfo
+    //int bind(int sockfd, struct sockaddr *my_addr, int addrlen);
+     // addrlen: length (in bytes) of socket addr
+     // `->` used to access a field of a struct via a pointer
+    if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1){
         fprintf(stderr, "Failed to bind socket!\n");
-        close(sock);
+        close(sockfd);
         return EXIT_FAILURE;
     }
 
     while (1) {
-        recsize = recvfrom(sock, (void*)buffer, sizeof buffer, 0, (struct sockaddr*)&sa, &fromlen);
+        socklen_t fromlen = sizeof from;
+        // int recvfrom(int sockfd, void *buf, int len, uint flags, struct sockaddr *from, int *fromlen);
+        recsize = recvfrom(sockfd, buffer, sizeof buffer, 0, (struct sockaddr *)&from, &fromlen);
+
         if (recsize < 0) {
             fprintf(stderr, "%s\n", strerror(errno));
             return EXIT_FAILURE;
         }
-        printf("recsize: %d\n ", (int)recsize);
-        sleep(1);
+
+        printf("recsize: %d\n", (int)recsize);
         printf("datagram: %.*s\n", (int)recsize, buffer);
     }
 }
