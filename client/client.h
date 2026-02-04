@@ -9,10 +9,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../pdp/pdp.h"
 
 /* Define functions */
-void build_udp_pkt(char *header, char *data);
-Pdp_header make_hedr(uint32_t seq, uint32_t ack);
-void send_syn(char* buf);
+void build_udp_pkt(uint8_t* header, uint8_t *data);
+static void set_server_port();
+
+static void perform_hndshk(int sock, int utcp_fd);
 /* End define functions */

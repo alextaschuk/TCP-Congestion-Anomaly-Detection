@@ -10,16 +10,14 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "../pdp/pdp.h"
-
 #define MAX_CONNECTIONS 1024 // allow 1024 connections at a time
 
-char header[8]; //datagram header
-char data[1028]; //buffer to send data
+uint8_t header[8]; //datagram header
+uint8_t data[1028]; //buffer to send data
 //char buffer[1024]; // buffer to receive data
 int sock; // socket file descriptor
 
-void hndshk_lstn(int sock);
-Pdp_header* find_connection(struct fourtuple fourtuple);
-int rcv_syn(char* buf);
-void send_syn_ack(char* buf);
+void begin_listen(int sock, int utcp_fd);
+int handle_syn(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from);
+int handle_ack(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from);
+void send_syn_ack(uint8_t* buf);

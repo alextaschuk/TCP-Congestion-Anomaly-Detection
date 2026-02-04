@@ -4,9 +4,9 @@
 typedef struct fourtuple
 {
     //standard 4-tuple
-    int source_port;
-    char* source_ip;
-    int dest_port;
-    char* dest_ip;
+    uint16_t source_port; // UTCP port
+    uint32_t source_ip;
+    uint16_t dest_port; // UTCP port
+    uint32_t dest_ip;
 }fourtuple;
 #endif // FOURTUPLE_H

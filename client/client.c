@@ -13,88 +13,85 @@
 #include "client.h"
 #include "../api/api.h"
 #include "../api/api.c"
-#include "../pdp/hndshk_fsm.h"
-#include "../pdp/pdp.h"
+#include "../include/hndshk_fsm.h"
 
 int client_fsm = CLOSED; // TCP finite state machine for connection
-int sock; // socket file descriptor
+int sock; // UDP socket
+int UTCP_sock;
 struct sockaddr_in client_addr, server_addr;
 
 int main(void) {
-    // client socket
-    sock = get_sock();
-    memset(&client_addr, 0, sizeof(client_addr));
-    get_sock_addr(&client_addr, client_ip, client_port);
+    //set_server_port();
+    //sock = bind_UDP_sock(&client_port);
+    sock = bind_UDP_sock(5555);
+    
+    struct sockaddr_in client = {
+    .sin_family = AF_INET,
+    .sin_port = htons(client_utcp_port),
+    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    };
+    UTCP_sock = bind_utcp(&client);
 
-    if(bind(sock, (struct sockaddr*)&client_addr, sizeof(client_addr)) == -1)
-        err_sock(sock, "(main)failed to bind client socket");
-    else
-        printf("(main)client socket binding successful\n");
-
-    // (server) listen socket
-    memset(&server_addr, 0, sizeof(server_addr));
-    get_sock_addr(&server_addr, server_ip, server_port);
-
-
-    char buffer[sizeof()]; // define buffer for data to send
-    send_syn(buffer);
+    struct sockaddr_in server = {
+    .sin_family = AF_INET,
+    .sin_port = htons(server_utcp_port),
+    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    };
+    connect_utcp(UTCP_sock, &server, 4567);
+    perform_hndshk(sock, UTCP_sock);
  
     //close(sock);
     return 0;
 }
 
-void send_syn(char* buf)
+static void perform_hndshk(int sock, int utcp_fd)
 {
     /**
-     * @brief Send a SYN datagram to initiate 3-way handshake
+     * @brief Initiate and carry out a 3-way handshake
      */
     // Create and configure TCP header for persistent connection
-    struct tcphdr tcp_hdr;
-    memset(&tcp_hdr, 0, sizeof(tcp_hdr));
-    
-    // set appropriate data and flags
-    tcp_hdr.th_sport = htons(4567);
-    tcp_hdr.th_dport = htons(7654); // should be server's listen port
-    tcp_hdr.th_flags = TH_SYN; //set SYN flag to 1
-    tcp_hdr.th_seq   = htonl(0x0000000);
-    tcp_hdr.th_ack = htonl(0x0000000);
-    
-    // initialize PDP header
-    Pdp_header client_pdp = make_hedr(tcp_hdr.th_seq, tcp_hdr.th_ack);
+    struct tcb *tcb = get_tcb(utcp_fd);
+    uint8_t *buffer = malloc(1500);
+    struct sockaddr_in from;
 
-    // add TCP header and PDP header to datagram payload
-    memcpy(buf, &tcp_hdr, sizeof(tcp_hdr));
-    memcpy(buf + sizeof(tcp_hdr), &client_pdp, sizeof(client_pdp));
+    // Send the SYN datagram
+    send_dgram(sock, utcp_fd, &buffer, 0, TH_SYN);
 
-    // send the SYN datagram
-    size_t dgram_len = sizeof(struct tcphdr) + sizeof(Pdp_header);
-    int bytes_sent = sendto(sock, buf, dgram_len, 0, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if (bytes_sent < 0)
-        err_sock(sock, "(send_syn)error sending packet");
-    else 
-    {
-        client_fsm = SYN_SENT;
-        fprintf(stdout, "SYN successfully sent\n");
-    }
+    tcb->fsm_state = SYN_SENT;
+    tcb->snd_nxt += 1;
+    printf("[Client]SYN successfully sent\n");
+
+    // Receive the SYN-ACK datagram
+    uint8_t rcvbuf[1024];
+    ssize_t rcvsize;
+    rcvsize = rcv_dgram(sock, rcvbuf, &from);
+    struct tcphdr *hdr;
+    uint8_t* data;
+    ssize_t data_len;
+    deserialize_tcp_hdr(rcvbuf, rcvsize, &hdr, &data, &data_len);
+
+    if (!(hdr->th_flags == (TH_SYN | TH_ACK)))
+        err_sys("[perform_hndshk]Received datagram w/out SYN-ACK");
+    printf("[Client]Received SYN-ACK\n"); 
+
+    tcb->rcv_nxt = ntohl(hdr->th_seq) + 1;
+    printf("seq num: %u", tcb->rcv_nxt);
+
+    send_dgram(sock, utcp_fd, buffer, 0, TH_ACK);
+    tcb->rcv_nxt = ntohl(hdr->th_seq) + 1;
+
+    printf("[Client]ACK successfully sent\n");
+    update_fsm(utcp_fd, ESTABLISHED);
+    
+    free(buffer);
 }
 
-Pdp_header make_hedr(uint32_t seq, uint32_t ack)
+static void set_server_port()
 {
     /**
-     * @brief initialize a PDP header for a new connection
-     * to be established with using all available info to
-     * the client.
+     * @brief allows us to enter the server's port
+     * number if we don't hardcode the value.
      */
-    Pdp_header header;
-
-    header.fourtuple.source_port = 4567;
-    header.fourtuple.source_ip = "127.0.0.1";
-    header.fourtuple.dest_ip = "127.0.0.1";
- // header.fourtuple.dest_port is set after SYN-ACK is rcv'd
-    header.seq = seq;
-    header.ack = ack;
-    header.listen_port = server_port;
-    header.fsm_state = client_fsm;
-
-    return header;
+    printf("enter the server's UDP port number:\r\n");
+    scanf("%hd", &server_port);
 }

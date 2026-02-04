@@ -1,8 +1,8 @@
 /**
  * @brief This finite state machine tracks the current connection
- * status for a client/server. A connection is maintained by
- * including a user's PDP datagram in the payload field of a UDP
- * datagram.
+ * status for a client/server. Each side of a connection maintains
+ * info about the connection via a transmission control block (TCB),
+ * which includes the connection's state.
  * 
  * The connection status follows the same state machine used in
  * in TCP for establishing a persistent connection via a 3-Way
@@ -22,7 +22,7 @@
 #ifndef HNDSHK_FSM_H
 #define HNDSHK_FSM_H
 
-enum
+enum conn_state // connection state
 {
   // [endpoint], description
   LISTEN = 1, /*[server], waiting (listening) for a connection*/

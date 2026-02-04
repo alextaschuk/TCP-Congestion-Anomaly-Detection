@@ -14,56 +14,62 @@
 #include "server.h"
 #include "../api/api.h"
 #include "../api/api.c"
-#include "../pdp/hndshk_fsm.h"
-#include "../pdp/pdp.h"
+#include "../include/hndshk_fsm.h"
+#include <tcb.h>
 
 //https://github.com/MichaelDipperstein/sockets/blob/master/echoserver_udp.c
 //https://csperkins.org/teaching/2007-2008/networked-systems/lecture04.pdf
 
-
-struct sockaddr_in client_addr, server_addr;
-int server_fsm = CLOSED; // TCP finite state machine for connection
-Pdp_header server_pdp;
-Pdp_header *lookup_table;
+int sock;
 
 int main(void) {
-    lookup_table = malloc(sizeof(Pdp_header) * MAX_CONNECTIONS);
-    int sock = get_sock();
+    //if (server_port == 0)
+    sock = bind_UDP_sock(4567);
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    get_sock_addr(&server_addr, server_ip, server_port);
+    struct sockaddr_in server = {
+    .sin_family = AF_INET,
+    .sin_port = htons(server_utcp_port),
+    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    };
 
-    if(bind(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1)
-        err_sock(sock, "failed to bind server socket");
-    else
-        printf("server socket binding successful\n");
+    int UTCP_sock = bind_utcp(&server);
 
-    hndshk_lstn(sock); // begin listening
+    begin_listen(sock, UTCP_sock);
 }
 
-void hndshk_lstn(int sock)
+void begin_listen(int sock, int utcp_fd)
 {
     /**
-     * @brief a listen function that to open a listening socket for performing
-     * a 3-way handshake
-     * @note hndshk_lstn -> Handshake Listen
+     * @brief the provided socket is used to 
+     * being listening for incoming datagrams.
+
      * @param sock A socket file descriptor that 
-     * will receive incoming SYN messages
+     * will receive incoming datagrams.
      */
     printf("Begin listen\n");
-    struct sockaddr_storage from;
-    char rcvbuf[1024];
+
+
+    // Needs to accomplish two things:
+        // 1. Handle handshake packets (SYN, ACK)
+        // 2. handle other data packets
+    uint8_t rcvbuf[1024];
     ssize_t rcvsize;
+    struct sockaddr_in from;
+    update_fsm(utcp_fd, LISTEN);
     while (1) {
-        socklen_t fromlen = sizeof from;
-        rcvsize = recvfrom(sock, rcvbuf, sizeof(rcvbuf), 0, (struct sockaddr *)&from, &fromlen); // # bytes rcv'd
+        rcvsize = rcv_dgram(sock, rcvbuf, &from); 
+        struct tcphdr *hdr;
+        uint8_t* data;
+        ssize_t data_len;
+        deserialize_tcp_hdr(rcvbuf, rcvsize, &hdr, &data, &data_len);
 
-        if (rcvsize < 0)
-            err_sys("server failed to receive datagram");
+        // Check if SYN flag is set (will this overwrite other flags?)
+        if(hdr->th_flags & TH_SYN)
+            handle_syn(hdr, utcp_fd, from);
+        if(hdr->th_flags & TH_ACK)
+            handle_ack(hdr, utcp_fd, from);
         
-        rcv_syn(rcvbuf);
-
-
+        printf("syn %i", hdr->th_flags);
 
         printf("recsize: %d\n", (int)rcvsize);
         printf("datagram: %.*s\n", (int)rcvsize, rcvbuf);
@@ -71,34 +77,37 @@ void hndshk_lstn(int sock)
 }
 
 
-//Pdp_header* find_connection(struct fourtuple fourtuple)
-//{
-//    /**
-//     * @brief uses a four tuple to check the lookup table
-//     * for an exisiting connection. 
-//     * 
-//     * @return pointer to element in lookup table if found,
-//     * NULL otherwise.
-//     */
-//}
 
-
-int rcv_syn(char* buf)
+int handle_syn(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
 {
     /**
-     * @brief receive a SYN datagram, parse it, and handle its contents.
-     * 
-     * Returns a new socket fd for the client's connection. bind() the socket
-     * with the port # and IP, then connect() it to the client's socket using
-     * the info provided in the PDP header.
+     * @brief called when a datagram has the SYN flag up. This updates
+     * the TCB with the sender's UTCP port, UDP port, and IP address, the
+     * initial recieve sequence #, the next expected sequence #, and finally
+     * sends a SYN-ACK datagram in response.
      */
-    struct tcphdr *tcp_hdr = (struct tcphdr *)(void *)buf; // cast to tcphdr struct
-    printf("SEQ NUM: %u\n", ntohl(tcp_hdr->th_seq)); // convert fields from network byte order
+    update_fsm(utcp_fd, SYN_RECEIVED);
+    struct tcb *tcb = get_tcb(utcp_fd);
+    
+    if(hdr->th_dport != tcb->fourtuple.source_port)
+        err_sys("[handle_syn]header dest port doesn't match tcb src port");
 
-    struct Pdp_header *syn_pdp = (struct Pdp_header *)(buf + sizeof(struct tcphdr));
-    printf("FSM state: %d\n", syn_pdp->fsm_state);
-    printf("PDP seq: %u\n", syn_pdp->seq);
+    tcb->fourtuple.dest_port = hdr->th_sport;
+    tcb->fourtuple.dest_ip = ntohl(from.sin_addr.s_addr);
+    tcb->dest_udp_port = ntohs(from.sin_port);
+    tcb->irs = ntohs(hdr->th_seq);
+    tcb->rcv_nxt = tcb->irs + 1; // Increase sequence number by one
 
+    send_dgram(sock, utcp_fd, NULL, 0, TH_SYN | TH_ACK);
+    return 1;
 }
 
+int handle_ack(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
+{
+    printf("[Server]Received ACK\n");
+    update_fsm(utcp_fd, ESTABLISHED);
+    printf("seq num: %u\n", hdr->th_seq);
+    printf("ack num: %u\n", hdr->th_ack);
+    return 1;
+}
 
