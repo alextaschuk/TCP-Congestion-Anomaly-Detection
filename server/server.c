@@ -1,3 +1,6 @@
+/*
+To run the server: `gcc -Iinclude server/server.c -o server/server && ./server/server`
+*/
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,18 +50,17 @@ void begin_listen(int sock, int utcp_fd)
      * will receive incoming datagrams.
      */
     printf("Begin listen\n");
-
-
+    update_fsm(utcp_fd, LISTEN);
     // Needs to accomplish two things:
         // 1. Handle handshake packets (SYN, ACK)
         // 2. handle other data packets
+
     uint8_t rcvbuf[1024];
     ssize_t rcvsize;
     struct sockaddr_in from;
-    update_fsm(utcp_fd, LISTEN);
     while (1) {
         rcvsize = rcv_dgram(sock, rcvbuf, &from); 
-        struct tcphdr *hdr;
+        tcphdr *hdr;
         uint8_t* data;
         ssize_t data_len;
         deserialize_tcp_hdr(rcvbuf, rcvsize, &hdr, &data, &data_len);
@@ -68,17 +70,15 @@ void begin_listen(int sock, int utcp_fd)
             handle_syn(hdr, utcp_fd, from);
         if(hdr->th_flags & TH_ACK)
             handle_ack(hdr, utcp_fd, from);
-        
-        printf("syn %i", hdr->th_flags);
 
-        printf("recsize: %d\n", (int)rcvsize);
-        printf("datagram: %.*s\n", (int)rcvsize, rcvbuf);
+        //printf("recsize: %d\n", (int)rcvsize);
+        //printf("datagram: %.*s\n", (int)rcvsize, rcvbuf);
     }
 }
 
 
 
-int handle_syn(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
+int handle_syn(tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
 {
     /**
      * @brief called when a datagram has the SYN flag up. This updates
@@ -102,7 +102,7 @@ int handle_syn(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
     return 1;
 }
 
-int handle_ack(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
+int handle_ack(tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
 {
     printf("[Server]Received ACK\n");
     update_fsm(utcp_fd, ESTABLISHED);

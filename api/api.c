@@ -15,12 +15,15 @@
 #include <unistd.h>
 #include <netinet/tcp.h>
 
+//#include <api.h>
+//#include <tcb.h>
+//#include <hndshk_fsm.h>
+//#include <fourtuple.h>
+//#include <tcphdr.h>
+//#include <tcp_segment.h>
 #include "api.h"
-#include <tcb.h>
-#include <hndshk_fsm.h>
-#include <fourtuple.h>
-#include <tcphdr.h>
-#include <tcp_segment.h>
+#include "tcp_segment.h"
+#include "../utils/debug.c"
 
 uint16_t client_port = 5555;
 const int client_utcp_port = 776; 
@@ -144,25 +147,23 @@ void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp)
 
     printf("Dest UTCP Port: %u, dest IP: %u, dest UDP port: %u\r\n", tcb->fourtuple.dest_port, tcb->fourtuple.dest_ip, tcb->dest_udp_port);
 
-    tcb->iss = 0x0000; // initial seq #
+    tcb->iss = 0x0000; // initial seq # = 0
     tcb->snd_una = tcb->iss; // hasn't been ack'd b/c SYN not yet sent
     tcb->snd_nxt = tcb->iss;
 }
 
 
-void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len)
+void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len)
 {
     /**
      * @brief deserialize a TCP header back into 
      * host byte order
      */
-    if (buflen < sizeof(struct tcphdr))
+    if (buflen < sizeof(tcphdr))
         err_sys("[deserialize_tcp_hdr]cannot parse datagram");
 
-    *out_hdr = (struct tcphdr *)buf;
+    *out_hdr = (tcphdr *)buf;
 
-    struct tcphdr header;
-    memcpy(&header, buf, sizeof(struct tcphdr));
     // Convert header fields from network byte order to host byte order
     (*out_hdr)->th_sport = ntohs((*out_hdr)->th_sport); // src port
     (*out_hdr)->th_dport = ntohs((*out_hdr)->th_dport); // dest port
@@ -171,6 +172,8 @@ void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, u
     (*out_hdr)->th_win = ntohs((*out_hdr)->th_win); // rcv window size
     (*out_hdr)->th_sum = ntohs((*out_hdr)->th_sum); // checksum
     (*out_hdr)->th_urp = ntohs((*out_hdr)->th_urp); // urgent pointer
+
+    //print_tcphdr(*out_hdr);
 }
 
 struct tcb* get_tcb(int utcp_fd)
@@ -186,7 +189,7 @@ struct tcb* get_tcb(int utcp_fd)
 int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
 {
     /**
-     * @brief send a buffer of data to a socket
+     * @brief send a buffer of data to a socket.
      * 
      * @param utcp_fd UTCP socket's position in tcb_lookup
      * @return bytes_sent the number of bytes sent in the
@@ -201,8 +204,8 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     // allocate for a segment (TCP header + data)
-    size_t segment_size = sizeof(struct tcphdr) + len;
-    struct tcp_segment *segment = malloc(segment_size);
+    size_t segment_size = sizeof(tcphdr) + len;
+    tcp_segment *segment = malloc(segment_size);
     if (!segment)
         err_sys("[send_dgram]error allocating segment");
     
@@ -219,13 +222,14 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
     memcpy(segment->data, buf, len);
 
     // send the datagram
-    size_t dgram_len = sizeof(struct tcphdr);
+    size_t dgram_len = sizeof(tcphdr);
     ssize_t bytes_sent = sendto(sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
 
     if (bytes_sent < 0)
         err_sys("[send_dgram]error sending packet");
-    else 
-        printf("[send_dgram]Sending datagram to UTCP port %u, UDP port %u\r\n", tcb->fourtuple.dest_port, tcb->dest_udp_port);
+    
+    printf("[send_dgram]Sending datagram to UTCP port %u, UDP port %u\r\n", tcb->fourtuple.dest_port, tcb->dest_udp_port);
+    print_tcphdr(&segment->hdr);
     
     free(segment);
     tcb->snd_nxt += len;
@@ -242,11 +246,9 @@ ssize_t rcv_dgram(int sock, uint8_t rcvbuf[1024], struct sockaddr_in* from)
     ssize_t buflen = 1500;
     socklen_t fromlen = sizeof(*from);
     rcvsize = recvfrom(sock, rcvbuf, buflen, 0, (struct sockaddr *)from, &fromlen); // # bytes rcv'd
-    printf("received dgram!\r\n");
 
     if (rcvsize < 0)
-        err_sys("[rcv_dgram]failed to receive datagram");
-    
+        err_sys("[rcv_dgram]Failed to receive datagram");
     return rcvsize;
 }
 
@@ -262,7 +264,7 @@ void update_fsm(int utcp_fd, enum conn_state state)
     tcb->fsm_state = state;
 }
 
-static void err_sys(const char* x)
+void err_sys(const char* x)
 {
     /**
      * @brief A global error logging function.

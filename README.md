@@ -1,57 +1,36 @@
 # COSC 448 - Directed Studies in Computer Science
 
-## Persistent Datagram Protocol (PDP)
+to run the server: `gcc -Iinclude server/server.c -o udp_server && ./udp_server`
+to run the client: `gcc -Iinclude client/client.c -o client/udp_client && ./client/udp_client`
 
-PDP an experimental combination of TCP and UDP called Persistent Datagram Protocol (PDP). The goal of PDP is to enable a persisten connection between two users over UDP.
+## The Objective
 
-To achieve this, there is a new PDP header which will be used to establish a connection between a client and a server:
+We are researching is a possible alternative to the standard congestion control algorithms like TCP Tahoe and TCP Reno. Because networks can be so unstable in terms of their reliability (e.g., it's reliable one day, but not so much the next could be due to several external factors like number of devices connected, amount of data flowing, etc.), we're going to try to train an LSTM using network traffic data in an attempt to predict the network's reliability at a given time. The goal is to determine if we can dynamically set things like the congestion window size depending on the model's output given specific inputs, as opposed to the fixed window sizes that current congestion control algorithms use.
 
-```mermaid
----
-title: "PDP Header"
----
-packet
-0-15: "Source Port"
-16-31: "Source IP"
-32-47: "Destination Port"
-48-63: "Destination IP"
-64-95: "Sequence Number"
-96-127: "Acknowledgment Number"
-128-143: "Listen Port (Client Only)"
-144-147: "FSM State"
-148-159: "Reserved"
-```
+## Current Goal - Build TCP on top of UDP
 
-### 3-Way Handshake
+The current goal is to be able to send TCP headers over UDP so that we can have more control over how we send data via TCP without needing to write complex kernel-level logic. This will also enable a persistent connection between two users over UDP. To do this, we are introducing a new `UTCP` socket. A TCP connection is maintained by the kernel via Transmission Control Blocks (TCBs). A TCB contains info necessary A client and a server will both maintain their own data structure that stores TCBs; each active connection (i.e., each socket) has a corresponding TCB.  the TCB contains info like the source port and IP, destination port and IP, stuff for sequence numbers, stuff for ack numbers, and more.
 
-A connection between a client and a sever is established in a similar way to TCP's 3-Way Handshake. First, the client sends a `SYN` datagram to the server's open `listen` socket. The datagram's payload contains a TCP header in which the source port, destination port, SYN flag, seq #, and ack # have been set. Additionally, the payload contains a PDP header which has the source port, source IP, dest IP, seq number = 0, ack number = 0, listen port, and FSM = CLOSED filled out. During the handshake process, the client and server will update their PDP header using info received from the each other until a connection is established.
+The reason we need to implement TCP ourselves is that the congestion control algos are built directly into the implementations (OS, kernel, C library? not sure), and we need to get around that. To do this, we'll send the packets over UDP which doesn't have any congestion control (it's connectionless and unreliable). This way, when we receive the UDP datagrams, we can grab the TCP data within them and handle the congestion ourselves. There _are_ some lower-level things that we have to manage, such as the TCBs. Sam and I had 2 different approaches to this, but mine ended up being wrong b/c it strayed from TCP too much (I kinda forgot we had to keep the functionality "as close to TCP as possible") so I'll just explain Sam's since that's what we're going with. 
 
-- This will be more fleshed out in the future. E.g., clearly we don't really need to store the source port or dest port b/c they're already in the TCP packet, but I'm leaving it in there for now.
+On top of the standard UDP socket (which in C/Unix is just a file descriptor to a socket managed by the kernel) connections are managed by a `UTCP` socket too. To explain this it'll be easier to explain what the UDP headers contain, and what the TCP headers within the UDP datagram's payload contain. 
 
-Some considerations to be made:
+A UDP header contains (among other things) the destination port and the destination IP. Our UDP headers contain this, as per usual.
 
-**Approach #1:** The listen socket maintains a lookup table of PDP headers for checking if an incoming SYN datagram is a valid connection request? When it receives a datagram w/ the SYN flag set to 1, it uses the 4-tuple in the PDP header to search a lookup table and determine if there is already an open socket for the incoming request. 
-- If there isn't open a new socket and send a SYN-ACK response to continue the handshake.
-    - For each new connection do we assign the new socket its own port number (how to determine new socket's port?), meaning we don't have to worry about all of the demuxing occuring at a single port, or do we implement it TCP-style, where e/a socket is just uniquely identified by the 4-tuple, but the server port number is the same for all of the sockets?
-- If there is already an open socket, send a FIN back to the client in addition to a PDP header containing the existing connection's info.
+However, the TCP header inside the UDP payload contains a UTCP socket, which is just some number we've hardcoded (for now), in the source port and the destination port.
 
-The listen socket also manages closing connections. I.e., it will receive a FIN from the client, begin the 4-way handshake to close the connection, and close the corresponding server-side socket.
+We have a TCB struct which stores a source and destination UTCP port, a src and dest IP addr, the real src UDP port, and a few extra things. The client and server each manage their own array of TCB structs for their connections. This might make more sense with an example. 
 
-**Approach #2:** The listen socket DOES NOT maintain a lookup table. Instead, we assume that all incoming datagrams to the socket are either a SYN datagram to establish a connection, or a FIN datagram to terminate a datagram.
-- Problem with this is that it _could_ be abused. A client could send several connection requests and be allocated several sockets on the server, and the server has no way of knowing this.
-- However, if we go with the approach where all of the sockets have the same server port number, this wouldn't be an issue because the listen socket would create a 4-tuple that already exists, and hence multiple socket abuse doesn't occur.
+For simplicity, let's assume the client and server are running on the same localhost 127.0.0.1.
 
-**Consideration:** Should the listen socket be present for the entire handshake process, or should the following occur:
-1. Client sends SYN to server
-2. Server recieves SYN, creates new socket, tells new socket to send SYN-ACK to Client.
-3. Rest of handshake and connection termination is done between the client and its personal socket.
+Client:
+Source IP: 127.0.0.1
+Source UTCP Port: 1234
+Source (UDP) Port: 4567
 
-I want to consider this because in TCP, the client is allowed to add its first actual data payload when it sends the final ACK to establish the connection. If the listen socket performs the entire thing, this will not be possible.
-- Okay, technically it would be possible, but it'd require more overhead.
+Server:
+Source IP: 127.0.0.1
+Source UTCP Port: 9876
+Source (UDP) Port: 4444
 
-Regardless, after a new socket is opened, the server should `bind()` it. After server sends SYN-ACK, it should `connect()` to client's socket. After client sends ACK, it should `connect()` to server's socket.
-- After client receives SYN-ACK, it should modify `server_addr` to store the new socket's info. Another option is to have a 3rd `sockaddr_in` just for the listen socket since it's needed for connection termination too.
-
-### After Connection Establishment
-
-After the 3-way handshake is complete, the client and server should have complete PDP headers, and it will not be necessary to include the TCP header in the payloads until the connection should be terminated.
+So the kernel sends data with this stuff over UDP, and when the data arrives somewhere, we have our own logic to demux the data to the correct destination using the UTCP port.

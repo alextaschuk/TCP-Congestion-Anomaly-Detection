@@ -7,7 +7,7 @@
 #ifndef TCPHDR_H
 #define TCPHDR_H
 
-typedef struct {
+typedef struct{
     uint16_t th_sport;    /* source port */
     uint16_t th_dport;    /* destination port */
     uint32_t th_seq;      /* sequence number */
@@ -23,5 +23,5 @@ typedef struct {
     uint16_t th_win; /* window */
     uint16_t th_sum; /* checksum */
     uint16_t th_urp; /* urgent pointer */
-} tcphdr;
+}tcphdr;
 #endif

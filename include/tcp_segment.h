@@ -9,8 +9,8 @@
 #ifndef TCP_SEGMENT_H
 #define TCP_SEGMENT_H
 
-struct tcp_segment {
+typedef struct tcp_segment {
     tcphdr hdr;
     uint8_t data[];
-};
+}tcp_segment;
 #endif
