@@ -13,7 +13,7 @@ SERVER_BIN := server_app
 
 # Source files
 COMMON_SRCS := \
-	$(SRC_DIR)/utcp/api.c \
+	$(SRC_DIR)/utcp/api/api.c \
 	$(SRC_DIR)/utcp/api/conn.c \
 	$(SRC_DIR)/utcp/api/data.c \
 	$(SRC_DIR)/utcp/api/globals.c \
