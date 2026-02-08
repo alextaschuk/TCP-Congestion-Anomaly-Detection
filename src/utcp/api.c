@@ -73,7 +73,7 @@ int bind_UDP_sock(int pts)
     socklen_t len = sizeof(bound_addr);
     getsockname(sock, (struct sockaddr*)&bound_addr, &len);
     
-//    *pts = ntohs(bound_addr.sin_port);
+//  *pts = ntohs(bound_addr.sin_port);
 
     printf("UDP socket bound to port %d\n", ntohs(bound_addr.sin_port));
     udp_sock_open = 1;
@@ -93,6 +93,7 @@ int bind_utcp(struct sockaddr_in *addr)
      * @return fd on success, a "file descriptor" (index of tcb_lookup) that the
      * newly created tcb struct lives at.
      */
+
     // find the first available spot in the lookup table
     int fd;
     for(fd = 0; fd < MAX_UTCP_SOCKETS; fd++)
@@ -147,16 +148,16 @@ void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp)
 }
 
 
-void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len)
+void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len)
 {
     /**
      * @brief deserialize a TCP header back into 
      * host byte order
      */
-    if (buflen < sizeof(tcphdr))
+    if (buflen < sizeof(struct tcphdr))
         err_sys("[deserialize_tcp_hdr]cannot parse datagram");
 
-    *out_hdr = (tcphdr *)buf;
+    *out_hdr = (struct tcphdr *)buf;
 
     // Convert header fields from network byte order to host byte order
     (*out_hdr)->th_sport = ntohs((*out_hdr)->th_sport); // src port
@@ -198,17 +199,17 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     // allocate for a segment (TCP header + data)
-    size_t segment_size = sizeof(tcphdr) + len;
+    size_t segment_size = sizeof(struct tcphdr) + len;
     tcp_segment *segment = malloc(segment_size);
     if (!segment)
         err_sys("[send_dgram]error allocating segment");
     
-    memset(&segment->hdr, 0, sizeof(tcphdr));
+    memset(&segment->hdr, 0, sizeof(struct tcphdr));
     segment->hdr.th_sport = htons(tcb->fourtuple.source_port);
     segment->hdr.th_dport = htons(tcb->fourtuple.dest_port);
     segment->hdr.th_seq = htonl(tcb->snd_nxt);
     segment->hdr.th_ack = htonl(tcb->rcv_nxt);
-    segment->hdr.th_off_flags = (sizeof(tcphdr) / 4) << 4; // Convert into 32-bit words
+    segment->hdr.th_off = (sizeof(struct tcphdr) / 4) << 4; // Convert into 32-bit words
     segment->hdr.th_flags = flags;
     segment->hdr.th_win = htons(1024); // dummy window
 
@@ -216,7 +217,7 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
     memcpy(segment->data, buf, len);
 
     // send the datagram
-    size_t dgram_len = sizeof(tcphdr);
+    size_t dgram_len = sizeof(struct tcphdr);
     ssize_t bytes_sent = sendto(sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
 
     if (bytes_sent < 0)

@@ -8,10 +8,10 @@
 #define TCP_SEGMENT_H
 
 #include <stdint.h>
-#include <tcp/tcphdr.h>
+#include <netinet/tcp.h>
 
 typedef struct tcp_segment {
-    tcphdr hdr;
+    struct tcphdr hdr;
     uint8_t data[];
 }tcp_segment;
 #endif

@@ -61,7 +61,7 @@ void begin_listen(int sock, int utcp_fd)
     struct sockaddr_in from;
     while (1) {
         rcvsize = rcv_dgram(sock, rcvbuf, &from); 
-        tcphdr *hdr;
+        struct tcphdr *hdr;
         uint8_t* data;
         ssize_t data_len;
         deserialize_tcp_hdr(rcvbuf, rcvsize, &hdr, &data, &data_len);
@@ -79,7 +79,7 @@ void begin_listen(int sock, int utcp_fd)
 
 
 
-int handle_syn(tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
+int handle_syn(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
 {
     /**
      * @brief called when a datagram has the SYN flag up. This updates
@@ -103,7 +103,7 @@ int handle_syn(tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
     return 1;
 }
 
-int handle_ack(tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
+int handle_ack(struct tcphdr* hdr, int utcp_fd, struct sockaddr_in from)
 {
     printf("[Server]Received ACK\n");
     update_fsm(utcp_fd, ESTABLISHED);

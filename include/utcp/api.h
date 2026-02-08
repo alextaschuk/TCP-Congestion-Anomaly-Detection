@@ -4,11 +4,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 
 
 #include <tcp/hndshk_fsm.h>
 #include <tcp/tcb.h>
-#include <tcp/tcphdr.h>
 
 /* Define variables*/
 #define MAX_UTCP_SOCKETS 1024
@@ -32,7 +32,7 @@ int bind_utcp(struct sockaddr_in *addr);
 
 void err_sock(int sock, const char* x);
 void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp);
-void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len);
+void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len);
 void update_fsm(int utcp_fd, enum conn_state state);
 
 void err_sys(const char* x);

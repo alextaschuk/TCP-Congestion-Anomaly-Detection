@@ -1,17 +1,13 @@
-/*
-To run the client: `gcc -Iinclude client/client.c -o client/client && ./client/client`
-*/
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-//#include <netinet/tcp.h>
+#include <netinet/tcp.h>
 
 #include <utcp/client.h>
 #include <utcp/api.h>
@@ -57,7 +53,7 @@ static void perform_hndshk(int sock, int utcp_fd)
      */
     // Create and configure TCP header for persistent connection
     struct tcb *tcb = get_tcb(utcp_fd);
-    uint8_t *buffer = malloc(sizeof(tcphdr));
+    uint8_t *buffer = malloc(sizeof(struct tcphdr));
     struct sockaddr_in from;
 
     // Send the SYN datagram
@@ -71,7 +67,7 @@ static void perform_hndshk(int sock, int utcp_fd)
     uint8_t rcvbuf[1024];
     ssize_t rcvsize;
     rcvsize = rcv_dgram(sock, rcvbuf, &from);
-    tcphdr *hdr;
+    struct tcphdr *hdr;
     uint8_t* data;
     ssize_t data_len;
     deserialize_tcp_hdr(rcvbuf, rcvsize, &hdr, &data, &data_len);

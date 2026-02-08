@@ -15,7 +15,7 @@ bool is_null(const void *ptr, const char *msg)
         
 }
 
-void print_tcphdr(const tcphdr *tcp)
+void print_tcphdr(const struct tcphdr *tcp)
 {
     /**
      * @brief print the contents of a
@@ -30,7 +30,7 @@ void print_tcphdr(const tcphdr *tcp)
     printf("  Destination Port: %u\n", ntohs(tcp->th_dport));
     printf("  Sequence Number:  %u\n", ntohl(tcp->th_seq));
     printf("  Acknowledgment:   %u\n", ntohl(tcp->th_ack));
-    printf("  Data Offset:      %u bytes\n", (tcp->th_off_flags >> 4) * 4);
+    printf("  Data Offset:      %u bytes\n", (tcp->th_off >> 4) * 4);
     printf("  Flags:");
     if (tcp->th_flags & TH_FIN)  printf(" FIN");
     if (tcp->th_flags & TH_SYN)  printf(" SYN");
