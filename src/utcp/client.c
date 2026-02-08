@@ -1,16 +1,20 @@
+#include <utcp/client.h>
+
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <netinet/tcp.h>
 
-#include <utcp/client.h>
-#include <utcp/api.h>
+#include <utcp/api/globals.h>
+#include <utcp/api/api.h>
+#include <utcp/api/conn.h>
+#include <utcp/api/data.h>
+
 
 #include <tcp/hndshk_fsm.h>
 
@@ -23,20 +27,21 @@ int UTCP_sock;
 struct sockaddr_in client_addr, server_addr;
 
 int main(void) {
+    api_t *global = api_instance();
     //set_server_port();
     //sock = bind_UDP_sock(&client_port);
     sock = bind_UDP_sock(5555);
     
     struct sockaddr_in client = {
     .sin_family = AF_INET,
-    .sin_port = htons(client_utcp_port),
+    .sin_port = htons(global->client_utcp_port),
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
-    UTCP_sock = bind_utcp(&client);
+    UTCP_sock = bind_UTCP_sock(&client);
 
     struct sockaddr_in server = {
     .sin_family = AF_INET,
-    .sin_port = htons(server_utcp_port),
+    .sin_port = htons(global->server_utcp_port),
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
     connect_utcp(UTCP_sock, &server, 4567);
@@ -93,6 +98,7 @@ static void set_server_port()
      * @brief allows us to enter the server's port
      * number if we don't hardcode the value.
      */
+    api_t *global = api_instance();
     printf("enter the server's UDP port number:\r\n");
-    scanf("%hd", &server_port);
+    scanf("%hd", &global->server_port);
 }

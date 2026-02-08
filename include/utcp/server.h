@@ -2,7 +2,7 @@
 #define SERVER_H
 
 #include <stdint.h>
-#include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
 
 /* Define variables*/

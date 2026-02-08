@@ -1,6 +1,5 @@
-/*
-To run the server: `gcc -Iinclude server/server.c -o server/server && ./server/server`
-*/
+#include <utcp/server.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,8 +12,13 @@ To run the server: `gcc -Iinclude server/server.c -o server/server && ./server/s
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
-#include <utcp/server.h>
-#include <utcp/api.h>
+#include <utcp/api/globals.h>
+#include <utcp/api/api.h>
+#include <utcp/api/conn.h>
+#include <utcp/api/data.h>
+
+#include <utils/err.h>
+#include <utils/printable.h>
 
 #include <tcp/hndshk_fsm.h>
 #include <tcp/tcb.h>
@@ -27,16 +31,17 @@ extern uint8_t data[1028]; //buffer to send data
 int sock;
 
 int main(void) {
+    api_t *global = api_instance();
     //if (server_port == 0)
     sock = bind_UDP_sock(4567);
 
     struct sockaddr_in server = {
     .sin_family = AF_INET,
-    .sin_port = htons(server_utcp_port),
+    .sin_port = htons(global->server_utcp_port),
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
 
-    int UTCP_sock = bind_utcp(&server);
+    int UTCP_sock = bind_UTCP_sock(&server);
 
     begin_listen(sock, UTCP_sock);
 }
