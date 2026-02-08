@@ -37,4 +37,5 @@ enum conn_state // connection state
   TIME_WAIT, /*[client OR server], wait to ensure all remaining pkts on the connection have expired*/
   CLOSED /*[client, server], no connection state (can describe state before 3-way hndshk and after 4-way hndshk)*/
 };
+
 #endif

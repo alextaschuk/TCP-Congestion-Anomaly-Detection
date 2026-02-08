@@ -5,25 +5,20 @@
 
 #include <errno.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <netinet/tcp.h>
 
-//#include <api.h>
-//#include <tcb.h>
-//#include <hndshk_fsm.h>
-//#include <fourtuple.h>
-//#include <tcphdr.h>
-//#include <tcp_segment.h>
-#include "api.h"
-#include "tcp_segment.h"
-#include "../utils/debug.c"
+#include <utcp/api.h>
+
+#include <tcp/fourtuple.h>
+#include <tcp/tcp_segment.h>
+
+#include <utils/printable.h>
 
 uint16_t client_port = 5555;
 const int client_utcp_port = 776; 
@@ -48,8 +43,7 @@ int bind_UDP_sock(int pts)
      * to dynamically set the values to the port that the kernel
      * chooses. If we hardcode the port, this value is not needed.
      */
-    
-    if (udp_sock_open)
+    if (udp_sock_open == 1)
         err_sock(-1, "(bind_UDP_sock)socket already bound");
 
     // declare socket -- sock = socket file descriptor (int that refers to the socket obj in the kernel)
@@ -229,6 +223,7 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
         err_sys("[send_dgram]error sending packet");
     
     printf("[send_dgram]Sending datagram to UTCP port %u, UDP port %u\r\n", tcb->fourtuple.dest_port, tcb->dest_udp_port);
+    printf("Content of TCP header:\n");
     print_tcphdr(&segment->hdr);
     
     free(segment);
@@ -262,27 +257,4 @@ void update_fsm(int utcp_fd, enum conn_state state)
         err_sys("[update_fsm]Invalid UTCP socket");
     
     tcb->fsm_state = state;
-}
-
-void err_sys(const char* x)
-{
-    /**
-     * @brief A global error logging function.
-     * 
-     * @example err_sys("bind"); -> "bind: Address already in use"
-     */
-    perror(x);
-    exit(EXIT_FAILURE);
-}
-
-void err_sock(int sock, const char* x)
-{
-    /**
-     * @brief Closes a problematic socket, then prints an error message.
-     * 
-     * If an error occurs during the closing process, that message prints first.
-     */
-    if (close(sock) == -1)
-        err_sys("(err_sock)socket close failed:");
-    err_sys(x);
 }

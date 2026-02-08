@@ -2,10 +2,18 @@
 #include <stdint.h>
 #include <arpa/inet.h> 
 
-//#include <debug.h>
-//#include <tcphdr.h>
-#include "debug.h"
-#include "tcphdr.h"
+#include <utils/printable.h>
+
+bool is_null(const void *ptr, const char *msg)
+{
+    if (ptr == NULL)
+    {
+        printf("%s\n", msg);
+        return true;
+    }
+    return false;
+        
+}
 
 void print_tcphdr(const tcphdr *tcp)
 {
@@ -14,6 +22,9 @@ void print_tcphdr(const tcphdr *tcp)
      * TCP header that is in network
      * byte order
      */
+    if (is_null(tcp, "TCP Header: (null)"))
+        return;
+
     printf("\nTCP Header:\n");
     printf("  Source Port:      %u\n", ntohs(tcp->th_sport));
     printf("  Destination Port: %u\n", ntohs(tcp->th_dport));
@@ -31,4 +42,18 @@ void print_tcphdr(const tcphdr *tcp)
     printf("  Window Size:      %u\n", ntohs(tcp->th_win));
     printf("  Checksum:         0x%04x\n", ntohs(tcp->th_sum));
     printf("  Urgent Pointer:   %u\n\n", ntohs(tcp->th_urp));
+}
+
+void print_tcb(const tcb *tcb)
+{
+    return;
+}
+
+void print_fourtup(const fourtuple *tup)
+{
+    if (is_null(tup, "Four Tuple: (null)"))
+        return;
+
+    printf("\nFour Tuple:\n");
+    printf("");
 }

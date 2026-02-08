@@ -1,11 +1,10 @@
 /**
  * see https://sites.uclouvain.be/SystInfo/usr/include/netinet/tcp.h.html
  */
-
-#include <stdint.h>
-
 #ifndef TCPHDR_H
 #define TCPHDR_H
+
+#include <stdint.h>
 
 typedef struct{
     uint16_t th_sport;    /* source port */
@@ -24,4 +23,5 @@ typedef struct{
     uint16_t th_sum; /* checksum */
     uint16_t th_urp; /* urgent pointer */
 }tcphdr;
+
 #endif

@@ -1,6 +1,8 @@
 #ifndef FOURTUPLE_H
 #define FOURTUPLE_H
 
+#include <stdint.h>
+
 typedef struct fourtuple
 {
     //standard 4-tuple
@@ -9,4 +11,5 @@ typedef struct fourtuple
     uint16_t dest_port; // UTCP port
     uint32_t dest_ip;
 }fourtuple;
+
 #endif // FOURTUPLE_H

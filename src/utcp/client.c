@@ -13,15 +13,13 @@ To run the client: `gcc -Iinclude client/client.c -o client/client && ./client/c
 #include <unistd.h>
 //#include <netinet/tcp.h>
 
-//#include <client.h>
-//#include <api.h>
-//#include <hndshk_fsm.h>
+#include <utcp/client.h>
+#include <utcp/api.h>
 
-#include "client.h"
-#include "../api/api.h"
-#include "../api/api.c"
-#include "../include/hndshk_fsm.h"
-#include "../utils/debug.h"
+#include <tcp/hndshk_fsm.h>
+
+#include <utils/printable.h>
+#include <utils/err.h>
 
 int client_fsm = CLOSED; // TCP finite state machine for connection
 int sock; // UDP socket

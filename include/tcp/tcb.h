@@ -2,7 +2,7 @@
  * Transmission Control Block
  */
 #include <stdint.h>
-#include <fourtuple.h>
+#include <tcp/fourtuple.h>
 
 #ifndef TCB_H
 #define TCB_H
@@ -23,6 +23,5 @@ typedef struct tcb
     uint32_t rcv_nxt; /* the next expected sequence */
     uint32_t irs;     /* initial recv seq */
 }tcb;
-
 
 #endif

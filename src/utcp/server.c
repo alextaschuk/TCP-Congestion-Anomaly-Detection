@@ -7,22 +7,23 @@ To run the server: `gcc -Iinclude server/server.c -o server/server && ./server/s
 #include <string.h>
 
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/tcp.h>
 
-#include "server.h"
-#include "../api/api.h"
-#include "../api/api.c"
-#include "../include/hndshk_fsm.h"
-#include <tcb.h>
+#include <utcp/server.h>
+#include <utcp/api.h>
+
+#include <tcp/hndshk_fsm.h>
+#include <tcp/tcb.h>
 
 //https://github.com/MichaelDipperstein/sockets/blob/master/echoserver_udp.c
 //https://csperkins.org/teaching/2007-2008/networked-systems/lecture04.pdf
 
+extern uint8_t header[8]; //datagram header
+extern uint8_t data[1028]; //buffer to send data
 int sock;
 
 int main(void) {

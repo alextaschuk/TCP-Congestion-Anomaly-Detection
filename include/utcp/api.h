@@ -1,19 +1,25 @@
 #ifndef API_H
 #define API_H
 
-#include <hndshk_fsm.h>
-#include <tcb.h>
-#include <tcphdr.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <sys/socket.h>
+
+
+#include <tcp/hndshk_fsm.h>
+#include <tcp/tcb.h>
+#include <tcp/tcphdr.h>
 
 /* Define variables*/
 #define MAX_UTCP_SOCKETS 1024
+
 extern uint16_t client_port;
 extern const int client_utcp_port; 
 extern const char* client_ip;
 extern uint16_t server_port;
 extern const int server_utcp_port;
 extern const char* server_ip;
-/* End define varialbes*/
+/* End define variables*/
 
 /*Begin function declarations*/
 uint8_t* build_datagram(uint16_t dest_port, char* dest_ip, uint8_t* buffer);
