@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <netinet/tcp.h>
@@ -15,19 +14,20 @@
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
 
-
 #include <tcp/hndshk_fsm.h>
 
 #include <utils/printable.h>
 #include <utils/err.h>
 
-int client_fsm = CLOSED; // TCP finite state machine for connection
-int sock; // UDP socket
+int client_fsm;
+int sock;
 int UTCP_sock;
-struct sockaddr_in client_addr, server_addr;
+struct sockaddr_in client_addr;
+struct sockaddr_in server_addr;
 
 int main(void) {
     api_t *global = api_instance();
+    int client_fsm = CLOSED; // TCP finite state machine for connection
     //set_server_port();
     //sock = bind_UDP_sock(&client_port);
     sock = bind_UDP_sock(5555);
@@ -71,7 +71,7 @@ static void perform_hndshk(int sock, int utcp_fd)
     // Receive the SYN-ACK datagram
     uint8_t rcvbuf[1024];
     ssize_t rcvsize;
-    rcvsize = rcv_dgram(sock, rcvbuf, &from);
+    rcvsize = rcv_dgram(sock, rcvbuf, 1024, &from);
     struct tcphdr *hdr;
     uint8_t* data;
     ssize_t data_len;
@@ -86,13 +86,16 @@ static void perform_hndshk(int sock, int utcp_fd)
     send_dgram(sock, utcp_fd, buffer, 0, TH_ACK);
     tcb->rcv_nxt = ntohl(hdr->th_seq) + 1;
 
-    printf("[Client]ACK packet sent\n");
+    printf("[Client]ACK packet sent. Connection with server established.\n");
     update_fsm(utcp_fd, ESTABLISHED);
     
+    printf("Client's current TCB:\n");
+    print_tcb(tcb);
+
     free(buffer);
 }
 
-static void set_server_port()
+static void set_server_port(void)
 {
     /**
      * @brief allows us to enter the server's port

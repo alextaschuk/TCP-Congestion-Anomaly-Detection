@@ -46,14 +46,33 @@ void print_tcphdr(const struct tcphdr *tcp)
 
 void print_tcb(const tcb *tcb)
 {
-    return;
+    if (is_null(tcb, "TCB: (null)"))
+        return;
+
+    printf("TCB {\n");
+    print_fourtuple(&tcb->fourtuple);
+    printf("\n");
+
+    printf("  dest_udp_port: %u\n", tcb->dest_udp_port);
+    printf("  fsm_state:     %u\n", tcb->fsm_state);
+
+    printf("  iss:     %u\n", tcb->iss);
+    printf("  snd_una: %u\n", tcb->snd_una);
+    printf("  snd_nxt: %u\n", tcb->snd_nxt);
+    printf("  rcv_nxt: %u\n", tcb->rcv_nxt);
+    printf("  irs:     %u\n", tcb->irs);
+
+    printf("}\n");
 }
 
-void print_fourtup(const fourtuple *tup)
+void print_fourtuple(const fourtuple *tup)
 {
     if (is_null(tup, "Four Tuple: (null)"))
         return;
 
     printf("\nFour Tuple:\n");
-    printf("");
+    printf("    source port:    %u\n", tup->source_port);
+    printf("    source ip:    %u\n", tup->source_ip);
+    printf("    dest port:    %u\n", tup->dest_port);
+    printf("    dest ip:    %u\n", tup->dest_ip);
 }

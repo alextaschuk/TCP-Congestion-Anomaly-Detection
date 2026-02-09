@@ -63,9 +63,9 @@ void begin_listen(int sock, int utcp_fd)
 
     uint8_t rcvbuf[1024];
     ssize_t rcvsize;
-    struct sockaddr_in from;
+    struct sockaddr_in from; // store info on who sent the datagram.
     while (1) {
-        rcvsize = rcv_dgram(sock, rcvbuf, &from); 
+        rcvsize = rcv_dgram(sock, rcvbuf, 1024, &from); 
         struct tcphdr *hdr;
         uint8_t* data;
         ssize_t data_len;

@@ -67,18 +67,20 @@ int send_dgram(int sock, int utcp_fd, void* buf, size_t len, int flags)
     return bytes_sent;
 }
 
-ssize_t rcv_dgram(int sock, uint8_t rcvbuf[1024], struct sockaddr_in* from)
+ssize_t rcv_dgram(int sock, uint8_t rcvbuf[1024], ssize_t bufsize, struct sockaddr_in* from)
 {
     /**
-     * @brief receive a datagram
+     * @brief receive a datagram and update
+     * TCB values as needed.
      */
     //struct sockaddr_storage from;
-    ssize_t rcvsize;
-    ssize_t buflen = 1500;
+    ssize_t rcvsize; // # bytes rcv'd
     socklen_t fromlen = sizeof(*from);
-    rcvsize = recvfrom(sock, rcvbuf, buflen, 0, (struct sockaddr *)from, &fromlen); // # bytes rcv'd
+    rcvsize = recvfrom(sock, rcvbuf, bufsize, 0, (struct sockaddr *)from, &fromlen);
 
     if (rcvsize < 0)
         err_sys("[rcv_dgram]Failed to receive datagram");
+    if (rcvsize == 0)
+        printf("TODO handle connection shutdown process\n");
     return rcvsize;
 }

@@ -25,8 +25,7 @@
 void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, uint8_t **out_data, ssize_t *out_data_len)
 {
     /**
-     * @brief deserialize a TCP header back into 
-     * host byte order
+     * @brief deserialize a TCP header into host byte order
      */
     if (buflen < sizeof(struct tcphdr))
         err_sys("[deserialize_tcp_hdr]cannot parse datagram");
@@ -41,8 +40,6 @@ void deserialize_tcp_hdr(uint8_t* buf, size_t buflen, struct tcphdr **out_hdr, u
     (*out_hdr)->th_win = ntohs((*out_hdr)->th_win); // rcv window size
     (*out_hdr)->th_sum = ntohs((*out_hdr)->th_sum); // checksum
     (*out_hdr)->th_urp = ntohs((*out_hdr)->th_urp); // urgent pointer
-
-    //print_tcphdr(*out_hdr);
 }
 
 struct tcb* get_tcb(int utcp_fd)

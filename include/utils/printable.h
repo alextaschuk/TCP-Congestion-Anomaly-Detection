@@ -11,6 +11,6 @@
 bool is_null(const void *ptr, const char *msg);
 void print_tcphdr(const struct tcphdr *tcp);
 void print_tcb(const tcb *tcb);
-void print_fourtup(const fourtuple *tup);
+void print_fourtuple(const fourtuple *tup);
 /* End function declaration*/
 #endif
