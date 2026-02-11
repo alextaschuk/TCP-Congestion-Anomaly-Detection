@@ -1,26 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h> // for calling close() on a socket
 
 void err_sys(const char* x)
 {
-    /**
-     * @brief A global error logging function.
-     * 
-     * @example err_sys("bind"); -> "bind: Address already in use"
-     */
-    perror(x);
+    const char *backup = "(null) error occurred somewhere";
+    const char *msg = x ? x : backup;
+
+    perror(msg);
     exit(EXIT_FAILURE);
 }
 
 void err_sock(int sock, const char* x)
 {
-    /**
-     * @brief Closes a problematic socket, then prints an error message.
-     * 
-     * If an error occurs during the closing process, that message prints first.
-     */
     if (close(sock) == -1)
-        err_sys("(err_sock)socket close failed:");
-    err_sys(x);
+        err_sys("(err_sock) socket close failed:");
+
+    const char *backup = "(null) socket-related error occurred somewhere";
+    const char *msg = x ? x : backup;
+
+    err_sys(msg);
+}
+
+void err_data(const char* x)
+{
+    const char *backup = "(null) data-related error occurred somewhere";
+    const char *msg = x ? x : backup;
+
+    fprintf(stderr, "%s\n", msg);
+    exit(EXIT_FAILURE);
 }

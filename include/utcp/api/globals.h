@@ -10,7 +10,8 @@ client will need access to.
 #include <tcp/tcb.h>
 
 /* Define Macros*/
-#define MAX_UTCP_SOCKETS 1024
+#define MAX_UTCP_SOCKETS 1024 // max number of utcp socket connections allowed at a time
+#define BUF_SIZE 1024 // size of send and receive buffers
 /* End define macros*/
 
 /* Define Enums*/
@@ -28,7 +29,7 @@ uint16_t server_port;
 int server_utcp_port;
 char* server_ip;
 
-struct tcb *tcp_lookup[MAX_UTCP_SOCKETS];
+struct tcb_t *tcp_lookup[MAX_UTCP_SOCKETS]; // tcb lookup table
 } api_t;
 
 api_t *api_instance(void); // to access the global struct

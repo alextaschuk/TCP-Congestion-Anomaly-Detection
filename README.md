@@ -1,7 +1,23 @@
 # COSC 448 - Directed Studies in Computer Science
 
-to run the server: `gcc -Iinclude server/server.c -o udp_server && ./udp_server`
-to run the client: `gcc -Iinclude client/client.c -o client/udp_client && ./client/udp_client`
+**How to run client & server**
+
+1. Compile the programs
+
+```console
+$ make clean && make
+```
+
+2. Start the server 
+```console
+$ ./server_app
+```
+
+3. Start the client 
+
+```console
+$ ./client_app
+``` 
 
 ## The Objective
 

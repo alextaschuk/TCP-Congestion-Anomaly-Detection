@@ -1,5 +1,5 @@
 /*
-Functions related to connection establishment and management,
+Logic related to connection establishment and management,
 whether that be for a UDP socket, a UTCP socket, or anything
 else.
 */
@@ -21,15 +21,6 @@ int udp_sock_open = 0; // 1 if UDP socket is bound
 
 int bind_UDP_sock(int pts)
 {
-    /**
-     * @brief create and return a socket descriptor for 
-     * an Internet datagram socket using UDP.
-     * 
-     * @param pts (port to set), the client passes in the 
-     * client_port, and the server passes in the server_port variable
-     * to dynamically set the values to the port that the kernel
-     * chooses. If we hardcode the port, this value is not needed.
-     */
     if (udp_sock_open == 1)
         err_sock(-1, "(bind_UDP_sock)socket already bound");
 
@@ -69,16 +60,6 @@ int bind_UDP_sock(int pts)
 
 int bind_UTCP_sock(struct sockaddr_in *addr)
 {
-    /**
-     * @brief We need to manually manage a bind() function
-     * since client sockets need to be bound according to
-     * their UTCP port number, not the actual UDP port number.
-     * 
-     * @param addr contains socket's source IP address and port number
-     * 
-     * @return fd on success, a "file descriptor" (index of tcb_lookup) that the
-     * newly created tcb struct lives at.
-     */
     api_t *global = api_instance();
     // find the first available spot in the lookup table
     int fd;
@@ -89,9 +70,9 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
         if (fd == MAX_UTCP_SOCKETS)
             err_sys("[bind_UTCP_sock]no socket available");
 
-    struct tcb *tcb = calloc(1, sizeof(struct tcb));
+    tcb_t *tcb = calloc(1, sizeof(tcb_t));
     if (!tcb)
-        err_sys("[bind_UTCP_sock]failed to calloc *tcb:");
+        err_sys("[bind_UTCP_sock]failed to calloc *tcb");
 
     if (addr->sin_port == 0)
         err_sys("[bind_UTCP_sock]client UDP socket not bound before UTCP binding");
@@ -109,14 +90,7 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
 
 void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp)
 {
-    /**
-     * @brief connect a UTCP socket to a remote UTCP socket
-     * 
-     * @param utcp_fd the index of the local UTCP socket in tcb_lookup
-     * @param addr contains the destination UTCP port number and IP address
-     * @param dest_udp the destination UDP address
-     */
-    struct tcb *tcb = get_tcb(utcp_fd);
+    tcb_t *tcb = get_tcb(utcp_fd);
     
 
     //Update the TCB's info

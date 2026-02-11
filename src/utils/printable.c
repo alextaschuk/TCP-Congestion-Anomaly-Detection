@@ -17,11 +17,6 @@ bool is_null(const void *ptr, const char *msg)
 
 void print_tcphdr(const struct tcphdr *tcp)
 {
-    /**
-     * @brief print the contents of a
-     * TCP header that is in network
-     * byte order
-     */
     if (is_null(tcp, "TCP Header: (null)"))
         return;
 
@@ -44,7 +39,7 @@ void print_tcphdr(const struct tcphdr *tcp)
     printf("  Urgent Pointer:   %u\n\n", ntohs(tcp->th_urp));
 }
 
-void print_tcb(const tcb *tcb)
+void print_tcb(const tcb_t *tcb)
 {
     if (is_null(tcb, "TCB: (null)"))
         return;
@@ -61,6 +56,7 @@ void print_tcb(const tcb *tcb)
     printf("  snd_nxt: %u\n", tcb->snd_nxt);
     printf("  rcv_nxt: %u\n", tcb->rcv_nxt);
     printf("  irs:     %u\n", tcb->irs);
+    printf("  rcv_wnd: %u\n", tcb->rcv_wnd);
 
     printf("}\n");
 }
@@ -70,7 +66,7 @@ void print_fourtuple(const fourtuple *tup)
     if (is_null(tup, "Four Tuple: (null)"))
         return;
 
-    printf("\nFour Tuple:\n");
+    printf("\n  Four Tuple:\n");
     printf("    source port:    %u\n", tup->source_port);
     printf("    source ip:    %u\n", tup->source_ip);
     printf("    dest port:    %u\n", tup->dest_port);

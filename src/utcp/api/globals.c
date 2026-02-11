@@ -1,6 +1,7 @@
 #include <utcp/api/globals.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 static api_t global;
 
@@ -20,7 +21,7 @@ api_t *api_instance(void)
 
         for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
             global.tcp_lookup[i] = NULL;
-        
+
         initialized = 1;
     }
     return &global;

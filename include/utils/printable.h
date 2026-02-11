@@ -8,9 +8,21 @@
 #include <tcp/fourtuple.h>
 
 /* Begin function declaration */
+
 bool is_null(const void *ptr, const char *msg);
+
+/**
+ * @brief print the contents of a
+ * TCP header that is in network
+ * byte order
+ */
 void print_tcphdr(const struct tcphdr *tcp);
-void print_tcb(const tcb *tcb);
+
+
+void print_tcb(const tcb_t *tcb);
+
+
 void print_fourtuple(const fourtuple *tup);
-/* End function declaration*/
+
+/* End function declaration */
 #endif

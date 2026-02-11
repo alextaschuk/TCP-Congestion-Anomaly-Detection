@@ -1,3 +1,6 @@
+#ifndef HNDSHK_FSM_H
+#define HNDSHK_FSM_H
+
 /**
  * @brief This finite state machine tracks the current connection
  * status for a client/server. Each side of a connection maintains
@@ -8,9 +11,11 @@
  * in TCP for establishing a persistent connection via a 3-Way
  * Handshake, and terminating a connection via a 4-Way Handshake.
  * 
- * See https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Protocol_operation,
- *     http://tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm
- *     https://upload.wikimedia.org/wikipedia/commons/a/a2/Tcp_state_diagram_fixed.svg
+ * - https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Protocol_operation
+ * 
+ * - http://tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm
+ * 
+ * - https://upload.wikimedia.org/wikipedia/commons/a/a2/Tcp_state_diagram_fixed.svg
  * 
  * Acronyms:
   * SYN -- synchronize
@@ -19,10 +24,7 @@
   * rcv/rcv'd -- receive/received
   * pkts -- packets
  */
-#ifndef HNDSHK_FSM_H
-#define HNDSHK_FSM_H
-
-enum conn_state // connection state
+enum conn_state
 {
   // [endpoint], description
   LISTEN = 1, /*[server], waiting (listening) for a connection*/
