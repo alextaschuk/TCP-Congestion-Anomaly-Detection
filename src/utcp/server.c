@@ -24,20 +24,8 @@
 #include <tcp/hndshk_fsm.h>
 #include <tcp/tcb.h>
 
-//https://github.com/MichaelDipperstein/sockets/blob/master/echoserver_udp.c
-//https://csperkins.org/teaching/2007-2008/networked-systems/lecture04.pdf
-//https://github.com/goToMain/c-utils
-
-
-//https://www.alibabacloud.com/blog/tcp-syn-queue-and-accept-queue-overflow-explained_599203
-//https://blog.cloudflare.com/syn-packet-handling-in-the-wild/
-// https://chatgpt.com/c/6989333e-0634-8333-ad74-64d879516a25 -- for rcv wnd stuff
-// https://cabulous.medium.com/tcp-send-window-receive-window-and-how-it-works-8629a4fad9ec
-// https://docs.kernel.org/trace/ring-buffer-design.html -- lockless ring buffer
-
 //tcb_t *SYN_queue;
 //tcb_t *accept_queue;
-
 
 int sock; // udp socket
 
