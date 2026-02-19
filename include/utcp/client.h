@@ -3,6 +3,8 @@
 
 #include <netinet/in.h>
 
+#include <tcp/tcb.h>
+
 /*Define variables*/
 
 extern int client_fsm;
@@ -34,13 +36,13 @@ static void set_server_port(void);
  * @param sock the UDP socket to send the datagram out of
  * @param utcp_fd UTCP socket's position in tcb_lookup
  */
-static void send_syn(int sock, int utcp_fd);
+static void send_syn(int sock, int utcp_fd, tcb_t *tcb);
 
 /**
  * @brief receive and handle the SYN-ACK packet that is sent
  * in response to the callee's SYN packet.
  */
-static void rcv_syn_ack(int sock, int utcp_fd);
+static void rcv_syn_ack(int sock, int utcp_fd, tcb_t *tcb);
 
 
 /**

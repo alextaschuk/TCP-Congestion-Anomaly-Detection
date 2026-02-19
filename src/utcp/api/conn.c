@@ -22,18 +22,18 @@ int udp_sock_open = 0; // 1 if UDP socket is bound
 int bind_UDP_sock(int pts)
 {
     if (udp_sock_open == 1)
-        err_sock(-1, "(bind_UDP_sock)socket already bound");
+        err_sock(-1, "[bind_UDP_sock] socket already bound");
 
     // declare socket -- sock = socket file descriptor (int that refers to the socket obj in the kernel)
     int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (sock == -1)
-        err_sock(sock, "(bind_UDP_sock)failed to initialize socket");
+        err_sock(sock, "[bind_UDP_sock] failed to initialize socket");
     
     // prevent "address already in use" message when trying to rerun the program
     int yes = 1;
     if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
-        err_sock(sock, "(bind_UDP_sock)setsockopt");
+        err_sock(sock, "[bind_UDP_sock] setsockopt");
 
     struct sockaddr_in addr = 
     {
@@ -44,7 +44,7 @@ int bind_UDP_sock(int pts)
     };
 
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-        err_sock(sock, "(bind_UDP_sock)bind failed");
+        err_sock(sock, "[bind_UDP_sock] bind failed");
 
     // get the bound port
     struct sockaddr_in bound_addr;
@@ -60,47 +60,51 @@ int bind_UDP_sock(int pts)
 
 int bind_UTCP_sock(struct sockaddr_in *addr)
 {
-    api_t *global = api_instance();
-    // find the first available spot in the lookup table
     int fd;
+    api_t *global = api_instance();
+
+    // is it safe to have irs & rcv_nxt zeroed out?
+    tcb_t *tcb = calloc(1, sizeof(tcb_t));
+
+    if (!tcb)
+        err_sys("[bind_UTCP_sock]failed to calloc *tcb");
+    if (addr->sin_port == 0)
+        err_sys("[bind_UTCP_sock]client UDP socket not bound before UTCP binding");
+
+    // find the first available spot in the lookup table
     for(fd = 0; fd < MAX_UTCP_SOCKETS; fd++)
         if (global->tcp_lookup[fd] == NULL)
             break; // found an available socket
+    
+    if (fd == MAX_UTCP_SOCKETS || fd == -1)
+    {
+        free(tcb);
+        err_sys("[bind_UTCP_sock]no socket available");
+    }
 
-        if (fd == MAX_UTCP_SOCKETS)
-            err_sys("[bind_UTCP_sock]no socket available");
-
-    tcb_t *tcb = calloc(1, sizeof(tcb_t));
-    if (!tcb)
-        err_sys("[bind_UTCP_sock]failed to calloc *tcb");
-
-    if (addr->sin_port == 0)
-        err_sys("[bind_UTCP_sock]client UDP socket not bound before UTCP binding");
     // TODO: dynamically select client/server UTCP port number
-        // also need to validate src port and ip
+     // also need to validate src port and ip
     tcb->fourtuple.source_port = ntohs(addr->sin_port); // src UTCP port
-    tcb->fourtuple.source_ip = inet_addr("127.0.0.1");
+    tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr);
     //tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr); // src IP addr
     tcb->fsm_state = CLOSED;
-
+    
     global->tcp_lookup[fd] = tcb;
-    printf("UTCP socket bound to port: %i\r\n", tcb->fourtuple.source_port);
+
+    printf("UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
     return fd;
 }
 
-void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp)
+void connect_utcp(int utcp_fd, struct sockaddr_in *addr, uint16_t dest_udp)
 {
     tcb_t *tcb = get_tcb(utcp_fd);
     
-
     //Update the TCB's info
     // TODO: validate port numbers and ip
     tcb->fourtuple.dest_port = ntohs(addr->sin_port); //dest UTCP port
     tcb->fourtuple.dest_ip = ntohl(addr->sin_addr.s_addr); // dest IP
     //tcb->fourtuple.dest_ip = ntohl(inet_addr("127.0.0.1")); // dest IP
     tcb->dest_udp_port = dest_udp; // dest UDP port number
-
-    printf("Dest UTCP Port: %u, dest IP: %u, dest UDP port: %u\r\n", tcb->fourtuple.dest_port, tcb->fourtuple.dest_ip, tcb->dest_udp_port);
 
     tcb->iss = 0x0000; // initial seq # = 0
     tcb->snd_una = tcb->iss; // hasn't been ack'd b/c SYN not yet sent
