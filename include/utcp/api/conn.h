@@ -27,14 +27,4 @@ int bind_UDP_sock(int pts);
  */
 int bind_UTCP_sock(struct sockaddr_in *addr);
 
-/**
- * @brief connect a UTCP socket to a remote UTCP socket (i.e., update the
- * caller's TCB struct with the remote socket's info)
- * 
- * @param utcp_fd the index of the local UTCP socket in tcb_lookup
- * @param addr contains the destination UTCP port number and IP address
- * @param dest_udp the destination UDP address
- */
-void connect_utcp(int utcp_fd, struct sockaddr_in* addr, uint16_t dest_udp);
-
 #endif

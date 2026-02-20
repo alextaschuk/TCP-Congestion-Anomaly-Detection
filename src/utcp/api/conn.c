@@ -94,19 +94,3 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
     printf("UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
     return fd;
 }
-
-void connect_utcp(int utcp_fd, struct sockaddr_in *addr, uint16_t dest_udp)
-{
-    tcb_t *tcb = get_tcb(utcp_fd);
-    
-    //Update the TCB's info
-    // TODO: validate port numbers and ip
-    tcb->fourtuple.dest_port = ntohs(addr->sin_port); //dest UTCP port
-    tcb->fourtuple.dest_ip = ntohl(addr->sin_addr.s_addr); // dest IP
-    //tcb->fourtuple.dest_ip = ntohl(inet_addr("127.0.0.1")); // dest IP
-    tcb->dest_udp_port = dest_udp; // dest UDP port number
-
-    tcb->iss = 0x0000; // initial seq # = 0
-    tcb->snd_una = tcb->iss; // hasn't been ack'd b/c SYN not yet sent
-    tcb->snd_nxt = tcb->iss;
-}

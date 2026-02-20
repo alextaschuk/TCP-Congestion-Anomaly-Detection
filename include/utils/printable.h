@@ -30,8 +30,9 @@ void print_segment(const uint8_t *buf, const size_t buflen, const bool flow);
 
 void print_tcb(const tcb_t *tcb);
 
-
 void print_fourtuple(const fourtuple *tup);
+
+void print_safe_chars(uint8_t *buf, size_t len);
 
 /* End function declaration */
 #endif

@@ -6,10 +6,13 @@
 
 /**
  * To ensure that data can be received and delivered in order the client and server
- * will each maintain a send a receive buffer. These will be implemented as circular 
+ * will each maintain a send (AKA transmit, or tx) a receive (rx) buffer. These will be implemented as circular 
  * (or ring) buffers.
  * 
  * - I followed this article to implement them: https://embedjournal.com/implementing-circular-buffer-embedded-c/
+ * 
+ * The rx buffer stores in-order payload bytes that have not yet been consumed by the application. The tx buffer
+ * stores in-order bytes that an application has sent out but have not yet been ACKed by the receiver,
  * 
  * @note The amount of bytes that the buffers will be able to hold will be equal to some `BUF_SIZE macro + 1 byte`.
  * The buffer stores an extra byte because "there is no *clean way* to differentiate the buffer full vs empty cases."
@@ -29,13 +32,12 @@ typedef struct ring_buf_t
 
 /**
  * @brief initializes a new circular buffer,
- * either for a receive buffer or a send buffer.
+ * either for a receive buffer (rx) or a send buffer (tx).
  * 
  * @param *c pointer to a ring_buf_t struct stored
  * in a TCB struct.
- * @param size should pass in the BUF_SIZE macro from globals.h
  */
-int ring_buf_init(ring_buf_t *c, size_t size);
+int ring_buf_init(ring_buf_t *c);
 
 /**
  * @brief returns the number of bytes currently

@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 
 #include <tcp/tcb.h>
+#include<utcp/api/globals.h>
 
 /*Define variables*/
 
@@ -18,38 +19,28 @@ extern struct sockaddr_in server_addr;
 /* Define functions */
 
 /**
- * @brief Initiates a 3-way handshake by sending a
- * SYN packet, receiving and handling a SYN-ACK packet,
- * and responding with an ACK packet.
+ * @brief Initiate a 3-way handshake with the server.
+ * 
+ * This function sends a SYN packet, receives and
+ * handles a SYN-ACK packet, then responds with an
+ * ACK packet.
  */
-static void perform_hndshk(const int sock, const int utcp_fd);
+static void init_hndshk(void *arg);
+
+void* begin_listen(void *arg);
+
+/**
+ * Initializes the client by binding its UDP and UTCP sockets,
+ * then updates the client's TCB with the (dest) server's info
+ */
+static int init_client(void *arg, api_t *global);
+
 
 /**
  * @brief allows us to enter the server's port
  * number if we don't hardcode the value.
  */
 static void set_server_port(void);
-
-/**
- * @brief sends out a SYN packet and updates
- * the sender's TCB FSM state and `syn_nxt` value.
- * @param sock the UDP socket to send the datagram out of
- * @param utcp_fd UTCP socket's position in tcb_lookup
- */
-static void send_syn(int sock, int utcp_fd, tcb_t *tcb);
-
-/**
- * @brief receive and handle the SYN-ACK packet that is sent
- * in response to the callee's SYN packet.
- */
-static void rcv_syn_ack(int sock, int utcp_fd, tcb_t *tcb);
-
-
-/**
- * @brief send an ACK packet in response to the
- * SYN-ACK packet that the callee received.
- */
-static void send_ack(int sock, int utcp_fd);
 
 /* End define functions */
 #endif

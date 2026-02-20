@@ -18,6 +18,8 @@ COMMON_SRCS := \
 	$(SRC_DIR)/utcp/api/data.c \
 	$(SRC_DIR)/utcp/api/globals.c \
 	$(SRC_DIR)/utcp/api/ring_buffer.c \
+	$(SRC_DIR)/utcp/api/rx_dgram.c \
+	$(SRC_DIR)/utcp/api/tx_dgram.c \
 	$(SRC_DIR)/utils/err.c \
 	$(SRC_DIR)/utils/printable.c
 
