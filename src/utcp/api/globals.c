@@ -20,7 +20,7 @@ api_t *api_instance(void)
         global.server_ip = "127.0.0.1";
 
         for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
-            global.tcp_lookup[i] = NULL;
+            global.tcb_lookup[i] = NULL;
 
         initialized = 1;
     }

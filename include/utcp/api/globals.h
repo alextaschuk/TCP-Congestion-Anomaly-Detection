@@ -11,15 +11,41 @@ client will need access to.
 
 /* Define Macros*/
 
-// socket-related
-#define MAX_UTCP_SOCKETS 1024 // max number of utcp socket connections allowed at a time
+ // socket-related
 
-// buffer & data related
-#define BUF_SIZE 1024 // size of send and receive buffers
-#define MSS 536 // default MSS size (see https://www.rfc-editor.org/rfc/rfc9293#section-3.7.1-3)
+/**
+ * @brief The maximum number of UTCP socket connections allowed at a time.
+ * 
+ * This defines how many TCB structs our lookup table can store
+ */
+//#define MAX_UTCP_SOCKETS 1024
+#define MAX_UTCP_SOCKETS 3
 
-// convinience macros 
+/**
+ * The maximum number of allowed TCBs in SYS & accept queues at a time.
+ * 
+ * @note This is typically determined with SOMAXCONN (SOcket MAXimum CONNections), but my system's stores
+ * 128 in this value, and I want to use more. See https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+ * 
+ */
+#define MAX_BACKLOG 4096 
+
+ // buffer & data related
+
+ /**
+  * The number of bytes our `rx` and `tx` buffers can hold
+  */
+#define BUF_SIZE 1024
+
+/**
+ * The default Maximum Segment Size value of a TCP segment.
+ * @note see https://www.rfc-editor.org/rfc/rfc9293#name-maximum-segment-size-option
+ */
+#define MSS 536
+
+ // convinience macros
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) // return the smaller value between `a` and `b`
+
 /* End define macros*/
 
 /* Define Enums*/
@@ -28,12 +54,17 @@ client will need access to.
 /*Define Structs*/
 
 /**
- * A helpful struct to consolidate
- * our socket FDs for multithreading.
+ * @brief A helpful struct to consolidate our socket
+ * FDs for multithreading.
+ * 
+ * @param udp_fd A UDP socket FD
+ * @param utcp_fd A UTCP socket FD
+ * @note The FDs stored in this struct are for the listen socket.
+ * 
  */
 typedef struct listen_args_t
 {
-    int udp_sock;
+    int udp_fd;
     int utcp_fd;
 } listen_args_t;
 
@@ -52,7 +83,7 @@ typedef struct listen_args_t
 /*End define structs*/
 
 // struct to hold all global vars
-typedef struct 
+typedef struct api_t
 {
 // client info
 uint16_t client_port;
@@ -63,9 +94,11 @@ uint16_t server_port;
 int server_utcp_port;
 char* server_ip;
 
-tcb_t *tcp_lookup[MAX_UTCP_SOCKETS]; // tcb lookup table
-//app_bufs_t *app_bufs;
+tcb_t *tcb_lookup[MAX_UTCP_SOCKETS]; // tcb lookup table
 
+tcb_queue_t syn_queue;
+tcb_queue_t accept_queue;
+//app_bufs_t *app_bufs;
 } api_t;
 
 api_t *api_instance(void); // to access the global struct

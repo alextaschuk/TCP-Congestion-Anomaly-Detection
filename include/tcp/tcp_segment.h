@@ -9,8 +9,10 @@
  * segement, which is a TCP header, and the
  * associated data payload.
  */
-typedef struct tcp_segment {
+typedef struct tcp_segment_t
+{
     struct tcphdr hdr;
     uint8_t data[];
-}tcp_segment;
+} tcp_segment_t;
+
 #endif

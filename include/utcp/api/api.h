@@ -1,5 +1,9 @@
 #ifndef API_H
 #define API_H
+/**
+ * This API contains functions, variables, etc. that are used 
+ * by the server and the client.
+ */
 
 #include <stdint.h>
 #include <stdio.h>
@@ -40,7 +44,7 @@ void deserialize_utcp_packet
 void update_fsm(int utcp_fd, enum conn_state state);
 
 /**
- * @brief Retrieves the TCB for a UTCP socket at tcb_lookup[pos]
+ * @brief Retrieves the TCB for a UTCP socket at `tcb_lookup[pos]`
  * 
  * @details Returns a pointer to the TCB struct
  * using the passed in UTCP fd

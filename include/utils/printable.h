@@ -6,6 +6,7 @@
 
 #include <tcp/tcb.h>
 #include <tcp/fourtuple.h>
+#include <tcp/hndshk_fsm.h>
 
 /* Begin function declaration */
 
@@ -30,9 +31,17 @@ void print_segment(const uint8_t *buf, const size_t buflen, const bool flow);
 
 void print_tcb(const tcb_t *tcb);
 
-void print_fourtuple(const fourtuple *tup);
+void print_fourtuple(const fourtuple_t *tup);
 
 void print_safe_chars(uint8_t *buf, size_t len);
+
+/**
+ * A nice helper function to print the string value
+ * of our FSM enum's current state
+ */
+const char* fsm_state_to_str(enum conn_state state);
+
+void print_lookup(void);
 
 /* End function declaration */
 #endif

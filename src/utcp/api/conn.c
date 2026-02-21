@@ -1,8 +1,3 @@
-/*
-Logic related to connection establishment and management,
-whether that be for a UDP socket, a UTCP socket, or anything
-else.
-*/
 #include <utcp/api/conn.h>
 
 #include <stdio.h>
@@ -12,10 +7,11 @@ else.
 #include <utcp/api/globals.h>
 #include <utcp/api/api.h>
 
-#include <tcp/tcb.h>
 #include <tcp/hndshk_fsm.h>
+#include <utcp/api/globals.h>
 
 #include <utils/err.h>
+#include <utils/printable.h>
 
 int udp_sock_open = 0; // 1 if UDP socket is bound
 
@@ -62,20 +58,23 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
 {
     int fd;
     api_t *global = api_instance();
-
-    // is it safe to have irs & rcv_nxt zeroed out?
     tcb_t *tcb = calloc(1, sizeof(tcb_t));
-
     if (!tcb)
         err_sys("[bind_UTCP_sock]failed to calloc *tcb");
+
     if (addr->sin_port == 0)
         err_sys("[bind_UTCP_sock]client UDP socket not bound before UTCP binding");
 
     // find the first available spot in the lookup table
     for(fd = 0; fd < MAX_UTCP_SOCKETS; fd++)
-        if (global->tcp_lookup[fd] == NULL)
-            break; // found an available socket
-    
+    {   
+        //print_tcb(global->tcb_lookup[fd]);
+        if (global->tcb_lookup[fd] == NULL)
+        {
+            printf("[bind_UTCP_sock] Found available spot in the lookup table\n");
+            break;
+        }
+    }
     if (fd == MAX_UTCP_SOCKETS || fd == -1)
     {
         free(tcb);
@@ -89,8 +88,64 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
     //tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr); // src IP addr
     tcb->fsm_state = CLOSED;
     
-    global->tcp_lookup[fd] = tcb;
+    global->tcb_lookup[fd] = tcb;
 
     printf("UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
     return fd;
+}
+
+tcb_t *alloc_new_tcb(void)
+{
+    api_t *global = api_instance();
+    int fd;
+
+    // 1. Find the first available spot in the lookup table
+    for (fd = 0; fd < MAX_UTCP_SOCKETS; fd++) {
+        if (global->tcb_lookup[fd] == NULL) {
+            break; // Found an available socket slot
+        }
+    }
+
+    if (fd == MAX_UTCP_SOCKETS) {
+        printf("[allocate_new_tcb] Error: No sockets available in global table\n");
+        return NULL; 
+    }
+
+    // 2. Allocate the memory
+    tcb_t *new_tcb = calloc(1, sizeof(tcb_t));
+    if (!new_tcb) {
+        err_sys("[allocate_new_tcb] Failed to calloc *new_tcb");
+        return NULL; // Or handle the error as you see fit
+    }
+
+    // 3. Store the TCB in the global lookup table immediately!
+    // This ensures your demux logic can find it for the rest of the handshake.
+    global->tcb_lookup[fd] = new_tcb;
+
+    // 4. Save the fd inside the TCB itself so accept() can retrieve it later
+    new_tcb->fd = fd; 
+    new_tcb->fsm_state = CLOSED;
+
+    return new_tcb;
+}
+
+
+tcb_t *find_listen_tcb(void)
+{
+    api_t *global = api_instance();
+
+    for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
+    {
+        tcb_t *curr_tcb = global->tcb_lookup[i];
+
+        printf("current TCB:\n");
+        print_tcb(curr_tcb);
+
+        if (curr_tcb == NULL)
+            continue;
+
+        if (curr_tcb->fsm_state == LISTEN)
+            return curr_tcb;
+    }
+    return NULL;
 }

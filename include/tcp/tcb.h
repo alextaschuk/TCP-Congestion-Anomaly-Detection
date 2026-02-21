@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include <tcp/fourtuple.h>
+#include <tcp/tcb_queue.h>
 #include <utcp/api/ring_buffer.h>
 
 /**
@@ -16,7 +17,7 @@
 typedef struct tcb_t
 {
     //standard 4-tuple, included in TCP header
-    fourtuple fourtuple;
+    fourtuple_t fourtuple;
     
     // actual UDP port, included in UDP header
     uint16_t dest_udp_port;
@@ -33,8 +34,16 @@ typedef struct tcb_t
     uint32_t rcv_wnd; // amt of data receiver will accept
     
     pthread_mutex_t lock; // necessary for preventing race conds between server's listener and main thread
+
     ring_buf_t tx_buf; // (send (transmit) buffer) store unacked bytes that have been sent out
     ring_buf_t rx_buf; // (receive buffer) store acked bytes that you have received and sent ack for
-}tcb_t;
+
+    tcb_queue_t syn_q;
+    tcb_queue_t accept_q;
+
+    int fd; // the TCB's FD (a TCB is stored at tcb_lookup[fd])
+} tcb_t;
+
+
 
 #endif

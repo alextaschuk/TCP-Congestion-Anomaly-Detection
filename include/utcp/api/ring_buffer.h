@@ -31,11 +31,9 @@ typedef struct ring_buf_t
 } ring_buf_t;
 
 /**
- * @brief initializes a new circular buffer,
- * either for a receive buffer (rx) or a send buffer (tx).
+ * @brief Initializes a new circular buffer; either for a receive buffer (rx) or a send buffer (tx).
  * 
- * @param *c pointer to a ring_buf_t struct stored
- * in a TCB struct.
+ * @param *c Pointer to a ring_buf_t struct stored in a TCB struct.
  */
 int ring_buf_init(ring_buf_t *c);
 

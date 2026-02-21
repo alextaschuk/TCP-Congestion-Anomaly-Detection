@@ -57,13 +57,13 @@ int main(void) {
 
         ring_buf_peek(&tcb->tx_buf, tmp, len);
 
-        send_dgram(args->udp_sock, tcb, tmp, len, 0);
+        send_dgram(args->udp_fd, tcb, tmp, len, 0);
         printf("[client, main thread] test packet sent\n");
         
         sleep(10000);
         }
     }
-
+    free(args);
     return 0;
 }
 
@@ -78,9 +78,9 @@ static void init_hndshk(void *arg)
     uint8_t *buffer = malloc(sizeof(struct tcphdr));
 
     // 3WHS
-    int SYN_dgram = send_dgram(args->udp_sock, tcb, NULL, 0, TH_SYN);
+    int SYN_dgram = send_dgram(args->udp_fd, tcb, NULL, 0, TH_SYN);
     update_fsm(args->utcp_fd, SYN_SENT);
-    ssize_t ACK_dgram = rcv_dgram(args->udp_sock, tcb, BUF_SIZE);
+    ssize_t ACK_dgram = rcv_dgram(args->udp_fd, BUF_SIZE);
 
     free(buffer);
     print_tcb(tcb);
@@ -105,7 +105,7 @@ void* begin_listen(void *arg)
         if(tcb->fsm_state == ESTABLISHED)
         {
             printf("\n[client, listen thread]: Received a packet\n\n");
-            rcvsize = rcv_dgram(args->udp_sock, tcb, BUF_SIZE);
+            rcvsize = rcv_dgram(args->udp_fd, BUF_SIZE);
             print_tcb(tcb);
         }
     }
@@ -124,6 +124,7 @@ static int init_client(void *arg, api_t *global)
 {
     listen_args_t *args = (listen_args_t*)arg;
 
+    // TODO move these structs to globals
     struct sockaddr_in client = {
     .sin_family = AF_INET,
     .sin_port = htons(global->client_utcp_port),
@@ -136,7 +137,7 @@ static int init_client(void *arg, api_t *global)
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
 
-    args->udp_sock = bind_UDP_sock(global->client_port);
+    args->udp_fd = bind_UDP_sock(global->client_port);
     args->utcp_fd = bind_UTCP_sock(&client);
 
     tcb_t *tcb = get_tcb(args->utcp_fd);

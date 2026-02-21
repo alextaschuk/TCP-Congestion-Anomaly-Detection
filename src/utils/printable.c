@@ -10,6 +10,7 @@
 #include <utils/err.h>
 #include <tcp/tcp_segment.h>
 #include <utcp/api/api.h>
+#include <utcp/api/globals.h>
 
 static bool is_null(const void *ptr, const char *msg)
 {
@@ -96,7 +97,7 @@ void print_tcb(const tcb_t *tcb)
     printf("\n");
 
     printf("  dest_udp_port: %u\n", tcb->dest_udp_port);
-    printf("  fsm_state:     %u\n", tcb->fsm_state);
+    printf("  fsm_state:     %s\n", fsm_state_to_str(tcb->fsm_state));
 
     printf("  iss:     %u\n", tcb->iss);
     printf("  snd_una: %u\n", tcb->snd_una);
@@ -109,7 +110,7 @@ void print_tcb(const tcb_t *tcb)
     printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
 }
 
-void print_fourtuple(const fourtuple *tup)
+void print_fourtuple(const fourtuple_t *tup)
 {
     if (is_null(tup, "Four Tuple: (null)"))
         return;
@@ -128,4 +129,34 @@ void print_safe_chars(uint8_t *buf, size_t len)
         printf("%c", isprint(c) ? c : '.'); // non-printable bytes → '.'
     }
     printf("\n");
+}
+
+const char* fsm_state_to_str(enum conn_state state)
+{
+    switch (state)
+    {
+        case LISTEN:       return "LISTEN";
+        case SYN_SENT:     return "SYN_SENT";
+        case SYN_RECEIVED: return "SYN_RECEIVED";
+        case ESTABLISHED:  return "ESTABLISHED";
+        case FIN_WAIT_1:   return "FIN_WAIT_1";
+        case FIN_WAIT_2:   return "FIN_WAIT_2";
+        case CLOSE_WAIT:   return "CLOSE_WAIT";
+        case CLOSING:      return "CLOSING";
+        case LAST_ACK:     return "LAST_ACK";
+        case TIME_WAIT:    return "TIME_WAIT";
+        case CLOSED:       return "CLOSED";
+        default:           return "UNKNOWN_STATE";
+    }
+}
+
+void print_lookup(void)
+{
+    api_t *global = api_instance();
+
+    for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
+    {
+        printf("current TCB:\n");
+        print_tcb(global->tcb_lookup[i]);
+    }
 }

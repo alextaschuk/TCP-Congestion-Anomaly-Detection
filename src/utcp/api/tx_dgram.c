@@ -20,7 +20,7 @@ int send_dgram(int sock, tcb_t *tcb, void *buf, size_t payload_len, int flags)
 
     // allocate for a segment (TCP header + payload)
     size_t segment_size = sizeof(struct tcphdr) + payload_len;
-    tcp_segment *segment = malloc(segment_size);
+    tcp_segment_t *segment = malloc(segment_size);
     if (!segment)
         err_sys("[send_dgram] error allocating segment\n");
     

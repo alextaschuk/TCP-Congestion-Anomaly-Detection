@@ -1,7 +1,3 @@
-/**
- * @brief This API contains functions, variables, etc. that are used 
- * by the server and the client.
- */
 #include <utcp/api/api.h>
 
 #include <errno.h>
@@ -57,9 +53,10 @@ void deserialize_utcp_packet
 struct tcb_t *get_tcb(int utcp_fd)
 {
     if (utcp_fd < 0 || utcp_fd >= MAX_UTCP_SOCKETS)
+        //printf("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
         err_sys("[get_tcb] Invalid lookup table position\n");
     api_t *global = api_instance();
-    return global->tcp_lookup[utcp_fd];
+    return global->tcb_lookup[utcp_fd];
 }
 
 
