@@ -27,7 +27,7 @@ extern struct sockaddr_in server_addr;
  */
 static void init_hndshk(void *arg);
 
-void* begin_listen(void *arg);
+void* begin_rcv(void *arg);
 
 /**
  * Initializes the client by binding its UDP and UTCP sockets,
@@ -36,11 +36,19 @@ void* begin_listen(void *arg);
 static int init_client(void *arg, api_t *global);
 
 
-/**
- * @brief allows us to enter the server's port
- * number if we don't hardcode the value.
+/** 
+ * @brief A application-side function that is used to establish a UTCP connection.
+ * 
+ * This function creates a new TCB for the client and initializes its necessary values.
+ * 
+ * @return The FD of the newly-created TCB.
  */
-static void set_server_port(void);
+static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr);
+
+/**
+ * Spawns the receive and ticker threads.
+ */
+static int spawn_threads(socket_fds *args);
 
 /* End define functions */
 #endif

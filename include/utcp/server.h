@@ -7,18 +7,17 @@
 
 #include <utcp/api/globals.h>
 
-/* Define macros*/
-#define MAX_CONNECTIONS 1024 // allow 1024 connections at a time
+/* Define macros */
 #define SYN_BACKLOG 128 // max number of connections in SYN queue during 3WHS
 #define ACCEPT_BACKLOG 20 // max number of connections in incoming queue for `accept()`
 /*End define macros*/
 
-/* Define variables*/
+/* Define variables */
 extern uint8_t header[8]; //datagram header
 extern uint8_t data[]; //buffer to send data
-/* End define variables*/
+/* End define variables */
 
-/*Begin function declarations*/
+/* Begin function declarations */
 
 /**
  * @brief Initializes the server's UDP and UTCP sockets.
@@ -27,27 +26,28 @@ extern uint8_t data[]; //buffer to send data
  * `*arg` stores pointers to the socket file descriptors.
  * A TCB is made for the listen socket, and the bound UTCP
  * port and the server's IP address are stored in it.
- * @param *args A `listen_args_t` struct.
+ * @param *args A `socket_fds` struct.
  * @param *global A pointer to the global api struct.
  */
-static void init_server(listen_args_t *args, api_t *global);
+static void init_server(socket_fds *args, api_t *global);
 
 /**
- * @brief Listens for incoming connection requests and handles
- * them accordingly.
+ * @brief Continuously listens for incoming connection requests and
+ * handles them accordingly.
  * 
- * This function runs on a background thread that will continuously
- * listen for incoming SYN requests. When a valid request comes in,
- * a child TCB is made for the new connection and is placed in a
- * SYN queue. When the 3-way handshake is complete, it is moved to
+ * This function runs on a background listen thread that will
+ * continuously listen for incoming SYN requests. When a valid request
+ * comes in, a child TCB is made for the new connection and is placed
+ * in a SYN queue. When the 3-way handshake is complete, it is moved to
  * an accept queue.
- * * @param *arg A `listen_args_t` struct.
+ * 
+ * * @param *arg A `socket_fds` struct.
  */
-void* begin_listen(void *arg);
+void* utcp_rx_thread(void *arg);
 
 /**
- * @brief An application-side function that is called when the app is ready
- * to receive connection requests.
+ * @brief Called by the server application to tell us (pretending we're the OS)
+ * that the app is ready to receive connection requests.
  * 
  * The SYN and accept queues are initialized and the listen socket's state is
  * set to `LISTEN`.
@@ -58,7 +58,8 @@ int utcp_listen(int utcp_fd, int backlog);
 
 /**
  * @brief An application-side function that is called when the app wants to accept
- * a connection request.
+ * a connection request that is sitting in the accept queue.
+ * 
  * @param listen_tcb The listening socket's TCB.
  * @param *client_addr The client's info will be stored in here.
  * 
@@ -66,6 +67,12 @@ int utcp_listen(int utcp_fd, int backlog);
  */
 int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr);
 
-/*End function declarations*/
+/**
+ * Spawns the server's listen thread and ticker thread.
+ * @return `-1` on error, `0` on success.
+ */
+static int spawn_threads(socket_fds *args);
+
+/* End function declarations */
 
 #endif

@@ -13,15 +13,14 @@
 void err_sys(const char* x);
 
 /**
- * @brief Closes a problematic socket, prints an error message, and exits
+ * @brief Closes a problematic socket, prints an error message, and exits.
  * 
  * @note If an error occurs during the closing process, that message prints first.
  */
 void err_sock(int sock, const char* x);
 
 /**
- * @brief Called when a fatal error related
- * to data can occur
+ * @brief Called when a fatal error related to data can occur.
  */
 void err_data(const char* x);
 

@@ -16,14 +16,13 @@
 /*Begin function declarations*/
 
 /**
- * @brief deserialize a UDP datagram's payload
+ * @brief Deserialize a UDP datagram's payload
  * into a TCP header and data into host byte order
  * 
  * @param *buf the buffer of received data (TCP header + payload)
  * @param buflen how many bytes make up buf (rcvsize)
- * @param *out_hdr deserialized TCP header (caller-allocated)
- * @param *out_data deserialized data payload (caller-allocated)
- * @param out_data_capacity size of out_data in bytes
+ * @param **out_hdr deserialized TCP header (caller-allocated)
+ * @param **out_data deserialized data payload (caller-allocated)
  * @param *out_data_len how many bytes make up the data payload
  * 
  * @note This is a destructive function.
@@ -38,19 +37,22 @@ void deserialize_utcp_packet
 );
 
 /**
- * @brief updates the FSM state of 
- * a TCB using the passed in UTCP fd
+ * Update a TCB's FSM state.
+ * 
+ * @param utcp_fd The UTCP file descriptor of the TCB whose state is being updated.
+ * @param state The new state of the TCB.
  */
 void update_fsm(int utcp_fd, enum conn_state state);
 
 /**
- * @brief Retrieves the TCB for a UTCP socket at `tcb_lookup[pos]`
+ * @brief Retrieve the TCB for a UTCP socket at `tcb_lookup[pos]`
  * 
- * @details Returns a pointer to the TCB struct
- * using the passed in UTCP fd
+ * @param utcp_fd A UTCP file descriptor.
+ * 
+ * @returns A pointer to the TCB struct, or `NULL` if `utcp_fd` is invalid
+ * or a TCB is not found.
  */
 struct tcb_t *get_tcb(int utcp_fd);
-
 
 /*End function declarations*/
 

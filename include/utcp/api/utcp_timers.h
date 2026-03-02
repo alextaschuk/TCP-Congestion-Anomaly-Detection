@@ -1,0 +1,78 @@
+#ifndef TCP_TIMERS_H
+#define TCP_TIMERS_H
+
+#include <tcp/tcb.h>
+
+#define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
+
+/**
+ * @brief Sets a timer to a given value, making certain the value is between the specified
+ * min and max. This is used for the retransmission timer and persist timer.
+ * 
+ * Since these timers' values are calculated dynamically based on RTT they need an upper &
+ * lower bounds.
+ * 
+ * @param tv
+ * @param value
+ * @param tvmin
+ * @param tvmax 
+ */
+#define TCPT_RANGESET(tv, value, tvmin, tvmax) { \
+    (tv) = (value); \
+    if ((tv) < (tvmin)) \
+        (tv) = (tvmin); \
+    else if ((tv) > (tvmax)) \
+        (tv) = (tvmax); \
+}
+
+// variables
+extern const int tcp_backoff[];
+
+/* Define functions */
+
+/**
+ * The ticker thread that wakes up every 500ms and calls `utcp_slowtimo()`
+ * to update all active TCBs' timers.
+ */
+void *utcp_ticker_thread();
+
+/**
+ * Called by the ticker thread every 500ms. It loops through all active TCBs,
+ * and decrements their timers by 1.
+ */
+void utcp_slowtimo(pthread_mutex_t lookup_lock);
+
+/**
+ * This function is called when one of our timers expires and performs necessary checks
+ * and changes according to which timer expired.
+ */
+void* utcp_timeout(tcb_t *tcb, short timer);
+
+/**
+ * @brief Gets the current time, in milliseconds, for the user.
+ * 
+ * This function is called in two places:
+ * 
+ * 1. `send_dgram()` To apply the sender's timestamp to the packet
+ * 
+ * 2. `calc_rto()` To get the sender's current time for calculating a packet's RTT.
+ * 
+ * @returns The current time, in milliseconds (ms).
+ * 
+ * @note This value represents how much time has passed since some starting point, not the actual time.
+ */
+uint32_t tcp_now(void);
+
+/**
+ * Calculates a packet's round trip time (RTT) via Round-Trip Time Measurment (RTTM),
+ * then update the corresponding TCB's retransmission timeout (RTO) value.
+ * 
+ * First, we calculate the RTT via a RTTM mechanism that implements the 
+ * the Jacobson/Karels Algorithm (see [RFC 6298](https://datatracker.ietf.org/doc/html/rfc6298)).
+ * The result is used to update the RTO.
+ * 
+ * @param *tcb The TCB of the current connection
+ */
+void calc_rto(tcb_t *tcb);
+
+#endif

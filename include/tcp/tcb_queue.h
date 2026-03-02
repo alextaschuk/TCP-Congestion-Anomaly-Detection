@@ -32,7 +32,7 @@ typedef struct tcb_queue_t
 /*Begin define functions*/
 
 /**
- * @brief Adds a `tcb_t` to the tail of the queue.
+ * @brief Adds a `tcb_t` to the tail of a SYN or accept queue.
  * 
  * @param *tcb The TCB struct to add to the queue
  * @param *q The queue that `*tcb` is being added to.

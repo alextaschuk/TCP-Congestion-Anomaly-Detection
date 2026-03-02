@@ -9,11 +9,12 @@
 
 #include <tcp/hndshk_fsm.h>
 #include <utcp/api/globals.h>
+#include <utcp/api/utcp_timers.h>
 
 #include <utils/err.h>
 #include <utils/printable.h>
 
-int udp_sock_open = 0; // 1 if UDP socket is bound
+int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
 
 int bind_UDP_sock(int pts)
 {
@@ -46,8 +47,6 @@ int bind_UDP_sock(int pts)
     struct sockaddr_in bound_addr;
     socklen_t len = sizeof(bound_addr);
     getsockname(sock, (struct sockaddr*)&bound_addr, &len);
-    
-//  *pts = ntohs(bound_addr.sin_port);
 
     printf("UDP socket bound to port %d\n", ntohs(bound_addr.sin_port));
     udp_sock_open = 1;
@@ -56,30 +55,8 @@ int bind_UDP_sock(int pts)
 
 int bind_UTCP_sock(struct sockaddr_in *addr)
 {
-    int fd;
     api_t *global = api_instance();
-    tcb_t *tcb = calloc(1, sizeof(tcb_t));
-    if (!tcb)
-        err_sys("[bind_UTCP_sock]failed to calloc *tcb");
-
-    if (addr->sin_port == 0)
-        err_sys("[bind_UTCP_sock]client UDP socket not bound before UTCP binding");
-
-    // find the first available spot in the lookup table
-    for(fd = 0; fd < MAX_UTCP_SOCKETS; fd++)
-    {   
-        //print_tcb(global->tcb_lookup[fd]);
-        if (global->tcb_lookup[fd] == NULL)
-        {
-            printf("[bind_UTCP_sock] Found available spot in the lookup table\n");
-            break;
-        }
-    }
-    if (fd == MAX_UTCP_SOCKETS || fd == -1)
-    {
-        free(tcb);
-        err_sys("[bind_UTCP_sock]no socket available");
-    }
+    tcb_t *tcb = alloc_new_tcb();
 
     // TODO: dynamically select client/server UTCP port number
      // also need to validate src port and ip
@@ -88,44 +65,46 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
     //tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr); // src IP addr
     tcb->fsm_state = CLOSED;
     
-    global->tcb_lookup[fd] = tcb;
+    global->tcb_lookup[tcb->fd] = tcb;
 
     printf("UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
-    return fd;
+    return tcb->fd;
 }
 
 tcb_t *alloc_new_tcb(void)
 {
-    api_t *global = api_instance();
     int fd;
+    api_t *global = api_instance();
 
-    // 1. Find the first available spot in the lookup table
-    for (fd = 0; fd < MAX_UTCP_SOCKETS; fd++) {
-        if (global->tcb_lookup[fd] == NULL) {
-            break; // Found an available socket slot
-        }
-    }
+    /* Find the first available spot in the lookup table */
+    for (fd = 0; fd < MAX_CONNECTIONS; fd++)
+        if (global->tcb_lookup[fd] == NULL)
+            break;
 
-    if (fd == MAX_UTCP_SOCKETS) {
+    if (fd == MAX_CONNECTIONS) {
         printf("[allocate_new_tcb] Error: No sockets available in global table\n");
         return NULL; 
     }
 
-    // 2. Allocate the memory
+    /* Create a new TCB and put it in the available spot */
     tcb_t *new_tcb = calloc(1, sizeof(tcb_t));
-    if (!new_tcb) {
+    if (!new_tcb)
         err_sys("[allocate_new_tcb] Failed to calloc *new_tcb");
-        return NULL; // Or handle the error as you see fit
-    }
 
-    // 3. Store the TCB in the global lookup table immediately!
-    // This ensures your demux logic can find it for the rest of the handshake.
-    global->tcb_lookup[fd] = new_tcb;
-
-    // 4. Save the fd inside the TCB itself so accept() can retrieve it later
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
 
+    // set congestion avoidance & control variables
+    new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
+    new_tcb->rttvar = 0;
+    new_tcb->rto = 1000; // 1000 ms = 1 second
+    new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
+    new_tcb->dupacks = 0;
+    
+    new_tcb->snd_cwnd = MSS;
+    new_tcb->snd_ssthresh = BUF_SIZE;
+    
+    global->tcb_lookup[fd] = new_tcb;
     return new_tcb;
 }
 
@@ -134,12 +113,9 @@ tcb_t *find_listen_tcb(void)
 {
     api_t *global = api_instance();
 
-    for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
+    for (int i = 0; i < MAX_CONNECTIONS; i++)
     {
         tcb_t *curr_tcb = global->tcb_lookup[i];
-
-        printf("current TCB:\n");
-        print_tcb(curr_tcb);
 
         if (curr_tcb == NULL)
             continue;

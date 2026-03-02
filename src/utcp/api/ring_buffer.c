@@ -10,11 +10,14 @@
 int ring_buf_init(ring_buf_t *c)
 {
     c->buf = (uint8_t *)malloc(BUF_SIZE);
+
     if (!c->buf)
         err_sys("tcp_ringbuf_init");
+
     c->size = BUF_SIZE;
     c->head = 0;
     c->tail = 0;
+
     return 0;
 }
 
@@ -22,6 +25,7 @@ int ring_buf_init(ring_buf_t *c)
 size_t ring_buf_used(const ring_buf_t *c)
 {
     int used = c->head - c->tail;
+
     if (used < 0)
         used += 2 * c->size;
 
@@ -34,13 +38,12 @@ size_t ring_buf_used(const ring_buf_t *c)
 
 size_t ring_buf_free(const ring_buf_t *c)
 {
-    return c->size - ring_buf_used(c);
+    return c->size - ring_buf_used(c) - 1; // we reserve 1 byte for flow control
 }
 
 
 size_t ring_buf_read(ring_buf_t *c, uint8_t *dest, size_t len)
 {
-    printf("[ring_buf_read] Reading from the ring buffer\n");
     size_t used = ring_buf_used(c);
     if (len > used)
         len = used;
@@ -56,6 +59,7 @@ size_t ring_buf_read(ring_buf_t *c, uint8_t *dest, size_t len)
     }
 
     c->tail = (c->tail + len) % (2 * c->size);
+
     return len;
 }
 
@@ -74,6 +78,7 @@ size_t ring_buf_write(ring_buf_t *c, const uint8_t *data, size_t len)
     memcpy(c->buf, data + first_chunk, len - first_chunk);
 
     c->head = (c->head + len) % (2 * c->size);  // allow 2*size wraparound
+
     return len;
 }
 
@@ -95,11 +100,31 @@ size_t ring_buf_peek(const ring_buf_t *c, uint8_t *dest, size_t len)
 }
 
 
-void ring_buf_wipe(ring_buf_t *c)
+size_t ring_buf_peek_offset(const ring_buf_t *c, uint8_t *dest, size_t len, size_t offset)
 {
-    free(c->buf);
-    c->buf = NULL;
-    c->size = 0;
-    c->head = c->tail = 0;
-}
+    size_t used = ring_buf_used(c);
 
+    if (offset >= used) // check if offset if past valid data
+        return 0;
+
+    if (len > used - offset)
+        len = used - offset; // don't read past available data
+
+    // calculate the start index in the array
+    size_t start_pos = (c->tail + offset) % c->size; // wrap back around to front if necessary
+
+    // data might wrap around back to start, so we many need to copy 2 chunks of data
+    size_t first_chunk = c->size - start_pos;
+    if (first_chunk > len)
+        first_chunk = len;
+
+    if (dest != NULL)
+    {
+        memcpy(dest, c->buf + start_pos, first_chunk);
+
+        if (len > first_chunk)
+            memcpy(dest + first_chunk, c->buf, len - first_chunk);
+    }
+    
+    return len;
+}

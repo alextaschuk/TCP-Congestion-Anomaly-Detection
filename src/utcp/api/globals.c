@@ -19,7 +19,7 @@ api_t *api_instance(void)
         global.server_utcp_port = 332;
         global.server_ip = "127.0.0.1";
 
-        for (int i = 0; i < MAX_UTCP_SOCKETS; i++)
+        for (int i = 0; i < MAX_CONNECTIONS; i++)
             global.tcb_lookup[i] = NULL;
 
         initialized = 1;

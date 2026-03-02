@@ -9,71 +9,78 @@
 #include <tcp/tcp_segment.h>
 #include <utils/printable.h>
 #include <utils/err.h>
+#include <utcp/api/globals.h>
 
-int send_dgram(int sock, tcb_t *tcb, void *buf, size_t payload_len, int flags)
+int send_dgram(
+    tcb_t *snder_tcb,
+    int snder_sock,
+    void *buf,
+    size_t payload_len,
+    int flags
+)
 {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(tcb->dest_udp_port);
+    addr.sin_port = htons(snder_tcb->dest_udp_port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // hardcoded for now
 
-    // allocate for a segment (TCP header + payload)
-    size_t segment_size = sizeof(struct tcphdr) + payload_len;
+    /**
+     * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding
+     * 
+     * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
+     * padding, which is not divisible by 4. So the options part of the segment looks like this:
+     * NOP, NOP, Kind, Length, TSval, TSecr.
+     */
+    size_t opt_len = 12;
+
+    /* Allocate for a segment (TCP header + options + payload) */
+    size_t segment_size = sizeof(struct tcphdr) + opt_len + payload_len;
     tcp_segment_t *segment = malloc(segment_size);
     if (!segment)
         err_sys("[send_dgram] error allocating segment\n");
     
-    // initialize the segment's header
+    /* Initialize the segment's base header */
     memset(&segment->hdr, 0, sizeof(struct tcphdr));
-    segment->hdr.th_sport = htons(tcb->fourtuple.source_port);
-    segment->hdr.th_dport = htons(tcb->fourtuple.dest_port);
-    segment->hdr.th_seq = htonl(tcb->snd_nxt);
-    segment->hdr.th_ack = htonl(tcb->rcv_nxt);
-    segment->hdr.th_off = sizeof(struct tcphdr) / 4; // Convert into 32-bit words
+    segment->hdr.th_sport = htons(snder_tcb->fourtuple.source_port);
+    segment->hdr.th_dport = htons(snder_tcb->fourtuple.dest_port);
+    segment->hdr.th_seq = htonl(snder_tcb->snd_nxt);
+    segment->hdr.th_ack = htonl(snder_tcb->rcv_nxt);
+    segment->hdr.th_off = (sizeof(struct tcphdr) + opt_len) / 4; // convert into 32-bit words
     segment->hdr.th_flags = flags;
-    segment->hdr.th_win = htons(tcb->rcv_wnd);
+    segment->hdr.th_win = htons(snder_tcb->rcv_wnd);
 
-    if (payload_len > 0) // add buffer to the payload
-        memcpy(segment->data, buf, payload_len);
+    /* Add timestamps for RTT calculation */
+    uint8_t ts_opt[12];
+    ts_opt[0] = 1; // NOP (TCPOPT_NOP)
+    ts_opt[1] = 1; // NOP (TCPOPT_NOP)
+    ts_opt[2] = 8; // Option-Kind = timestamp & previous timestamp's echo
+    ts_opt[3] = 10; // Option-Length = 10 bytes
+    
+    uint32_t raw_val = htonl(tcp_now()); // update timestamp
+    uint32_t raw_ecr = htonl(snder_tcb->ts_rcv_val); // echo the peer's TSval
 
-    // send the datagram
-    ssize_t bytes_sent = sendto(sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
+    memcpy(&ts_opt[4], &raw_val, 4);
+    memcpy(&ts_opt[8], &raw_ecr, 4);
+    memcpy(segment->data, ts_opt, opt_len);
+
+    /* Add buffer to the payload and send the segment */
+    if (payload_len > 0)
+        memcpy(segment->data + opt_len, buf, payload_len); // offset pointer by opt_len so that timestamps arent overwritten
+
+    ssize_t bytes_sent = sendto(snder_sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)
         err_sys("[send_dgram] error sending packet\n");
     
-    printf("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  tcb->fourtuple.dest_port, tcb->dest_udp_port);
+    printf("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
     print_segment((u_int8_t *)segment, segment_size, 0);
 
-    tcb->snd_nxt += payload_len;
+    snder_tcb->snd_nxt += payload_len;
 
     if (flags & TH_SYN)
-        tcb->snd_nxt += 1;
+        snder_tcb->snd_nxt += 1;
 
     free(segment);
     return bytes_sent;
 }
 
-int send_ack(tcb_t *tcb, int udp_sock, struct tcphdr *hdr, ssize_t payload_len)
-{
-    (void)payload_len;
-
-    uint32_t ack = hdr->th_ack;
-
-    if (ack < tcb->snd_una || ack > tcb->snd_nxt)
-    {
-        printf("[send_ack] Ignoring invalid ACK %u (snd_una=%u, snd_nxt=%u)\n", ack, tcb->snd_una, tcb->snd_nxt);
-        return 0;
-    }
-
-    uint32_t acked_bytes = ack - tcb->snd_una;
-    tcb->snd_una = ack;
-    tcb->snd_wnd = hdr->th_win;
-
-    ring_buf_read(&tcb->tx_buf, NULL, acked_bytes); // remove acked bytes
-
-    // send cumulative ACK using current rcv_nxt
-    send_dgram(udp_sock, tcb, NULL, 0, TH_ACK);
-    printf("[send_ack] Acknowledged %u bytes\n", acked_bytes);
-    return acked_bytes;
-}

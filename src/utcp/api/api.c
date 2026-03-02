@@ -19,7 +19,7 @@
 #include <utils/printable.h>
 
 void deserialize_utcp_packet
-( //TODO: Pass in segement struct instead
+(
     uint8_t *buf,
     size_t buflen,
     struct tcphdr **out_hdr,
@@ -28,11 +28,12 @@ void deserialize_utcp_packet
 )
 {
     if (buflen < sizeof(struct tcphdr))
-        err_sys("[deserialize_utcp_packet] cannot parse datagram\n");
+        err_sys("[deserialize_utcp_packet] cannot parse datagram");
     
     *out_hdr = (struct tcphdr *)buf;
 
-    // Convert header fields from network byte order to host byte order
+    /* Convert header fields from NETWORK byte order to HOST byte order */
+
     (*out_hdr)->th_sport = ntohs((*out_hdr)->th_sport); // src port
     (*out_hdr)->th_dport = ntohs((*out_hdr)->th_dport); // dest port
     (*out_hdr)->th_seq = ntohl((*out_hdr)->th_seq); // seq #
@@ -41,22 +42,31 @@ void deserialize_utcp_packet
     (*out_hdr)->th_sum = ntohs((*out_hdr)->th_sum); // checksum
     (*out_hdr)->th_urp = ntohs((*out_hdr)->th_urp); // urgent pointer
 
-    *out_data = buf + sizeof(struct tcphdr);
-    *out_data_len = buflen - sizeof(struct tcphdr);
+    size_t hdrlen = (*out_hdr)->th_off * 4; // how many 32-bit words the header + options consume
 
-    // TCP header len in bytes
-    size_t hdrlen = (*out_hdr)->th_off * 4;
     if (buflen < hdrlen)
-        err_sys("[deserialize_utcp_packet] invalid TCP header length\n");
+        err_sys("[deserialize_utcp_packet] invalid TCP header length: truncated options");
+
+    *out_data = buf + hdrlen;
+    *out_data_len = buflen - hdrlen;
 }
+
 
 struct tcb_t *get_tcb(int utcp_fd)
 {
-    if (utcp_fd < 0 || utcp_fd >= MAX_UTCP_SOCKETS)
-        //printf("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
-        err_sys("[get_tcb] Invalid lookup table position\n");
+    if (utcp_fd < 0 || utcp_fd >= MAX_CONNECTIONS)
+    {
+        printf("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
+        return NULL;
+    }
+
     api_t *global = api_instance();
-    return global->tcb_lookup[utcp_fd];
+    tcb_t *tcb = global->tcb_lookup[utcp_fd];
+
+    if (tcb == NULL)
+        return NULL;
+    
+    return tcb;
 }
 
 
