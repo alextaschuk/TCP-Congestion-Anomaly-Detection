@@ -76,7 +76,12 @@ uint32_t tcp_now(void);
 void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr);
 
 
-void handle_rexmt_timeout(tcb_t *tcb);
+/**
+ * Handles the retransmission timer when it times out.
+ * 
+ * @param *tcb The TCB containing the timed-out timer.
+ */
+static void handle_rexmt_timeout(tcb_t *tcb);
 
 /**
  * Reset a timer.
@@ -86,6 +91,8 @@ void handle_rexmt_timeout(tcb_t *tcb);
  * @note This currently only works for slow timers (which are decremented every 500ms).
  * In the future, when fast timers (decremented every 200ms) are implemented, the logic in
  * this function will need to be rewritten to handle both possibilities.
+ * 
+ * @note See [RFC 6298, Section 5.3](https://datatracker.ietf.org/doc/html/rfc6298#section-5).
  */
 int reset_timer(tcb_t *tcb, uint8_t timer_idx);
 
@@ -94,6 +101,8 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx);
  * 
  * @param *tcb The TCB containing the timer to pause.
  * @param timer_idx The index of the timer in `tcb->t_timer` to be paused.
+ * 
+ * @note See [See RFC 6298, Section 5.2](https://datatracker.ietf.org/doc/html/rfc6298#section-5).
  */
 void pause_timer(tcb_t *tcb, uint8_t timer_idx);
 

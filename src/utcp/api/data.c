@@ -76,22 +76,24 @@ static void tcp_output(tcb_t *snder_tcb, int snder_sock)
     uint32_t unacked_bytes_in_flight = snder_tcb->snd_nxt - snder_tcb->snd_una; // bytes that have been sent (in flight) (on the wire)
     size_t buffered_bytes = ring_buf_used(&snder_tcb->tx_buf); // data in tx_buf waiting to be sent
     
-    /* 1. Calculate the Effective Window */
-    // We are limited by either the receiver's capacity OR the network's capacity.
+    /**
+     * The effective window is the max amount of unACKed data that can be in-flight at
+     * once. It is limited by either the receiver's capacity or the network's capacity.
+     */
     uint32_t effective_wnd = MIN(snder_tcb->snd_wnd, snder_tcb->snd_cwnd);
 
     /* 2. Calculate the Usable Window */
     if (unacked_bytes_in_flight >= effective_wnd) {
-        return; // The window is completely full or closed. We must wait for ACKs.
+        return; // there's no room to send more data.
     }
-    uint32_t usable_wnd = effective_wnd - unacked_bytes_in_flight;
+    uint32_t usable_wnd = effective_wnd - unacked_bytes_in_flight; // how many bytes can be sent
 
     // look for unsent data in the TX buffer
     if (buffered_bytes > unacked_bytes_in_flight)
     { // true = new data is in the buffer that has not be sent out
         size_t unsent_bytes = buffered_bytes - unacked_bytes_in_flight;
         
-        // We can only send what we have, strictly bounded by the usable window
+        // We can only send what we have (bounded by the usable window)
         uint32_t bytes_to_send = MIN((uint32_t)unsent_bytes, usable_wnd); 
 
         // Slice the data into MSS-sized chunks and send them out

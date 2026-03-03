@@ -140,7 +140,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 }
 
 
-void handle_rexmt_timeout(tcb_t *tcb)
+static void handle_rexmt_timeout(tcb_t *tcb)
 {
     printf("[handle_rexmt_timeout] REXMT timer expired for TCB %u -> %u\n", tcb->fourtuple.source_port, tcb->fourtuple.dest_port);
 
@@ -163,10 +163,10 @@ void handle_rexmt_timeout(tcb_t *tcb)
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
     int ticks = (tcb->rto + 499) / 500;
-    tcb->t_timer[timer_idx] = ticks; // See RFC 6298, Section 5.3 https://datatracker.ietf.org/doc/html/rfc6298#section-5
+    tcb->t_timer[timer_idx] = ticks;
 }
 
 void pause_timer(tcb_t *tcb, uint8_t timer_idx)
 {
-    tcb->t_timer[timer_idx] = 0; // See RFC 6298, Section 5.2 https://datatracker.ietf.org/doc/html/rfc6298#section-5
+    tcb->t_timer[timer_idx] = 0;
 }
