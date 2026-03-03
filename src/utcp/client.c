@@ -12,9 +12,10 @@
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
-#include <utcp/api/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/ring_buffer.h>
+
+#include <utcp/rx/rx_dgram.h>
 
 #include <tcp/hndshk_fsm.h>
 
@@ -23,7 +24,7 @@
 
 
 //clear && ./client_app
-static int init_client(void *arg, api_t *global)
+static void init_client(void *arg, api_t *global)
 {
     socket_fds *args = (socket_fds*)arg;
 

@@ -19,11 +19,19 @@ COMMON_SRCS := \
 	$(SRC_DIR)/utcp/api/data.c \
 	$(SRC_DIR)/utcp/api/globals.c \
 	$(SRC_DIR)/utcp/api/ring_buffer.c \
-	$(SRC_DIR)/utcp/api/rx_dgram.c \
 	$(SRC_DIR)/utcp/api/tx_dgram.c \
 	$(SRC_DIR)/utcp/api/utcp_timers.c \
+	$(SRC_DIR)/utcp/rx/3whs/rcv_3whs_ack.c \
+	$(SRC_DIR)/utcp/rx/3whs/rcv_syn_ack.c \
+	$(SRC_DIR)/utcp/rx/3whs/rcv_syn.c \
+	$(SRC_DIR)/utcp/rx/demux_tcb.c \
+	$(SRC_DIR)/utcp/rx/find_timestamps.c \
+	$(SRC_DIR)/utcp/rx/handle_ack.c \
+	$(SRC_DIR)/utcp/rx/handle_data.c \
+	$(SRC_DIR)/utcp/rx/rx_dgram.c \
 	$(SRC_DIR)/utils/err.c \
 	$(SRC_DIR)/utils/printable.c
+
 
 CLIENT_SRCS := $(SRC_DIR)/utcp/client.c $(COMMON_SRCS)
 SERVER_SRCS := $(SRC_DIR)/utcp/server.c $(COMMON_SRCS)

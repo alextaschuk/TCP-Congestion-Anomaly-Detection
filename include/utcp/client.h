@@ -33,7 +33,7 @@ void* begin_rcv(void *arg);
  * Initializes the client by binding its UDP and UTCP sockets,
  * then updates the client's TCB with the (dest) server's info
  */
-static int init_client(void *arg, api_t *global);
+static void init_client(void *arg, api_t *global);
 
 
 /** 

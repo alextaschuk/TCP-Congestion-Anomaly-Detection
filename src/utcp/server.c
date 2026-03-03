@@ -14,7 +14,7 @@
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
-#include <utcp/api/rx_dgram.h>
+#include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/ring_buffer.h>
 
