@@ -21,4 +21,13 @@
  */
 int send_dgram(tcb_t *snder_tcb, int snder_sock, void *buf, size_t payload_len, int flags);
 
+
+/**
+ * Retransmits the oldest unacked packet when the retransmission timer times out, or 3 duplicate
+ * ACKs are detected.
+ * 
+ * @param *tcb The TCB of whomever is retransmitting the data.
+ */
+void retransmit_data(tcb_t *tcb);
+
 #endif

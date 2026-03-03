@@ -37,16 +37,15 @@ extern const int tcp_backoff[];
 void *utcp_ticker_thread();
 
 /**
- * Called by the ticker thread every 500ms. It loops through all active TCBs,
- * and decrements their timers by 1.
+ * Called by the ticker thread every 500ms. It loops through all active TCBs, and decrements their timers by 1.
  */
-void utcp_slowtimo(pthread_mutex_t lookup_lock);
+void utcp_slowtimo(void);
 
 /**
  * This function is called when one of our timers expires and performs necessary checks
  * and changes according to which timer expired.
  */
-void* utcp_timeout(tcb_t *tcb, short timer);
+void utcp_timeout(tcb_t *tcb, short timer);
 
 /**
  * @brief Gets the current time, in milliseconds, for the user.
@@ -71,8 +70,31 @@ uint32_t tcp_now(void);
  * the Jacobson/Karels Algorithm (see [RFC 6298](https://datatracker.ietf.org/doc/html/rfc6298)).
  * The result is used to update the RTO.
  * 
- * @param *tcb The TCB of the current connection
+ * @param *tcb The TCB of the current connection.
+ * @param *segment_ts_ecr The TSecr value in the received segment.
  */
-void calc_rto(tcb_t *tcb);
+void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr);
+
+
+void handle_rexmt_timeout(tcb_t *tcb);
+
+/**
+ * Reset a timer.
+ * 
+ * @returns The new number of 500ms ticks until the timer times out.
+ * 
+ * @note This currently only works for slow timers (which are decremented every 500ms).
+ * In the future, when fast timers (decremented every 200ms) are implemented, the logic in
+ * this function will need to be rewritten to handle both possibilities.
+ */
+int reset_timer(tcb_t *tcb, uint8_t timer_idx);
+
+/**
+ * Pauses a timer to prevent it from counting down.
+ * 
+ * @param *tcb The TCB containing the timer to pause.
+ * @param timer_idx The index of the timer in `tcb->t_timer` to be paused.
+ */
+void pause_timer(tcb_t *tcb, uint8_t timer_idx);
 
 #endif

@@ -21,10 +21,23 @@ and handling packets of data.
 
 ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payload_len)
 {
+    pthread_mutex_lock(&snder_tcb->lock); // lock the TCB
 
     size_t free = ring_buf_free(&snder_tcb->tx_buf);
-    if (free == 0)
-        return 0;  // buffer full
+
+    while (free == 0)
+    {
+    if (snder_tcb->fsm_state != ESTABLISHED && snder_tcb->fsm_state != CLOSE_WAIT)
+    { // network's connection dropped; unlock and exit.
+        pthread_mutex_unlock(&snder_tcb->lock);
+        return -1;
+    }
+
+    printf("[utcp_send] TX buffer is full. App thread going to sleep...\n");
+    pthread_cond_wait(&snder_tcb->conn_cond, &snder_tcb->lock);
+
+    free = ring_buf_free(&snder_tcb->tx_buf);
+    }
 
     if (payload_len > free)
         payload_len = free; // write the max amount of data possible
@@ -32,8 +45,10 @@ ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payl
     ring_buf_write(&snder_tcb->tx_buf, buf, payload_len);
 
     tcp_output(snder_tcb, snder_sock);
+
+    pthread_mutex_unlock(&snder_tcb->lock);
     
-    return payload_len;
+    return (ssize_t)payload_len;
 }
 
 
@@ -61,28 +76,37 @@ static void tcp_output(tcb_t *snder_tcb, int snder_sock)
     uint32_t unacked_bytes_in_flight = snder_tcb->snd_nxt - snder_tcb->snd_una; // bytes that have been sent (in flight) (on the wire)
     size_t buffered_bytes = ring_buf_used(&snder_tcb->tx_buf); // data in tx_buf waiting to be sent
     
+    /* 1. Calculate the Effective Window */
+    // We are limited by either the receiver's capacity OR the network's capacity.
+    uint32_t effective_wnd = MIN(snder_tcb->snd_wnd, snder_tcb->snd_cwnd);
+
+    /* 2. Calculate the Usable Window */
+    if (unacked_bytes_in_flight >= effective_wnd) {
+        return; // The window is completely full or closed. We must wait for ACKs.
+    }
+    uint32_t usable_wnd = effective_wnd - unacked_bytes_in_flight;
+
     // look for unsent data in the TX buffer
     if (buffered_bytes > unacked_bytes_in_flight)
     { // true = new data is in the buffer that has not be sent out
         size_t unsent_bytes = buffered_bytes - unacked_bytes_in_flight;
-        size_t available_wnd = snder_tcb->snd_wnd;
-
-        uint32_t to_send = MIN(unsent_bytes, available_wnd); // don't exceed amount receiver can store
-        size_t len = MIN(MSS, to_send); // don't send more than the receiver can handle
-
-        uint8_t tmp[MSS];
         
-        // peek at offset 'flight' to skip the un-acked data we already sent
-        ring_buf_peek_offset(&snder_tcb->tx_buf, tmp, len, unacked_bytes_in_flight);
+        // We can only send what we have, strictly bounded by the usable window
+        uint32_t bytes_to_send = MIN((uint32_t)unsent_bytes, usable_wnd); 
 
-        if (len > 0)
+        // Slice the data into MSS-sized chunks and send them out
+        while (bytes_to_send > 0)
         {
+            uint32_t len = MIN((uint32_t)MSS, bytes_to_send); 
             uint8_t tmp[MSS];
             
-            // skip the in-flight bytes that we already sent but haven't rcv'd ACKs for yet
+            // Peek at the offset to skip over the data that is already in flight
             ring_buf_peek_offset(&snder_tcb->tx_buf, tmp, len, unacked_bytes_in_flight);
 
-            send_dgram(snder_tcb, snder_sock, tmp, len, 0);
+            send_dgram(snder_tcb, snder_sock, tmp, len, TH_ACK | TH_PUSH);
+
+            bytes_to_send -= len;
+            unacked_bytes_in_flight += len;
         }
     }
 }

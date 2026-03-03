@@ -97,6 +97,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     /* create a new TCB for the client's connection request */
     tcb_t *new_tcb = alloc_new_tcb();
     int utcp_fd = new_tcb->fd;
+    new_tcb->src_udp_port = udp_fd;
     
     pthread_mutex_init(&new_tcb->lock, NULL);
     pthread_cond_init(&new_tcb->conn_cond, NULL);

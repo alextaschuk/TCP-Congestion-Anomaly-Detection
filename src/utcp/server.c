@@ -182,15 +182,14 @@ int main(void) {
     struct sockaddr_in client_info;
     int new_conn_fd = utcp_accept(listen_tcb, &client_info);
     tcb_t *new_tcb = get_tcb(new_conn_fd);
+    new_tcb->src_udp_port = args->udp_fd;
     while(1) 
     { // main thread -- pretend to be the application
         if(new_tcb->fsm_state == ESTABLISHED)
         {
         printf("\nSending a test packet of data...\n");
-
         char *words = "This is a test payload from the server\n";
         size_t len = strlen(words);
-
         size_t written = utcp_send(new_tcb, args->udp_fd, words, len);
 
         sleep(2);

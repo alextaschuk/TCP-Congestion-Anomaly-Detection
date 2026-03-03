@@ -93,7 +93,6 @@ tcb_t *alloc_new_tcb(void)
 
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
-
     // set congestion avoidance & control variables
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
     new_tcb->rttvar = 0;

@@ -70,17 +70,61 @@ int send_dgram(
 
     ssize_t bytes_sent = sendto(snder_sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)
-        err_sys("[send_dgram] error sending packet\n");
+        err_sys("[send_dgram] error sending packet");
     
     printf("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
     print_segment((u_int8_t *)segment, segment_size, 0);
 
     snder_tcb->snd_nxt += payload_len;
 
-    if (flags & TH_SYN)
+    /**
+     * only set the timer if the packet being sent actually contains a payload, has a SYN flag,
+     * or has a FIN flag.
+     */
+    if(payload_len > 0 || (flags & (TH_SYN | TH_FIN)))
+    {
+        if(snder_tcb->t_timer[TCPT_REXMT] == 0)
+        {
+            int ticks = (snder_tcb->rto + 499) / 500;
+            snder_tcb->t_timer[TCPT_REXMT] = ticks;
+            printf("[send_dgram] REXMT timer counting down from %d ticks (%u ms)\n", ticks, snder_tcb->rto);
+        }
+    }
+
+    if (flags & (TH_SYN | TH_FIN))
         snder_tcb->snd_nxt += 1;
 
     free(segment);
     return bytes_sent;
 }
 
+
+void retransmit_data(tcb_t *tcb)
+{
+    size_t available_data = ring_buf_used(&tcb->tx_buf);
+    size_t send_len = MIN(available_data, MSS); // Send max 1 MSS
+    int udp_fd = tcb->src_udp_port;
+    
+    if (send_len > 0) 
+    {
+        uint8_t payload[MSS];
+        ring_buf_peek(&tcb->tx_buf, payload, send_len);
+
+        uint32_t highest_snd_nxt = tcb->snd_nxt; // temporarily rewind snd_nxt to snd_una so send_dgram stamps the correct sequence number
+        tcb->snd_nxt = tcb->snd_una;
+
+        printf("[retransmit_data] Retransmitting %zu bytes at seq %u\n", send_len, tcb->snd_una);
+        send_dgram(tcb, udp_fd, payload, send_len, TH_ACK);
+
+        tcb->snd_nxt = highest_snd_nxt; // restore snd_nxt back to data already sent
+    }
+    else if (tcb->fsm_state == SYN_SENT || tcb->fsm_state == SYN_RECEIVED) 
+    {
+        // Edge Case: The dropped packet was a handshake packet (no payload data)
+        uint8_t flags = TH_SYN;
+        if (tcb->fsm_state == SYN_RECEIVED) flags |= TH_ACK;
+                
+        tcb->snd_nxt = tcb->snd_una;
+        send_dgram(tcb, udp_fd, NULL, 0, flags);
+    }
+}

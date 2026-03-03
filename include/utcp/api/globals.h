@@ -35,7 +35,8 @@ client will need access to.
 #define MSS 536
 
 /* Congestion Control  Related */
-//#define TCPT_NTIMERS 4                  /* number of counters in `t_timer[]` */
+#define CA_ALGO TAHOE /* Determine which CA algo we use. */
+//#define TCPT_NTIMERS 4                /* number of counters in `t_timer[]` */
 
  /* Retransmission Timer Stuff */
 #define TCPT_REXMT 0                    /* index of retransmission timer in `timer_t[]` */
@@ -53,14 +54,6 @@ client will need access to.
 /* End define macros */
 
 /*Define Structs*/
-typedef struct socket_fds               /* A helpful struct to consolidate our socket FDs for multithreading */
-{
-    int udp_fd;                         /* A UDP file descriptor */
-    int utcp_fd;                        /* A UTCP file descriptor */
-} socket_fds;
-/*End define structs*/
-
-
 typedef struct api_t /* Stores all global vars */
 {
     /* client info */
@@ -76,7 +69,23 @@ typedef struct api_t /* Stores all global vars */
     char* server_ip;
 
     tcb_t *tcb_lookup[MAX_CONNECTIONS]; /* TCB lookup table. Contains all connections. */
+    pthread_mutex_t lookup_lock;        /* Mutex to lock iterating over lookup table. */
 } api_t;
+
+
+typedef struct socket_fds /* A helpful struct to consolidate our socket FDs for multithreading */
+{
+    int udp_fd;                         /* A UDP file descriptor */
+    int utcp_fd;                        /* A UTCP file descriptor */
+} socket_fds;
+/*End define structs*/
+
+/*Define Enums*/
+enum cc_algos{ /* Congestion control algorithms */
+    TAHOE = 1,
+    RENO = 2
+};
+/*End define enums*/
 
 api_t *api_instance(void);              /* Call to access the global struct's contents */
 

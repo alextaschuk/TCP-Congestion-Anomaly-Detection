@@ -2,14 +2,11 @@
 #define HNDSHK_FSM_H
 
 /**
- * @brief This finite state machine tracks the current connection
- * status for a client/server. Each side of a connection maintains
- * info about the connection via a transmission control block (TCB),
- * which includes the connection's state.
- * 
- * The connection status follows the same state machine used in
- * in TCP for establishing a persistent connection via a 3-Way
- * Handshake, and terminating a connection via a 4-Way Handshake.
+ * This finite state machine tracks the current connection status for a client/server. Each side
+ * of a connection maintains info about the connection via a transmission control block (TCB),
+ * which includes the connection's state. The connection status follows the same state machine
+ * used in in TCP for establishing a persistent connection via a 3-Way Handshake (3WHS), and
+ * terminating a connection via a 4-Way Handshake.
  * 
  * - https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Protocol_operation
  * 
