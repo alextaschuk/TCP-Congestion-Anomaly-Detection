@@ -1,23 +1,21 @@
 #include <utcp/rx/rx_dgram.h>
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+
 #include <arpa/inet.h>
 
+#include <tcp/hndshk_fsm.h>
+#include <utils/err.h>
+#include <utils/logger.h>
+#include <utils/printable.h>
 #include <utcp/api/api.h>
-#include <utcp/api/globals.h>
-
 #include <utcp/rx/demux_tcb.h>
+#include <utcp/api/globals.h>
+#include <utcp/rx/handle_data.h>
 #include <utcp/rx/3whs/rcv_3whs_ack.h>
 #include <utcp/rx/3whs/rcv_syn_ack.h>
 #include <utcp/rx/3whs/rcv_syn.h>
-#include <utcp/rx/handle_data.h>
-
-#include <tcp/hndshk_fsm.h>
-
-#include <utils/err.h>
-#include <utils/printable.h>
-#include <utils/logger.h>
 
 
 ssize_t rcv_dgram(int udp_fd, ssize_t buflen)

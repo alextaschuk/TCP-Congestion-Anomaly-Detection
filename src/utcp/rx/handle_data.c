@@ -2,11 +2,11 @@
 
 #include <stdio.h>
 
+#include <utils/logger.h>
 #include <utcp/api/globals.h>
 #include <utcp/rx/handle_ack.h>
 #include <utcp/api/tx_dgram.h>
 
-#include <utils/logger.h>
 
 void handle_data(
     tcb_t *tcb,

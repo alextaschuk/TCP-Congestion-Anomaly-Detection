@@ -2,11 +2,10 @@
 
 #include <stdio.h>
 
-#include <utcp/api/globals.h>
-#include <utcp/rx/find_timestamps.h>
-#include <utcp/api/tx_dgram.h>
-
 #include <utils/logger.h>
+#include <utcp/rx/find_timestamps.h>
+#include <utcp/api/globals.h>
+#include <utcp/api/tx_dgram.h>
 
 
 void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
@@ -25,7 +24,7 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
         return;
     }
 
-    /* Received a duplicate ACK; update TCB's counter for congestion avoidance (CA) and/or enter CA */
+    /* Received a duplicate ACK; update TCB's counter for congestion avoidance (CA) and possibly enter CA. */
     else if (ack == tcb->snd_una)
     {
         LOG_WARN("[handle_ack] Received duplicate ACK\n");

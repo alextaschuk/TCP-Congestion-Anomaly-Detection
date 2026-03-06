@@ -6,6 +6,7 @@
 
 #include <zlog.h>
 
+
 /**
  * If a `.c` file doesn't define a category before including the zlog header,
  * default to `UTCP` so that the compiler doesn't complain. 

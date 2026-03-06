@@ -1,12 +1,14 @@
 #include <utils/err.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+
 #include <unistd.h> // for calling close() on a socket
 
-#include <utcp/api/globals.h>
 #include <utils/logger.h>
+#include <utcp/api/globals.h>
+
 
 void err_sys(const char* x)
 {

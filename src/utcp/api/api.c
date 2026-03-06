@@ -6,18 +6,16 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <netinet/tcp.h>
 
-#include <utcp/api/globals.h>
-
-#include <tcp/tcp_segment.h>
 #include <tcp/hndshk_fsm.h>
-
+#include <tcp/tcp_segment.h>
 #include <utils/err.h>
-#include <utils/printable.h>
 #include <utils/logger.h>
+#include <utils/printable.h>
+#include <utcp/api/globals.h>
 
 void deserialize_utcp_packet
 (

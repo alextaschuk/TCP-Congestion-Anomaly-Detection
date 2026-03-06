@@ -1,8 +1,10 @@
 #ifndef RCV_SYN_ACK_H
 #define RCV_SYN_ACK_H
 
-#include <tcp/tcb.h>
 #include <netinet/tcp.h>
+
+#include <tcp/tcb.h>
+
 
 /**
  * Handles a SYN-ACK packet and sends an ACK to the sender in response.

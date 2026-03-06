@@ -3,10 +3,11 @@
 #define TCB_H
 
 #include <stdint.h>
-#include <pthread.h>
-#include<netinet/tcp_timer.h>
-#include <netinet/tcp_var.h>
 #include <stdbool.h>
+
+#include <netinet/tcp_timer.h>
+#include <netinet/tcp_var.h>
+#include <pthread.h>
 
 #include <tcp/fourtuple.h>
 #include <tcp/tcb_queue.h>

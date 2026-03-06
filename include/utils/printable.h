@@ -2,11 +2,13 @@
 #define PRINTABLE_H
 
 #include <stdbool.h>
+
 #include <netinet/tcp.h>
 
-#include <tcp/tcb.h>
 #include <tcp/fourtuple.h>
 #include <tcp/hndshk_fsm.h>
+#include <tcp/tcb.h>
+
 
 /* Begin function declaration */
 

@@ -4,20 +4,19 @@ and handling packets of data.
 */
 #include <utcp/api/data.h>
 
-#include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <arpa/inet.h>
 #include <sys/socket.h>
 
+#include <tcp/tcp_segment.h>
+#include <utils/err.h>
+#include <utils/logger.h>
+#include <utils/printable.h>
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
-
-#include <tcp/tcp_segment.h>
-
-#include <utils/err.h>
-#include <utils/printable.h>
-#include <utils/logger.h>
 
 
 ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payload_len)

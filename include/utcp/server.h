@@ -2,10 +2,12 @@
 #define SERVER_H
 
 #include <stdint.h>
+
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
 #include <utcp/api/globals.h>
+
 
 /* Define macros */
 #define SYN_BACKLOG 128 // max number of connections in SYN queue during 3WHS

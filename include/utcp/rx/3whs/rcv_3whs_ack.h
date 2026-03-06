@@ -2,9 +2,10 @@
 #define RCV_3WHS_ACK_H
 
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <tcp/tcb.h>
-#include <netinet/tcp.h>
+
 
 /** 
  * @brief Handles the ACK packet that completes the 3WHS.

@@ -2,7 +2,9 @@
 #define TCP_SEGMENT_H
 
 #include <stdint.h>
+
 #include <netinet/tcp.h>
+
 
 /**
  * A simple struct that represents a full TCP

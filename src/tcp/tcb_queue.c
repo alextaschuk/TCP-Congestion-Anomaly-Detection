@@ -1,14 +1,13 @@
 #include <tcp/tcb_queue.h>
 
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 #include <pthread.h>
 
-#include <utcp/api/globals.h>
 #include <tcp/tcb.h>
-
 #include <utils/logger.h>
+#include <utcp/api/globals.h>
 
 int enqueue_tcb(tcb_t *tcb, tcb_queue_t *q)
 {

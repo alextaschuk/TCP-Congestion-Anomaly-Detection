@@ -2,18 +2,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <arpa/inet.h>
 
-#include <utcp/api/globals.h>
-#include <utcp/api/api.h>
-
 #include <tcp/hndshk_fsm.h>
-#include <utcp/api/globals.h>
-#include <utcp/api/utcp_timers.h>
-
 #include <utils/err.h>
 #include <utils/printable.h>
 #include <utils/logger.h>
+#include <utcp/api/api.h>
+#include <utcp/api/globals.h>
+#include <utcp/api/utcp_timers.h>
+
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
 

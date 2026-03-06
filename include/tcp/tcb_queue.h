@@ -2,7 +2,9 @@
 #define TCB_QUEUE_H
 
 #include <stdint.h>
+
 #include <pthread.h>
+
 
 typedef struct tcb_t tcb_t;
 

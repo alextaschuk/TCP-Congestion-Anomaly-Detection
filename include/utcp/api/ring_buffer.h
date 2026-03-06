@@ -1,8 +1,8 @@
 #ifndef RING_BUFFER_H
 #define RING_BUFFER_H
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * To ensure that data can be received and delivered in order the client and server

@@ -1,13 +1,12 @@
 #include <utcp/api/ring_buffer.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-
-#include <utcp/api/globals.h>
 
 #include <utils/err.h>
 #include <utils/logger.h>
+#include <utcp/api/globals.h>
 
 
 int ring_buf_init(ring_buf_t *c)

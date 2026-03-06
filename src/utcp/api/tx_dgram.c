@@ -1,16 +1,17 @@
 #include <utcp/api/tx_dgram.h>
 
-#include <arpa/inet.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <arpa/inet.h>
 #include <sys/types.h>
 
 #include <tcp/tcp_segment.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 #include <utils/err.h>
 #include <utcp/api/globals.h>
-#include <utils/logger.h>
 
 
 int send_dgram(

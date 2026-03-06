@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <utils/err.h>
+#include <utils/logger.h>s
+#include <utils/printable.h>
 #include <utcp/api/globals.h>
 
-#include <utils/err.h>
-#include <utils/printable.h>
-#include <utils/logger.h>
 
 bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
 {

@@ -1,34 +1,34 @@
 #include <utcp/server.h>
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <time.h>
 
-#include <utcp/api/api.h>
-#include <utcp/api/conn.h>
-#include <utcp/api/data.h>
-#include <utcp/rx/rx_dgram.h>
-#include <utcp/api/tx_dgram.h>
-#include <utcp/api/ring_buffer.h>
-#include <utcp/api/utcp_timers.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
 #include <tcp/tcb.h>
 #include <tcp/tcb_queue.h>
-
-#include <utils/printable.h>
 #include <utils/err.h>
-
-// logging stuff
 #include <utils/logger.h>
+#include <utils/printable.h>
+#include <utcp/api/api.h>
+#include <utcp/api/conn.h>
+#include <utcp/api/data.h>
+#include <utcp/api/ring_buffer.h>
+#include <utcp/rx/rx_dgram.h>
+#include <utcp/api/tx_dgram.h>
+#include <utcp/api/utcp_timers.h>
+
 #include <zlog.h>
+
+
 _Thread_local const char* current_thread_cat = "main_thread";
 
 //make clean && make && clear && clear && ./server_app

@@ -11,10 +11,13 @@
 /**
  * @brief Receive a datagram and update TCB values as needed.
  * 
- * @param udp_fd The receiving UDP socket's FD.
- * @param buflen The number of bytes of the datagram payload
+ * This is the all-encompassing function to receive a UDP datagram. The function
+ * receives a datagram, parses it, and calls the necessary function that will
+ * decide what to do with it.
  * 
- * @note For a UDP socket to receive a datagram, it needs to call this function. 
+ * @param udp_fd The receiving UDP socket's FD.
+ * @param buflen The max number of bytes the receiver is willing to get.
+ * 
  */
 ssize_t rcv_dgram(int udp_fd, ssize_t buflen);
  

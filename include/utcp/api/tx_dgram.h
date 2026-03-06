@@ -4,9 +4,12 @@
 #ifndef TX_DGRAM_H
 #define TX_DGRAM_H
 
-#include <netinet/tcp.h>
-#include <tcp/tcb.h>
 #include <stdio.h>
+
+#include <netinet/tcp.h>
+
+#include <tcp/tcb.h>
+
 
 /**
  * @brief Send a packet data out of a UDP socket.

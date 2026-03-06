@@ -7,7 +7,9 @@ client will need access to.
 #define GLOBALS_H
 
 #include <stdint.h>
+
 #include <tcp/tcb.h>
+
 
 /* Define Macros */
 

@@ -3,6 +3,7 @@
 
 #include <tcp/tcb.h>
 
+
 #define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
 
 /**

@@ -1,19 +1,21 @@
 #include <utils/printable.h>
 
-#include <arpa/inet.h> 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <utils/err.h>
+#include <arpa/inet.h> 
+
 #include <tcp/tcp_segment.h>
+#include <utils/err.h>
+#include <utils/logger.h>
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 
-#include <utils/logger.h>
 #include <zlog.h>
+
 
 static bool is_null(const void *ptr, const char *msg)
 {

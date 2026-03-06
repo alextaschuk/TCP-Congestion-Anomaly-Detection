@@ -1,11 +1,13 @@
 #ifndef DATA_H
 #define DATA_H
 
-#include <netinet/in.h>
 #include <stdint.h>
+
+#include <netinet/in.h>
 #include <sys/types.h>
 
 #include <tcp/tcb.h>
+
 
 /**
  * @brief An application-side function used to send data.

@@ -2,19 +2,19 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+
 #include <arpa/inet.h>
 
-#include <utcp/api/globals.h>
-#include <utcp/api/utcp_timers.h>
-#include <utcp/rx/find_timestamps.h>
+#include <tcp/hndshk_fsm.h>
 #include <utils/err.h>
 #include <utils/logger.h>
-#include <utcp/api/conn.h>
 #include <utils/printable.h>
+#include <utcp/api/conn.h>
+#include <utcp/rx/find_timestamps.h>
+#include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
+#include <utcp/api/utcp_timers.h>
 
-
-#include <tcp/hndshk_fsm.h>
 
 void rcv_syn(
     tcb_t *listen_tcb,

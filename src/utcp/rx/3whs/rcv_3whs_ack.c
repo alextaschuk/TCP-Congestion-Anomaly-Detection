@@ -3,12 +3,12 @@
 #include <stdio.h>
 
 #include <tcp/hndshk_fsm.h>
-#include <utcp/api/globals.h>
-#include <utcp/api/conn.h>
-#include <utcp/rx/find_timestamps.h>
-
 #include <utils/err.h>
 #include <utils/logger.h>
+#include <utcp/api/conn.h>
+#include <utcp/rx/find_timestamps.h>
+#include <utcp/api/globals.h>
+
 
 void rcv_3whs_ack(tcb_t *target_tcb, struct tcphdr *hdr, struct sockaddr_in from)
 {

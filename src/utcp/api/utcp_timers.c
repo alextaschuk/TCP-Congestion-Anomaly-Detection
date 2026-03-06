@@ -1,17 +1,17 @@
 #include <utcp/api/utcp_timers.h>
 
-#include <netinet/tcp_timer.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <time.h>
 
-#include <utcp/api/globals.h>
-#include <utils/err.h>
+#include <netinet/tcp_timer.h>
+#include <pthread.h>
+
 #include <tcp/hndshk_fsm.h>
+#include <utils/err.h>
+#include <utils/logger.h>
+#include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
 
-// logger stuff
-#include <utils/logger.h>
 
 void* utcp_ticker_thread(void) 
 {

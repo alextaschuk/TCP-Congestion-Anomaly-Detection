@@ -1,34 +1,31 @@
 #include <utcp/client.h>
 
 #include <errno.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <netinet/tcp.h>
 
+#include <tcp/hndshk_fsm.h>
+#include <utils/err.h>
+#include <utils/logger.h>
+#include <utils/printable.h>
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
-#include <utcp/api/tx_dgram.h>
 #include <utcp/api/ring_buffer.h>
-
 #include <utcp/rx/rx_dgram.h>
+#include <utcp/api/tx_dgram.h>
 
-#include <tcp/hndshk_fsm.h>
-
-#include <utils/printable.h>
-#include <utils/err.h>
-
-// logger stuff
-#include <utils/logger.h>
 #include <zlog.h>
+
+
 _Thread_local const char* current_thread_cat = "main_thread";
 
-
-//clear && ./client_app
 static void init_client(void *arg, api_t *global)
 {
     socket_fds *args = (socket_fds*)arg;
