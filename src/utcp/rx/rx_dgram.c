@@ -6,14 +6,18 @@
 
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
+
 #include <utcp/rx/demux_tcb.h>
-#include<utcp/rx/3whs/rcv_3whs_ack.h>
-#include<utcp/rx/3whs/rcv_syn_ack.h>
-#include<utcp/rx/3whs/rcv_syn.h>
+#include <utcp/rx/3whs/rcv_3whs_ack.h>
+#include <utcp/rx/3whs/rcv_syn_ack.h>
+#include <utcp/rx/3whs/rcv_syn.h>
 #include <utcp/rx/handle_data.h>
+
 #include <tcp/hndshk_fsm.h>
+
 #include <utils/err.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 
 
 ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
@@ -54,7 +58,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &from.sin_addr, ip_str, sizeof(ip_str));
     
-    printf("Received a packet from %s:%d\n", ip_str, ntohs(from.sin_port));
+    LOG_INFO("Received a packet from %s:%d\n", ip_str, ntohs(from.sin_port));
     print_segment(buf, rcvsize, 1);
 
     // deserialize & demux the packet
@@ -68,7 +72,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
 
     if (target_tcb == NULL)
     {
-        printf("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.\n", local_utcp_port);
+        LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.\n", local_utcp_port);
         free(buf);
         return rcvsize;
     }
@@ -81,21 +85,21 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
             if ((hdr->th_flags & TH_SYN) != 0)
                 rcv_syn(target_tcb, udp_fd, hdr, data_len, from);
             else
-                err_data("[rcv_syn] Expected SYN flag, but none was found");
+                LOG_ERROR("[rcv_syn] Expected SYN flag, but none was found");
             break;
 
         case SYN_SENT:
             if ((hdr->th_flags & TH_SYN) && (hdr->th_flags & TH_ACK))
                 rcv_syn_ack(target_tcb, udp_fd, hdr, data_len);
             else
-                err_data("[rcv_syn_ack] Missing SYN and/or ACK flag(s) for SYN-ACK");
+                LOG_ERROR("[rcv_syn_ack] Missing SYN and/or ACK flag(s) for SYN-ACK");
             break;
 
         case SYN_RECEIVED:
             if (hdr->th_flags & TH_ACK)
                 rcv_3whs_ack(target_tcb, hdr, from);
             else
-                err_data("[rcv_ack] Expected ACK flag, but none was found");
+                LOG_ERROR("[rcv_ack] Expected ACK flag, but none was found");
             break;
 
         case ESTABLISHED: // 3WHS is complete; received packet containing data
@@ -103,7 +107,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
             break;
 
         default:
-            err_sys("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
+            LOG_ERROR("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
     }
 
     free(buf);

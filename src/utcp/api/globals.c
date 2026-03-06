@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <utils/logger.h>
 
 static api_t global;
 
@@ -24,5 +25,6 @@ api_t *api_instance(void)
 
         initialized = 1;
     }
+
     return &global;
 }

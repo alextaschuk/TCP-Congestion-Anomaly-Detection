@@ -3,6 +3,8 @@
 #include <stdio.h>
 
 #include <tcp/hndshk_fsm.h>
+#include <utils/logger.h>
+#include <utcp/api/globals.h>
 
 tcb_t* demux_tcb(
     api_t *global,
@@ -36,7 +38,7 @@ tcb_t* demux_tcb(
         // we will return listener TCB to server if state isn't ESTABLISHED or SYN-RECEIVED
         if (local_utcp_port == dest_utcp_port && tcb->fsm_state == LISTEN)
         {
-            //printf("[demux_tcb] found listen TCB\n");
+            //LOG_INFO("[demux_tcb] found listen TCB\n");
             listen_tcb = tcb;
             continue;
         }
@@ -45,7 +47,7 @@ tcb_t* demux_tcb(
     // no active connection found, look for half-open connection (3WHS is in-progress)
     if (listen_tcb != NULL)
     {
-        printf("[demux_tcb] Searching for TCB in SYN queue\n");
+        LOG_INFO("[demux_tcb] Searching for TCB in SYN queue\n");
 
         pthread_mutex_lock(&listen_tcb->syn_q.lock);
         for (int i = 0; i < listen_tcb->syn_q.count; i++)
@@ -61,17 +63,17 @@ tcb_t* demux_tcb(
 
             if (client_ip == src_ip && client_udp_port == src_udp_port)
             {
-                printf("[demux_tcb] Found a TCB with a half-open connection\n");
+                LOG_INFO("[demux_tcb] Found a TCB with a half-open connection\n");
                 pthread_mutex_unlock(&listen_tcb->syn_q.lock);
                 return syn_tcb;
             }
         }
         pthread_mutex_unlock(&listen_tcb->syn_q.lock);
         
-        printf("[demux_tcb] No TCB found; will handle incoming connection (SYN) request...\n");
+        LOG_INFO("[demux_tcb] No TCB found; will handle incoming connection (SYN) request...\n");
         return listen_tcb;
     }
 
-    printf("[demux_tcb] No TCB found, nor listen socket found.\n");
+    LOG_WARN("[demux_tcb] No TCB found, nor listen socket found.\n");
     return NULL; 
 }

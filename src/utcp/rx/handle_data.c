@@ -2,8 +2,11 @@
 
 #include <stdio.h>
 
+#include <utcp/api/globals.h>
 #include <utcp/rx/handle_ack.h>
 #include <utcp/api/tx_dgram.h>
+
+#include <utils/logger.h>
 
 void handle_data(
     tcb_t *tcb,
@@ -25,7 +28,7 @@ void handle_data(
 
     if (seg_seq > tcb->rcv_nxt)
     {
-        printf("[handle_data] Out-of-order data (seq=%u expected=%u). Sending dup ACK.\n", seg_seq, tcb->rcv_nxt);
+        LOG_WARN("[handle_data] Out-of-order data (seq=%u expected=%u). Sending dup ACK.\n", seg_seq, tcb->rcv_nxt);
         send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
         return;
     }
@@ -35,27 +38,27 @@ void handle_data(
         uint32_t overlap = tcb->rcv_nxt - seg_seq;
         if ((size_t)overlap >= (size_t)data_len)
         {
-            printf("[handle_data] Fully duplicate retransmission. Sending dup ACK.\n");
+            LOG_WARN("[handle_data] Fully duplicate retransmission. Sending dup ACK.\n");
             send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
             return;
         }
 
         data += overlap;
         data_len -= (ssize_t)overlap;
-        printf("[handle_data] Trimmed %u retransmitted bytes, accepting %zd new bytes.\n", overlap, data_len);
+        LOG_INFO("[handle_data] Trimmed %u retransmitted bytes, accepting %zd new bytes.\n", overlap, data_len);
     }
 
     size_t free = ring_buf_free(&tcb->rx_buf);
     if (free == 0)
     {
-        printf("[handle_data] rx buffer full, cannot accept data.\n");
+        LOG_WARN("[handle_data] rx buffer full, cannot accept data.\n");
         send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
         return;
     }
 
     if ((size_t)data_len > free)
     {
-        printf("[handle_data] rx buffer limited, truncating payload from %zd to %zu bytes.\n", data_len, free);
+        LOG_WARN("[handle_data] rx buffer limited, truncating payload from %zd to %zu bytes.\n", data_len, free);
         data_len = (ssize_t)free;
     }
 
@@ -65,6 +68,6 @@ void handle_data(
 
     send_dgram(tcb, udp_fd, NULL, 0, TH_ACK); // ACK the received packet
     
-    printf("\n\n[handle_data] Received valid packet, sent ACK.\n\n");
-    printf("Number of bytes in rx_buf: %zu\n", ring_buf_used(&tcb->rx_buf));
+    LOG_INFO("[handle_data] Received a valid packet, sent ACK.");
+    LOG_INFO("Number of bytes in rx_buf: %zu\n", ring_buf_used(&tcb->rx_buf));
 }

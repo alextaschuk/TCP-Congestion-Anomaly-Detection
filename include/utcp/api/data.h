@@ -23,7 +23,7 @@
 ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payload_len);
 
 /**
- * @brief An application-side function used to receive data. This is how apps read from `rx_buf`.
+ * @brief An application-side function used to receive data. This is how an app reads from `rx_buf`.
  * 
  * @param utcp_fd The receiver's UTCP file descriptor.
  * @param *buf A buffer to receive the data into.

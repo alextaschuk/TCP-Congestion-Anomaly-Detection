@@ -23,8 +23,6 @@ void rcv_syn_ack(
 
         if (hdr->th_ack != tcb->snd_nxt)
             err_data("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
-        
-        printf("[rcv_syn_ack] Received SYN-ACK\n");
 
         pthread_mutex_lock(&tcb->lock);
 
@@ -34,7 +32,7 @@ void rcv_syn_ack(
         tcb->rcv_wnd = hdr->th_win;
 
         pause_timer(tcb, TCPT_REXMT);
-        printf("[rcv_syn_ack] Client received ACK for its SYN. REXMT timer paused.\n");
+        LOG_INFO("[rcv_syn_ack] Client received SYN-ACK. REXMT timer paused.\n");
 
         /* check for TCP Options section and if timestamps are present */
         uint32_t ts_val = 0; // Timestamp value

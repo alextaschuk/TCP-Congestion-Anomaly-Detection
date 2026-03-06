@@ -6,7 +6,7 @@
 /* Begin function declaration */
 
 /**
- * @brief A global error logging function.
+ * @brief A global error logging function for fatal errors.
  * 
  * @example err_sys("bind"); -> "bind: Address already in use"
  */

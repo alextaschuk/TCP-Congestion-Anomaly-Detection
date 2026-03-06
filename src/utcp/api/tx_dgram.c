@@ -10,6 +10,8 @@
 #include <utils/printable.h>
 #include <utils/err.h>
 #include <utcp/api/globals.h>
+#include <utils/logger.h>
+
 
 int send_dgram(
     tcb_t *snder_tcb,
@@ -72,7 +74,7 @@ int send_dgram(
     if (bytes_sent < 0)
         err_sys("[send_dgram] error sending packet");
     
-    printf("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
+    LOG_INFO("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
     print_segment((u_int8_t *)segment, segment_size, 0);
 
     snder_tcb->snd_nxt += payload_len;
@@ -87,7 +89,7 @@ int send_dgram(
         {
             int ticks = (snder_tcb->rto + 499) / 500;
             snder_tcb->t_timer[TCPT_REXMT] = ticks;
-            printf("[send_dgram] REXMT timer counting down from %d ticks (%u ms)\n", ticks, snder_tcb->rto);
+            LOG_INFO("[send_dgram] REXMT timer counting down from %d ticks (%u ms)\n", ticks, snder_tcb->rto);
         }
     }
 
@@ -113,7 +115,7 @@ void retransmit_data(tcb_t *tcb)
         uint32_t highest_snd_nxt = tcb->snd_nxt; // temporarily rewind snd_nxt to snd_una so send_dgram stamps the correct sequence number
         tcb->snd_nxt = tcb->snd_una;
 
-        printf("[retransmit_data] Retransmitting %zu bytes at seq %u\n", send_len, tcb->snd_una);
+        LOG_INFO("[retransmit_data] Retransmitting %zu bytes at seq %u\n", send_len, tcb->snd_una);
         send_dgram(tcb, udp_fd, payload, send_len, TH_ACK);
 
         tcb->snd_nxt = highest_snd_nxt; // restore snd_nxt back to data already sent

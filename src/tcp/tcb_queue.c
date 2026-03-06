@@ -8,11 +8,13 @@
 #include <utcp/api/globals.h>
 #include <tcp/tcb.h>
 
+#include <utils/logger.h>
+
 int enqueue_tcb(tcb_t *tcb, tcb_queue_t *q)
 {
     if (q->count >= q->backlog)
     {
-        printf("[enqueue_tcb] Queue is full, connection being dropped\n");
+        LOG_INFO("[enqueue_tcb] Queue is full, connection being dropped");
         return -1;
     }
 
@@ -28,7 +30,7 @@ tcb_t* dequeue_tcb(tcb_queue_t *q)
 {
     if (q->count == 0)
     {
-        printf("[dequeue_tcb] Queue is empty\n");
+        LOG_INFO("[dequeue_tcb] Queue is empty");
         return NULL;
     }
 
@@ -66,6 +68,6 @@ tcb_t* remove_from_syn_queue(tcb_queue_t *q, uint32_t remote_ip, uint16_t remote
             return tcb;
         }
     }
-    printf("[remove_from_syn_queue] TCB not found.\n");
-    return NULL; // Not found in the SYN queue
+    LOG_WARN("[remove_from_syn_queue] TCB not found in the SYN queue.");
+    return NULL;
 }

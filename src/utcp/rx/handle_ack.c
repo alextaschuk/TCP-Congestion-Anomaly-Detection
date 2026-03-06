@@ -6,6 +6,8 @@
 #include <utcp/rx/find_timestamps.h>
 #include <utcp/api/tx_dgram.h>
 
+#include <utils/logger.h>
+
 
 void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
 {   
@@ -13,32 +15,32 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
 
     if (ack < tcb->snd_una)
     {
-        printf("[handle_ack] Ignoring stale ACK\n");
+        LOG_WARN("[handle_ack] Ignoring stale ACK\n");
         return;
     }
 
     else if (ack > tcb->snd_nxt)
     {
-        printf("[handle_ack] Ignoring invalid future ACK (too large)\n");
+        LOG_WARN("[handle_ack] Ignoring invalid future ACK (too large)\n");
         return;
     }
 
     /* Received a duplicate ACK; update TCB's counter for congestion avoidance (CA) and/or enter CA */
-    if (ack == tcb->snd_una)
+    else if (ack == tcb->snd_una)
     {
-        printf("[handle_ack] Received duplicate ACK\n");
+        LOG_WARN("[handle_ack] Received duplicate ACK\n");
 
         if (tcb->snd_nxt > tcb->snd_una)
         {
             tcb->dupacks++;
-            printf("[handle_ack] Duplicate ACK count: %u\n", tcb->dupacks);
+            LOG_INFO("[handle_ack] Duplicate ACK count: %u\n", tcb->dupacks);
         }
         
         /* three duplicate ACKs detected; handle according to the current CA algorithm. */
         if (tcb->dupacks == 3)
         {
             /* both Tahoe and RENO use fast retransmit, then set ssthresh to 50% of cwnd */
-            printf("[handle_ack] 3 Duplicate ACKs. Retransmitting sequence: %u\n", tcb->snd_una);
+            LOG_INFO("[handle_ack] 3 Duplicate ACKs. Retransmitting sequence: %u\n and applying TCP %s for congestion avoidance", tcb->snd_una, CA_ALGO);
             retransmit_data(tcb);
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
             tcb->snd_ssthresh = MAX(flight_size / 2, 2 * MSS);
@@ -51,7 +53,7 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
                 case(RENO): // 
                     tcb->fast_recovery = true;
                     tcb->snd_cwnd = tcb->snd_ssthresh + (3 * MSS);
-                    printf("[handle_ack] RENO: Entered Fast Recovery. cwnd set to %u.\n", tcb->snd_cwnd);
+                    LOG_INFO("[handle_ack] RENO: Entered Fast Recovery. cwnd set to %u.\n", tcb->snd_cwnd);
                     break;
             }
         }
@@ -63,14 +65,14 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
         else if (tcb->dupacks > 3 && CA_ALGO == RENO && tcb->fast_recovery)
         {
                 tcb->snd_cwnd += MSS;
-                printf("[handle_ack] Reno: Inflating cwnd to %u\n", tcb->snd_cwnd);
+                LOG_INFO("[handle_ack] Reno: Inflating cwnd to %u\n", tcb->snd_cwnd);
         }
     }
 
     /* ACK is valid */
     else
     {
-        printf("[handle_ack] Received valid ACK packet\n");
+        LOG_INFO("[handle_ack] Received valid ACK packet\n");
         size_t acked = (size_t)(ack - tcb->snd_una);
 
         tcb->dupacks = 0; // reset counter
@@ -79,20 +81,20 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
         { // (RENO only) We can now exit Fast Recovery
             tcb->snd_cwnd = tcb->snd_ssthresh;
             tcb->fast_recovery = false;
-            printf("[handle_ack] Reno: Exited Fast Recovery. cwnd deflated to %u\n", tcb->snd_cwnd);
+            LOG_INFO("[handle_ack] Reno: Exited Fast Recovery. cwnd deflated to %u\n", tcb->snd_cwnd);
         }
         else
         { // Standard cwnd growth logic (slow start or linear)
             if (tcb->snd_cwnd < tcb->snd_ssthresh)
             { // connection is in slow start
                 tcb->snd_cwnd += MSS;
-                printf("[handle_ack] Slow Start cwnd grew to %u\n", tcb->snd_cwnd);
+                LOG_INFO("[handle_ack] Slow Start cwnd grew to %u\n", tcb->snd_cwnd);
             }
             else // congestion avoidance: linear growth
                 tcb->snd_cwnd += (MSS * MSS) / tcb->snd_cwnd;
         }
 
-        printf("METRIC,%u,%u,%u\n", tcp_now(), tcb->snd_cwnd, tcb->snd_ssthresh);
+        //LOG_INFO("METRIC,%u,%u,%u\n", tcp_now(), tcb->snd_cwnd, tcb->snd_ssthresh);
 
         /* check for TCP Options section and if timestamps are present */
         uint32_t ts_val = 0; // Timestamp value
@@ -127,13 +129,13 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
         /* Pause or reset the timer */
         if (tcb->snd_una == tcb->snd_nxt)
         {
-            printf("[handle_ack] All data has been ACKed. Pausing REXMT timer.\n");
+            LOG_INFO("[handle_ack] All data has been ACKed. Pausing REXMT timer.\n");
             pause_timer(tcb, TCPT_REXMT); 
         }
         else
         {
             int ticks = reset_timer(tcb, TCPT_REXMT);
-            printf("[handle_ack] UnACKed data in flight. REXMT timer reset to %d ticks.\n", ticks);
+            LOG_INFO("[handle_ack] UnACKed data in flight. REXMT timer reset to %d ticks.\n", ticks);
         }
     }
 }

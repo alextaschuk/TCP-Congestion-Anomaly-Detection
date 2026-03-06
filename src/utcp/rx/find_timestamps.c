@@ -3,8 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <utcp/api/globals.h>
+
 #include <utils/err.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 
 bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
 {
@@ -34,8 +37,6 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
         
         if (opt_size < 2 || opt_size > opt_len)
         {
-            printf("[find_timestamps] opt_size: %u\n", opt_size);
-            printf("[find_timestamps] opt_len: %u\n", opt_len);
             err_data("[find_timestamps] Malformed options: missing or invalid length byte.\n");
         }
             
@@ -53,7 +54,7 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
             case(TCPOPT_SACK): // SACK
                 break;
 
-            case(TCPOPT_TIMESTAMP):
+            case(TCPOPT_TIMESTAMP): // Timestamp
                 if (opt_size == TCPOLEN_TIMESTAMP)
                 {
                 uint32_t raw_val, raw_ecr;
@@ -62,6 +63,7 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
 
                 *ts_val = ntohl(raw_val);
                 *ts_ecr = ntohl(raw_ecr);
+                LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u");
 
                 return true;
                 }

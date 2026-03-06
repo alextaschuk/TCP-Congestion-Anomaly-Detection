@@ -13,6 +13,7 @@
 
 #include <utils/err.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
 
@@ -48,7 +49,7 @@ int bind_UDP_sock(int pts)
     socklen_t len = sizeof(bound_addr);
     getsockname(sock, (struct sockaddr*)&bound_addr, &len);
 
-    printf("UDP socket bound to port %d\n", ntohs(bound_addr.sin_port));
+    LOG_INFO("[bind_UDP_sock] UDP socket bound to port %d\n", ntohs(bound_addr.sin_port));
     udp_sock_open = 1;
     return sock;
 }
@@ -67,7 +68,7 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
     
     global->tcb_lookup[tcb->fd] = tcb;
 
-    printf("UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
+    LOG_INFO("[bind_UTCP_sock] UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
     return tcb->fd;
 }
 
@@ -82,7 +83,7 @@ tcb_t *alloc_new_tcb(void)
             break;
 
     if (fd == MAX_CONNECTIONS) {
-        printf("[allocate_new_tcb] Error: No sockets available in global table\n");
+        LOG_WARN("[allocate_new_tcb] Error: No sockets available in global table\n");
         return NULL; 
     }
 

@@ -17,18 +17,21 @@
 #include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/ring_buffer.h>
-
-#include <utils/printable.h>
-#include <utils/err.h>
+#include <utcp/api/utcp_timers.h>
 
 #include <tcp/hndshk_fsm.h>
 #include <tcp/tcb.h>
 #include <tcp/tcb_queue.h>
-#include <utcp/api/utcp_timers.h>
-#include <utcp/api/ring_buffer.h>
+
+#include <utils/printable.h>
+#include <utils/err.h>
+
+// logging stuff
+#include <utils/logger.h>
+#include <zlog.h>
+_Thread_local const char* current_thread_cat = "main_thread";
 
 //make clean && make && clear && clear && ./server_app
-
 
 tcb_t *active_tcbs[MAX_CONNECTIONS]; // global array of TCBs w/ ESTABLISHED state
 
@@ -44,13 +47,14 @@ static void init_server(socket_fds *args, api_t *global)
     args->udp_fd = bind_UDP_sock(global->server_port);
     args->utcp_fd = bind_UTCP_sock(&server);
 
-    printf("[init_server] utcp fd: %u\n", args->utcp_fd);
+    LOG_INFO("(init_server) UDP & UTCP Sockets Initialized. UDP FD: %u,  UTCP FD: %u", args->udp_fd, args->utcp_fd);
 }
 
 
-void* utcp_rx_thread(void *arg)
+void* utcp_listen_thread(void *arg)
 {
-    printf("[Server] Listen thread running...\n");
+    current_thread_cat = "listen_thread";
+    LOG_INFO("[utcp_listen_thread] Listen thread running...");
     socket_fds *args = (socket_fds*)arg;
 
     while (1)
@@ -146,7 +150,7 @@ static int spawn_threads(socket_fds *args)
     pthread_t ticker_thread;
 
     printf("[spawn_threads] Spawning listener thread...\n");
-    if (pthread_create(&listen_thread, NULL, utcp_rx_thread, args) != 0)
+    if (pthread_create(&listen_thread, NULL, utcp_listen_thread, args) != 0)
     {
         printf("[spawn_threads] Failed to create listener thread\n");
         return -1;
@@ -163,6 +167,9 @@ static int spawn_threads(socket_fds *args)
 
 
 int main(void) {
+    if (init_zlog("zlog_server.conf") != 0) // initialize logger
+        err_sys("Error initializing zlog.");
+
     api_t *global = api_instance();
 
     socket_fds *args = malloc(sizeof(socket_fds));
@@ -187,14 +194,14 @@ int main(void) {
     { // main thread -- pretend to be the application
         if(new_tcb->fsm_state == ESTABLISHED)
         {
-        printf("\nSending a test packet of data...\n");
         char *words = "This is a test payload from the server\n";
+        LOG_INFO("[main] Sending a test packet of data to the server containing [%s]", words);
+
         size_t len = strlen(words);
         size_t written = utcp_send(new_tcb, args->udp_fd, words, len);
-
         sleep(2);
         }
     }
-    free(args);
+    free(args); // unreachable
     return 0;
 }

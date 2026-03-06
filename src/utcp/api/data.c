@@ -33,7 +33,7 @@ ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payl
         return -1;
     }
 
-    printf("[utcp_send] TX buffer is full. App thread going to sleep...\n");
+    LOG_INFO("[utcp_send] TX buffer is full. App thread going to sleep...\n");
     pthread_cond_wait(&snder_tcb->conn_cond, &snder_tcb->lock);
 
     free = ring_buf_free(&snder_tcb->tx_buf);

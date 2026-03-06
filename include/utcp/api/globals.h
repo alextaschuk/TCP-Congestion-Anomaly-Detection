@@ -70,6 +70,7 @@ typedef struct api_t /* Stores all global vars */
 
     tcb_t *tcb_lookup[MAX_CONNECTIONS]; /* TCB lookup table. Contains all connections. */
     pthread_mutex_t lookup_lock;        /* Mutex to lock iterating over lookup table. */
+
 } api_t;
 
 
@@ -86,6 +87,14 @@ enum cc_algos{ /* Congestion control algorithms */
     RENO = 2
 };
 /*End define enums*/
+
+/*Define Variables*/
+
+/**
+ * A thread-local variable that tells us which thread is logging something.
+ */
+extern _Thread_local const char* current_thread_cat;
+/*End define variables*/
 
 api_t *api_instance(void);              /* Call to access the global struct's contents */
 

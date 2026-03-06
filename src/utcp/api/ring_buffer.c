@@ -3,16 +3,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <utils/err.h>
 
 #include <utcp/api/globals.h>
+
+#include <utils/err.h>
+#include <utils/logger.h>
+
 
 int ring_buf_init(ring_buf_t *c)
 {
     c->buf = (uint8_t *)malloc(BUF_SIZE);
-
     if (!c->buf)
-        err_sys("tcp_ringbuf_init");
+        err_sys("[ring_buf_init] Failed to allocate ring buffer.");
 
     c->size = BUF_SIZE;
     c->head = 0;

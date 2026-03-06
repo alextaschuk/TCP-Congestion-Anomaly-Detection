@@ -22,6 +22,11 @@
 #include <utils/printable.h>
 #include <utils/err.h>
 
+// logger stuff
+#include <utils/logger.h>
+#include <zlog.h>
+_Thread_local const char* current_thread_cat = "main_thread";
+
 
 //clear && ./client_app
 static void init_client(void *arg, api_t *global)
@@ -60,23 +65,24 @@ static void init_hndshk(void *arg)
     /* Create and configure TCP header */
     socket_fds *args = (socket_fds*)arg;
     tcb_t *tcb = get_tcb(args->utcp_fd);
+
     ring_buf_init(&tcb->rx_buf);
     ring_buf_init(&tcb->tx_buf);
-    uint8_t *buffer = malloc(sizeof(struct tcphdr));
 
     /* 3WHS */
     int SYN_dgram = send_dgram(tcb, args->udp_fd, NULL, 0, TH_SYN);
     update_fsm(args->utcp_fd, SYN_SENT);
     ssize_t ACK_dgram = rcv_dgram(args->udp_fd, BUF_SIZE);
 
-    free(buffer);
     print_tcb(tcb);
 }
 
 
 void* begin_rcv(void *arg)
 {
-    printf("[begin_rcv] Receive thread running...\n");
+    current_thread_cat = "receive_thread";
+    LOG_INFO("[begin_rcv] Receive thread running...");
+    //printf("[begin_rcv] Receive thread running...\n");
 
     socket_fds *args = (socket_fds*)arg;
 
@@ -156,12 +162,21 @@ static int spawn_threads(socket_fds *args)
 
 int main(void) {
     api_t *global = api_instance();
+    
+    if (init_zlog("zlog_client.conf") != 0) // initialize logger
+        err_sys("Error initializing zlog.");
+
     socket_fds *args = malloc(sizeof(socket_fds));
+    if (!args)
+        err_sys("[Client, main] Failed to allocate args");
+
 
     args->udp_fd = bind_UDP_sock(global->client_port);
 
     if(spawn_threads(args) != 0)
+    {
         err_sys("[Client] Error during thread creation");
+    }
 
     struct sockaddr_in server = {
     .sin_family = AF_INET,

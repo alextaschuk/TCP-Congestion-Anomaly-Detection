@@ -17,6 +17,7 @@
 
 #include <utils/err.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 
 void deserialize_utcp_packet
 (
@@ -56,7 +57,7 @@ struct tcb_t *get_tcb(int utcp_fd)
 {
     if (utcp_fd < 0 || utcp_fd >= MAX_CONNECTIONS)
     {
-        printf("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
+        LOG_WARN("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
         return NULL;
     }
 

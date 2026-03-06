@@ -12,10 +12,14 @@
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 
+#include <utils/logger.h>
+#include <zlog.h>
+
 static bool is_null(const void *ptr, const char *msg)
 {
     if (ptr == NULL)
     {
+        //LOG_INFO("main_thread", "(is_null) %s", msg);
         printf("%s\n", msg);
         return true;
     }

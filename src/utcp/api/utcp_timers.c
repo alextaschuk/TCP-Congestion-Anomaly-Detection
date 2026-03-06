@@ -10,9 +10,13 @@
 #include <tcp/hndshk_fsm.h>
 #include <utcp/api/tx_dgram.h>
 
+// logger stuff
+#include <utils/logger.h>
+
 void* utcp_ticker_thread(void) 
 {
-    printf("[utcp_ticker_thread] UTCP 500ms slow timer started.\n");
+    current_thread_cat = "ticker_thread";
+    LOG_INFO("[utcp_ticker_thread] UTCP 500ms slow timer started...");
 
     struct timespec ts;
     ts.tv_sec = 0; // 0 seconds
@@ -45,11 +49,11 @@ void utcp_slowtimo(void)
             if (tcb->t_timer[timer_idx] > 0) 
             {
                 tcb->t_timer[timer_idx]--;
-                printf("[utcp_slowtimo] Updated timer %i. New value is %hu\n", timer_idx, tcb->t_timer[timer_idx]);
+                LOG_INFO("[utcp_slowtimo] Updated timer %i. New value is %hu\n", timer_idx, tcb->t_timer[timer_idx]);
 
                 if (tcb->t_timer[timer_idx] == 0)
                 {
-                    printf("[utcp_slowtimo] Timer %i timed out.\n", timer_idx);
+                    LOG_INFO("[utcp_slowtimo] Timer %i timed out.\n", timer_idx);
                     utcp_timeout(tcb, timer_idx);
                 }
             }
