@@ -168,7 +168,7 @@ static int spawn_threads(socket_fds *args)
 
 int main(void) {
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
-        err_sys("Error initializing zlog.");
+        err_sys("Error initializing zlog");
 
     api_t *global = api_instance();
 

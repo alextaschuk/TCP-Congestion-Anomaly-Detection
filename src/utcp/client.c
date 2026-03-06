@@ -164,7 +164,7 @@ int main(void) {
     api_t *global = api_instance();
     
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
-        err_sys("Error initializing zlog.");
+        err_sys("Error initializing zlog");
 
     socket_fds *args = malloc(sizeof(socket_fds));
     if (!args)
