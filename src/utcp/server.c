@@ -47,7 +47,7 @@ static void init_server(socket_fds *args, api_t *global)
     args->udp_fd = bind_UDP_sock(global->server_port);
     args->utcp_fd = bind_UTCP_sock(&server);
 
-    LOG_INFO("(init_server) UDP & UTCP Sockets Initialized. UDP FD: %u,  UTCP FD: %u", args->udp_fd, args->utcp_fd);
+    LOG_INFO("[init_server] UDP & UTCP Sockets Initialized. UDP FD: %u,  Listen UTCP FD: %u", args->udp_fd, args->utcp_fd);
 }
 
 

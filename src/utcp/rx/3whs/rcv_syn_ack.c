@@ -4,12 +4,13 @@
 
 #include <tcp/hndshk_fsm.h>
 
+#include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/rx/find_timestamps.h>
 
 #include <utils/err.h>
-
+#include <utils/logger.h>
 
 void rcv_syn_ack(
     tcb_t *tcb,

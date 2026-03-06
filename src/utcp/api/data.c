@@ -17,6 +17,7 @@ and handling packets of data.
 
 #include <utils/err.h>
 #include <utils/printable.h>
+#include <utils/logger.h>
 
 
 ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payload_len)
