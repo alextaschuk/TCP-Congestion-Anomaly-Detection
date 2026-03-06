@@ -6,7 +6,3 @@
 # CMake build dir
 build/
 
-# logs
-log/
-*.log
-
