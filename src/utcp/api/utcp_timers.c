@@ -50,11 +50,11 @@ void utcp_slowtimo(void)
             if (tcb->t_timer[timer_idx] > 0) 
             {
                 tcb->t_timer[timer_idx]--;
-                LOG_INFO("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
+                LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
 
                 if (tcb->t_timer[timer_idx] == 0)
                 {
-                    LOG_INFO("[utcp_slowtimo] Timer %i timed out.", timer_idx);
+                    LOG_DEBUG("[utcp_slowtimo] Timer %i timed out.", timer_idx);
                     utcp_timeout(tcb, timer_idx);
                 }
             }
@@ -113,14 +113,14 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 {
     uint32_t current_time = tcp_now();
     uint32_t rtt_sample = current_time - segment_ts_ecr; // This is R, or R'
-    LOG_INFO("[calc_rto] Current Time: %u, R / R': %u ms", current_time, rtt_sample);
+    //LOG_INFO("[calc_rto] Current Time: %u, R / R': %u ms", current_time, rtt_sample);
 
     /* Calculate RTT with Jacobson/Karels Algorithm and set/update the RTO */
     if (tcb->srtt == 0)
     { // first RTT measurement R
         tcb->srtt = rtt_sample << 3;   // SRTT = RTT * 8
         tcb->rttvar = rtt_sample << 1; // RTTVAR = RTT / 2 * 4
-        LOG_INFO("[calc_rto] Calulated R. srtt = %u, rttvar = %u", tcb->srtt, tcb->rttvar);
+        //LOG_INFO("[calc_rto] Calulated R. srtt = %u, rttvar = %u", tcb->srtt, tcb->rttvar);
     } else
     { // subsequent RTT measurement R'
         int32_t err = rtt_sample - (tcb->srtt >> 3); // `err` is ((R' - SRTT) / 8)
@@ -129,13 +129,13 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 
         if (err < 0) err = -err; // compute |err|
         tcb->rttvar += err - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|err| - RTTVAR_old) / 4
-        LOG_INFO("[calc_rto] Calculated R'. err = %u, srtt = %u, rttvar = %u", err, tcb->srtt, tcb->rttvar);
+        //LOG_INFO("[calc_rto] Calculated R'. err = %u, srtt = %u, rttvar = %u", err, tcb->srtt, tcb->rttvar);
     }
 
     /* Compute the RTO */
     uint32_t current_srtt = tcb->srtt >> 3;
     uint32_t four_rttvar = tcb->rttvar;
-    LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
+    //LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
 
     tcb->rto = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
     LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rto);
@@ -145,7 +145,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
      * @note Strict RFC 6298 says min should be 1000ms, but Linux uses 200ms.
      */
     TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
-    LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rto);
+    //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rto);
 }
 
 

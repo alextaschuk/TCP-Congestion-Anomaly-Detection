@@ -117,8 +117,7 @@ int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
         return -1;
     }
 
-    
-
+    LOG_INFO("[utcp_accept] Locking the accept queue");
     pthread_mutex_lock(&listen_tcb->accept_q.lock);
     
     // block until the queue is not empty (TCB added via rx_dgram())
@@ -129,6 +128,8 @@ int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
 
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
+
+    LOG_INFO("[utcp_accept] Unlocking the accept queue");
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     // populate the client info so the app knows who is connected
@@ -197,11 +198,22 @@ int main(void) {
     { // main thread -- pretend to be the application
         if(new_tcb->fsm_state == ESTABLISHED)
         {
-        char *words = "This is a test payload from the server";
-        LOG_INFO("[main] Sending a test packet of data to the server containing: %s", words);
+        //char *words = "This is a test payload from the server";
+        char *words = "Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. \nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. \nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.";
+        size_t total_len = strlen(words);
+        size_t total_sent = 0;
 
-        size_t len = strlen(words);
-        size_t written = utcp_send(new_tcb, args->udp_fd, words, len);
+        size_t written = utcp_send(new_tcb, args->udp_fd, words, total_len);
+        LOG_INFO("[main] Sent a test packet of data to the server with a payload size of %zu bytes", written);
+
+        if (written < 0)
+        {
+            LOG_ERROR("[main] Connection closed or error occured during send.");
+            break;
+        }
+        total_sent += written;
+
+        LOG_INFO("Sent %zd bytes. Total sent so far: %zu / %zu", written, total_sent, total_len);
         sleep(2);
         }
     }

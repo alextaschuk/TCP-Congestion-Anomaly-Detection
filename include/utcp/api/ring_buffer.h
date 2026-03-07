@@ -83,7 +83,7 @@ size_t ring_buf_write(ring_buf_t *c, const uint8_t *data, size_t len);
  * Peek a stream of bytes from buffer without consuming data.
  * 
  * @param *c Pointer to ring buffer.
- * @param *dest A data buffer that the peeked stream of bytes is stored in.
+ * @param *dest A data buffer that the peeked stream of bytes will be stored in.
  * @param len The number of bytes to read from `*c`.
  * 
  * @note This is the non-destructive version of `ring_buf_read()`.

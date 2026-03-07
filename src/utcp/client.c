@@ -184,23 +184,24 @@ int main(void) {
 
     // pretend to be a client app
     LOG_INFO("[Client App] connecting to server via utcp_connect()");
+
     args->utcp_fd = utcp_connect(args->udp_fd, &server);
     if (args->utcp_fd < 0)
         err_sock(args->udp_fd, "[Client] Failed to connect");
     
     LOG_INFO("[utcp_connect] 3WHS complete.");
 
-    printf("UTCPFD %u", args->utcp_fd);
     tcb_t *tcb = get_tcb(args->utcp_fd);
 
     uint8_t buf[BUF_SIZE];
     ssize_t total_received = 0;
 
-    while(total_received <= BUF_SIZE - 1)
+    while(1)
     {
         ssize_t rcvsize = utcp_recv(args->utcp_fd, buf, sizeof(buf));
+        LOG_DEBUG("RECEIVE SIZE: %zu", rcvsize);
         if (rcvsize < 0)
-            err_sys("[Server, listen thread] Error receiving packet");
+            err_sys("[Client, listen thread] Error receiving packet");
         else if (rcvsize > 0) 
         {
             size_t safe_len = (rcvsize < sizeof(buf)) ? rcvsize : sizeof(buf) - 1;

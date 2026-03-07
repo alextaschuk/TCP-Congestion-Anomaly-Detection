@@ -48,7 +48,7 @@ static void init_server(socket_fds *args, api_t *global);
 void* utcp_listen_thread(void *arg);
 
 /**
- * @brief Called by a server application to tell us (pretending we're the OS)
+ * @brief An application-side function to tell us (pretending we're the OS)
  * that the app is ready to receive connection requests.
  * 
  * The SYN and accept queues are initialized and the listen socket's state is

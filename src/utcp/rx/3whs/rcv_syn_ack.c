@@ -49,6 +49,6 @@ void rcv_syn_ack(
     
     send_dgram(tcb, udp_fd, NULL, 0, TH_ACK); // TODO: allow client to add payload to final ACK
 
-    pthread_cond_signal(&tcb->conn_cond); // wake up utcp_connect()
+    pthread_cond_signal(&tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
     pthread_mutex_unlock(&tcb->lock);
 }

@@ -17,7 +17,6 @@ void handle_data(
     ssize_t data_len
 )
 {
-    LOG_INFO("[handle_data] Entered handle_data.");
     uint32_t seg_seq = hdr->th_seq;
 
     if (seg_seq > tcb->rcv_nxt)
@@ -57,7 +56,6 @@ void handle_data(
          */
         if (hdr->th_seq <= tcb->rcv_nxt)
         {
-            LOG_INFO("[handle_ack] ts_val: %u", ts_val);
             tcb->ts_rcv_val = ts_val;
         }
             
@@ -89,8 +87,8 @@ void handle_data(
     }
 
     size_t written = ring_buf_write(&tcb->rx_buf, data, (size_t)data_len);
-
-    pthread_cond_signal(&tcb->conn_cond); // wake sleeping app utcp_rcv thread
+    LOG_DEBUG("[handle_data] Wrote %zu bytes to the RX buffer for UTCP FD %i", written, tcb->fd);
+    pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
 
     tcb->rcv_nxt += (uint32_t)written;
     tcb->rcv_wnd = ring_buf_free(&tcb->rx_buf);

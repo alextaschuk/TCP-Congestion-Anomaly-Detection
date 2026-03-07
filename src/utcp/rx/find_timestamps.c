@@ -63,7 +63,7 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
 
                 *ts_val = ntohl(raw_val);
                 *ts_ecr = ntohl(raw_ecr);
-                LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u", ntohl(raw_val), ntohl(raw_ecr));
+                //LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u", ntohl(raw_val), ntohl(raw_ecr));
 
                 return true;
                 }

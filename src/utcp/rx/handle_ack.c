@@ -9,7 +9,6 @@
 
 void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
 {   
-    LOG_INFO("entered handle_ack");
     uint32_t ack = hdr->th_ack;
 
     if (ack < tcb->snd_una)
@@ -96,11 +95,9 @@ void handle_ack(tcb_t *tcb, struct tcphdr *hdr)
         //LOG_INFO("METRIC,%u,%u,%u\n", tcp_now(), tcb->snd_cwnd, tcb->snd_ssthresh);
 
         uint32_t old_snd_una = tcb->snd_una;
-        uint32_t old_snd_wnd = tcb->snd_wnd;
         tcb->snd_una = ack;
         tcb->snd_wnd = hdr->th_win;
         LOG_INFO("[handle_ack] snd_una updated from %u to %u", old_snd_una, tcb->snd_una);
-        LOG_INFO("[handle_ack] snd_wnd updated from %u to %u", old_snd_wnd, tcb->snd_wnd);
 
         /**
          * Deliver bytes from the TX buffer to the app, then tell the sleeping app's

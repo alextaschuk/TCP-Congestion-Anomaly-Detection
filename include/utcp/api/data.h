@@ -28,17 +28,17 @@ ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payl
  * @brief An application-side function used to receive data. This is how an app reads from `rx_buf`.
  * 
  * @param utcp_fd The receiver's UTCP file descriptor.
- * @param *buf A buffer to receive the data into.
- * @param len The amount of data that is being received, in bytes.
+ * @param *buf The application's buffer to receive (write) the data into.
+ * @param app_buf_len The max amount of data the application can store.
  * 
  * @return The number of bytes sent (i.e., read from `rx_buf`).
  */
-ssize_t utcp_recv(int utcp_fd, void *buf, size_t len);
+ssize_t utcp_recv(int utcp_fd, void *buf, size_t app_buf_len);
 
 
 /**
  * @brief A helper function for `utcp_send()` to determine how many bytes
- * in a TX buffer can be sent.
+ * in the TX buffer can be sent.
  * 
  * This function checks how many unacked bytes are in flight and how many are
  * in `tx_buffer` in total. If there are more in the buffer than are in flight,

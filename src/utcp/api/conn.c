@@ -82,19 +82,19 @@ tcb_t *alloc_new_tcb(void)
             break;
 
     if (fd == MAX_CONNECTIONS) {
-        LOG_WARN("[allocate_new_tcb] Error: No sockets available in global table");
+        LOG_WARN("[alloc_new_tcb] Error: No sockets available in global table");
         return NULL; 
     }
 
     /* Create a new TCB and put it in the available spot */
     tcb_t *new_tcb = calloc(1, sizeof(tcb_t));
     if (!new_tcb)
-        err_sys("[allocate_new_tcb] Failed to calloc *new_tcb");
+        err_sys("[alloc_new_tcb] Failed to calloc *new_tcb");
 
     pthread_mutex_init(&new_tcb->lock, NULL);
     pthread_cond_init(&new_tcb->conn_cond, NULL);
 
-    LOG_INFO("[allopc_new_tcb] Locking the new TCB...");
+    LOG_INFO("[alloc_new_tcb] Locking the new TCB...");
     pthread_mutex_lock(&new_tcb->lock);
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
@@ -109,7 +109,7 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->snd_cwnd = MSS * 10;
     new_tcb->snd_ssthresh = BUF_SIZE;
     
-    LOG_INFO("[allopc_new_tcb] Unlocking the new TCB...");
+    LOG_INFO("[alloc_new_tcb] Unlocking the new TCB...");
     pthread_mutex_unlock(&new_tcb->lock);
     
     global->tcb_lookup[fd] = new_tcb;

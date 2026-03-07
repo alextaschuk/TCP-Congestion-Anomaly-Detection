@@ -61,9 +61,7 @@ int send_dgram(
     ts_opt[3] = 10; // Option-Length = 10 bytes
 
     uint32_t raw_val = htonl(tcp_now()); // update timestamp
-    LOG_INFO("[send_dgram] Updated timestamp.");
     uint32_t raw_ecr = htonl(snder_tcb->ts_rcv_val); // echo the peer's TSval
-    LOG_INFO("[send_dgram] TSval: %u, TSecr: %u", ntohl(raw_val), snder_tcb->ts_rcv_val);
 
     memcpy(&ts_opt[4], &raw_val, 4); // TSval
     memcpy(&ts_opt[8], &raw_ecr, 4); // TSecr
@@ -73,12 +71,11 @@ int send_dgram(
     if (payload_len > 0)
         memcpy(segment->data + opt_len, buf, payload_len); // offset pointer by opt_len so that timestamps arent overwritten
 
-    LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]...",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
     ssize_t bytes_sent = sendto(snder_sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)
         err_sys("[send_dgram] Error sending packet");
     
-    
+    LOG_INFO("[send_dgram] Datagram sent to UTCP port [%u], UDP port [%u]. Payload size: %zu bytes",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port, bytes_sent);
     log_segment((u_int8_t *)segment, segment_size, 0, "[send_dgram] Segment that was sent:");
 
     snder_tcb->snd_nxt += payload_len;
@@ -93,12 +90,15 @@ int send_dgram(
         {
             int ticks = (snder_tcb->rto + 499) / 500;
             snder_tcb->t_timer[TCPT_REXMT] = ticks;
-            LOG_INFO("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, snder_tcb->rto);
+            LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, snder_tcb->rto);
         }
     }
 
     if (flags & (TH_SYN | TH_FIN))
+    {
+        LOG_DEBUG("[send_dgram] Segment contained SYN or FIN flag (consumes 1 byte). Increasing snd_nxt by 1");
         snder_tcb->snd_nxt += 1;
+    }
 
     free(segment);
     return bytes_sent;
@@ -108,7 +108,7 @@ int send_dgram(
 void retransmit_data(tcb_t *tcb)
 {
     size_t available_data = ring_buf_used(&tcb->tx_buf);
-    size_t send_len = MIN(available_data, MSS); // Send max 1 MSS
+    size_t send_len = MIN(available_data, (size_t)MSS); // Send max 1 MSS
     int udp_fd = tcb->src_udp_port;
     
     if (send_len > 0) 
@@ -119,18 +119,21 @@ void retransmit_data(tcb_t *tcb)
         uint32_t highest_snd_nxt = tcb->snd_nxt; // temporarily rewind snd_nxt to snd_una so send_dgram stamps the correct sequence number
         tcb->snd_nxt = tcb->snd_una;
 
-        LOG_INFO("[retransmit_data] Retransmitting %zu bytes at seq %u\n", send_len, tcb->snd_una);
+        LOG_DEBUG("[retransmit_data] Retransmitting %zu bytes at seq %u", send_len, tcb->snd_una);
         send_dgram(tcb, udp_fd, payload, send_len, TH_ACK);
 
         tcb->snd_nxt = highest_snd_nxt; // restore snd_nxt back to data already sent
     }
     else if (tcb->fsm_state == SYN_SENT || tcb->fsm_state == SYN_RECEIVED) 
     {
-        // Edge Case: The dropped packet was a handshake packet (no payload data)
+        // the dropped packet was a handshake packet (no payload data)
         uint8_t flags = TH_SYN;
         if (tcb->fsm_state == SYN_RECEIVED) flags |= TH_ACK;
                 
         tcb->snd_nxt = tcb->snd_una;
         send_dgram(tcb, udp_fd, NULL, 0, flags);
     }
+
+    int ticks = reset_timer(tcb, TCPT_REXMT);
+    LOG_INFO("[retransmit_data] REXMT timer restarted to %d ticks.", ticks);
 }
