@@ -13,7 +13,7 @@
 void rcv_3whs_ack(tcb_t *target_tcb, struct tcphdr *hdr, struct sockaddr_in from)
 {
     if (hdr->th_ack != target_tcb->snd_nxt)
-            err_data("[rcv_3whs_ack] ACK header's th_ack is not equal to TCB's snd_nxt\n");
+            err_data("[rcv_3whs_ack] ACK header's th_ack is not equal to TCB's snd_nxt");
 
     tcb_t *listen_tcb = find_listen_tcb();
     uint32_t remote_ip = ntohl(from.sin_addr.s_addr);
@@ -21,7 +21,7 @@ void rcv_3whs_ack(tcb_t *target_tcb, struct tcphdr *hdr, struct sockaddr_in from
 
     pause_timer(target_tcb, TCPT_REXMT);
 
-    LOG_INFO("[rcv_3whs_ack] Server Received ACK. 3WHS done.\n");
+    LOG_INFO("[rcv_3whs_ack] Server Received ACK. 3WHS done.");
 
         /* check for TCP Options section and if timestamps are present */
         uint32_t ts_val = 0; // Timestamp value
@@ -45,5 +45,5 @@ void rcv_3whs_ack(tcb_t *target_tcb, struct tcphdr *hdr, struct sockaddr_in from
     pthread_cond_signal(&listen_tcb->accept_q.cond); // Wake up utcp_accept()
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
-    LOG_INFO("[rcv_3whs_ack] Connection established and queued for accept().\n");
+    LOG_INFO("[rcv_3whs_ack] Connection established and queued for accept()");
 }

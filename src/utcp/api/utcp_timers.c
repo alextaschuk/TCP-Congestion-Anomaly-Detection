@@ -36,6 +36,7 @@ void utcp_slowtimo(void)
 {
     api_t *global = api_instance();
 
+    //LOG_INFO("[utcp_slowtimo] Locking the lookup lock...");
     pthread_mutex_lock(&global->lookup_lock);
 
     for (int i = 0; i < MAX_CONNECTIONS; i++) 
@@ -49,17 +50,18 @@ void utcp_slowtimo(void)
             if (tcb->t_timer[timer_idx] > 0) 
             {
                 tcb->t_timer[timer_idx]--;
-                LOG_INFO("[utcp_slowtimo] Updated timer %i. New value is %hu\n", timer_idx, tcb->t_timer[timer_idx]);
+                LOG_INFO("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
 
                 if (tcb->t_timer[timer_idx] == 0)
                 {
-                    LOG_INFO("[utcp_slowtimo] Timer %i timed out.\n", timer_idx);
+                    LOG_INFO("[utcp_slowtimo] Timer %i timed out.", timer_idx);
                     utcp_timeout(tcb, timer_idx);
                 }
             }
         }
     }
 
+    //LOG_INFO("[utcp_slowtimo] Unlocking the lookup lock...");
     pthread_mutex_unlock(&global->lookup_lock);
 }
 
@@ -111,13 +113,14 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 {
     uint32_t current_time = tcp_now();
     uint32_t rtt_sample = current_time - segment_ts_ecr; // This is R, or R'
-    printf("[calc_rto] Raw sample: %u ms\n", rtt_sample);
+    LOG_INFO("[calc_rto] Current Time: %u, R / R': %u ms", current_time, rtt_sample);
 
     /* Calculate RTT with Jacobson/Karels Algorithm and set/update the RTO */
     if (tcb->srtt == 0)
     { // first RTT measurement R
         tcb->srtt = rtt_sample << 3;   // SRTT = RTT * 8
         tcb->rttvar = rtt_sample << 1; // RTTVAR = RTT / 2 * 4
+        LOG_INFO("[calc_rto] Calulated R. srtt = %u, rttvar = %u", tcb->srtt, tcb->rttvar);
     } else
     { // subsequent RTT measurement R'
         int32_t err = rtt_sample - (tcb->srtt >> 3); // `err` is ((R' - SRTT) / 8)
@@ -126,27 +129,29 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 
         if (err < 0) err = -err; // compute |err|
         tcb->rttvar += err - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|err| - RTTVAR_old) / 4
+        LOG_INFO("[calc_rto] Calculated R'. err = %u, srtt = %u, rttvar = %u", err, tcb->srtt, tcb->rttvar);
     }
 
     /* Compute the RTO */
     uint32_t current_srtt = tcb->srtt >> 3;
     uint32_t four_rttvar = tcb->rttvar;
+    LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
 
     tcb->rto = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
+    LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rto);
 
     /**
      * Enforce bounds (e.g., Min 200ms, Max 60 seconds)
      * @note Strict RFC 6298 says min should be 1000ms, but Linux uses 200ms.
      */
     TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
-    printf("[calc_rto] RTO value in TCB before update: %u\n", tcb->rto);
-    printf("[calc_rto] Updated RTO to: %u ms\n", tcb->rto);
+    LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rto);
 }
 
 
 static void handle_rexmt_timeout(tcb_t *tcb)
 {
-    printf("[handle_rexmt_timeout] REXMT timer expired for TCB %u -> %u\n", tcb->fourtuple.source_port, tcb->fourtuple.dest_port);
+    LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u -> %u", tcb->fourtuple.source_port, tcb->fourtuple.dest_port);
 
     /* Exponential backoff */
     tcb->rto = tcb->rto * 2; // wait twice as long before trying again
@@ -156,7 +161,7 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     tcb->snd_ssthresh = tcb->snd_cwnd >> 1;
     tcb->snd_cwnd = MSS;
     
-    printf("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u\n",  tcb->snd_cwnd, tcb->snd_ssthresh);
+    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->snd_cwnd, tcb->snd_ssthresh);
 
     retransmit_data(tcb);
 

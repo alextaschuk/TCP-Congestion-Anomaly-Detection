@@ -63,8 +63,13 @@ struct tcb_t *get_tcb(int utcp_fd)
     tcb_t *tcb = global->tcb_lookup[utcp_fd];
 
     if (tcb == NULL)
+    {
+        LOG_WARN("[get_tcb] TCB with FD %u was not found", utcp_fd);
         return NULL;
-    
+    }
+        
+
+    LOG_INFO("[get_tcb] Found the TCB you're looking for at FD %u", utcp_fd);
     return tcb;
 }
 

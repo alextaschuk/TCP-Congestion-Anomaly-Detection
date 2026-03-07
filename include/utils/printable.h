@@ -29,34 +29,20 @@ static bool is_null(const void *ptr, const char *msg);
  * @param buflen The length of the segment, in bytes.
  * @param flow Defines the segment's direction. If the segment is being sent (outgoing) this should be `0`.
  *  If the packet is being received (incoming) this should be `1`.
+ * @param *msg A message to print above the segment.
  * 
  * @note The segment that is passed when this function is called should be in NETWORK order.
  */
-void print_segment(const uint8_t *buf, const size_t buflen, const bool flow);
+void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char *msg);
 
 
 /**
- * Prints a TCB in a readable format.
+ * Log a TCB in a readable format.
  * 
  * @param *tcb The TCB to print.
+ * @param *msg A message to print above the TCB.
  */
-void print_tcb(const tcb_t *tcb);
-
-
-/**
- * Prints a four tuple that consists of:
- * 
- * - A source UTCP port
- * 
- * - A source IP address
- * 
- * - A destination UTCP port
- * 
- * - A destination IP address
- * 
- * @param *tup The four tuple to print.
- */
-void print_fourtuple(const fourtuple_t *tup);
+void log_tcb(const tcb_t *tcb, char *msg);
 
 
 /**

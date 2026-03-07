@@ -34,13 +34,13 @@ typedef struct tcb_t
     int fd;                 /* TCB's file descriptor (a TCB is stored at `tcb_lookup[fd]`). */
 
     /* Connection and data variables */
-    uint32_t iss;           /* inital send sequence number */
-    uint32_t snd_una;       /* oldest unacked sequence number. */
-    uint32_t snd_nxt;       /* next sequence number to send. */
+    uint32_t iss;           /* Inital send sequence number */
+    uint32_t snd_una;       /* Oldest unacked sequence number. */
+    uint32_t snd_nxt;       /* Next sequence number to send. */
     uint32_t snd_wnd;       /* Total amount of free space in the `tx_buffer`, in bytes. (peer's rcv_wnd) */
-    uint32_t irs;           /* initial receive sequence number. */
-    uint32_t rcv_nxt;       /* next expected sequence number. */
-    uint32_t rcv_wnd;       /* amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept) */
+    uint32_t irs;           /* Initial receive sequence number. */
+    uint32_t rcv_nxt;       /* Next expected sequence number. */
+    uint32_t rcv_wnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept) */
     
     /* Congestion Avoidance*/
      /* Round Trip Time (RTT) and Retransmission Timeout (RTO) variables */
@@ -54,14 +54,13 @@ typedef struct tcb_t
 
 
     /* Congestion Control */
-    uint32_t snd_cwnd;      /* congestion window */
-    uint32_t snd_ssthresh;  /* slow start threshold */
-    uint8_t dupacks;        /* counter for the number of consecutive duplicate ACKs received */
+    uint32_t snd_cwnd;      /* Congestion window */
+    uint32_t snd_ssthresh;  /* Slow start threshold */
+    uint8_t dupacks;        /* Counter for the number of consecutive duplicate ACKs received */
     bool fast_recovery;     /* `true` if `CA_ALGO == TAHOE` AND 3 duplicate ACKs have been detected, `false` otherwise */
 
     int rxtcur;             /* Current retransmit timeout, RTO (ticks) */
-    u_int rttmin;           /* minimum value for retransmissino timeout allowed */
-    short tcpt_rexmt;       /* retransmission timer (counter) */
+    short tcpt_rexmt;       /* Retransmission timer (counter) */
 
     /**
      * Each entry in this array contains the number of 500ms or 200ms clock ticks until the timer expires, with `0` meaning that the timer is not set.
@@ -74,16 +73,16 @@ typedef struct tcb_t
     short t_timer[TCPT_NTIMERS];
 
     /* Threading synchronization*/
-    pthread_mutex_t lock;       /* lock to prevent race conditions when reading and writing to `rx` & `tx` buffers */ 
-    pthread_cond_t conn_cond;   /* client-only condition variable used to block after a 3WHS has been initiated and is waiting for a SYN-ACK */
+    pthread_mutex_t lock;       /* Lock to prevent race conditions when reading and writing to `rx` & `tx` buffers */ 
+    pthread_cond_t conn_cond;   /* Client-only condition variable used to block after a 3WHS has been initiated and is waiting for a SYN-ACK */
 
     /* Send and recieve buffers */
-    ring_buf_t tx_buf;          /* transmit (or "send") buffer, which stores unacked bytes that have been sent out */
-    ring_buf_t rx_buf;          /* receive buffer, which stores acked bytes that you have received and sent ACK for */
+    ring_buf_t tx_buf;          /* Transmit (or "send") buffer, which stores unacked bytes that have been sent out */
+    ring_buf_t rx_buf;          /* Receive buffer, which stores acked bytes that you have received and sent ACK for */
 
     /* Server-only buffers for 3WHS management*/
-    tcb_queue_t syn_q;          /* server-only queue for tracking half-open connection requests. */
-    tcb_queue_t accept_q;       /* server-only queue for tracking connection requests that are complete, but have not yet been `accept()`ed by the app. */
+    tcb_queue_t syn_q;          /* Server-only queue for tracking half-open connection requests. */
+    tcb_queue_t accept_q;       /* Server-only queue for tracking connection requests that are complete, but have not yet been `accept()`ed by the app. */
 } tcb_t;
 
 

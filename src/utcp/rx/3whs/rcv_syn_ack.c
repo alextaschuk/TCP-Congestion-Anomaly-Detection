@@ -18,38 +18,37 @@ void rcv_syn_ack(
     ssize_t data_len
 )
 {
-        if (data_len > 0) // we won't be using TCP Fast Open
-            err_data("[rcv_syn_ack] ACK contains non-header data");
+    if (data_len > 0) // we won't be using TCP Fast Open
+        err_data("[rcv_syn_ack] ACK contains non-header data");
 
-        if (hdr->th_ack != tcb->snd_nxt)
-            err_data("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
+    pthread_mutex_lock(&tcb->lock);
+    
+    if (hdr->th_ack != tcb->snd_nxt)
+        err_data("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
 
-        pthread_mutex_lock(&tcb->lock);
+    tcb->irs = hdr->th_seq;
+    tcb->snd_una = hdr->th_ack;
+    tcb->rcv_nxt = hdr->th_seq + 1;
+    tcb->rcv_wnd = hdr->th_win;
 
-        tcb->irs = hdr->th_seq;
-        tcb->snd_una = hdr->th_ack;
-        tcb->rcv_nxt = hdr->th_seq + 1;
-        tcb->rcv_wnd = hdr->th_win;
+    pause_timer(tcb, TCPT_REXMT);
+    LOG_INFO("[rcv_syn_ack] Client received SYN-ACK. REXMT timer paused.\n");
 
-        pause_timer(tcb, TCPT_REXMT);
-        LOG_INFO("[rcv_syn_ack] Client received SYN-ACK. REXMT timer paused.\n");
+    /* check for TCP Options section and if timestamps are present */
+    uint32_t ts_val = 0; // Timestamp value
+    uint32_t ts_ecr = 0; // Echoed timestamp value
 
-        /* check for TCP Options section and if timestamps are present */
-        uint32_t ts_val = 0; // Timestamp value
-        uint32_t ts_ecr = 0; // Echoed timestamp value
+    bool has_ts_opt = find_timestamps(hdr, &ts_val, &ts_ecr);
 
-        bool has_ts_opt = find_timestamps(hdr, &ts_val, &ts_ecr);
+    if (has_ts_opt)
+    {
+        tcb->ts_rcv_val = ts_val;
+    }
 
-        if (has_ts_opt)
-        {
-            tcb->ts_rcv_val = ts_val;
-        }
+    tcb->fsm_state = ESTABLISHED;
+    
+    send_dgram(tcb, udp_fd, NULL, 0, TH_ACK); // TODO: allow client to add payload to final ACK
 
-        tcb->fsm_state = ESTABLISHED;
-
-        pthread_cond_signal(&tcb->conn_cond); // wake up utcp_connect()
-        pthread_mutex_unlock(&tcb->lock);
-
-        // for now, we won't let the app add data to the final ACK
-        send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
+    pthread_cond_signal(&tcb->conn_cond); // wake up utcp_connect()
+    pthread_mutex_unlock(&tcb->lock);
 }

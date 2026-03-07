@@ -21,7 +21,7 @@ and handling packets of data.
 
 ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payload_len)
 {
-    pthread_mutex_lock(&snder_tcb->lock); // lock the TCB
+    pthread_mutex_lock(&snder_tcb->lock);
 
     size_t free = ring_buf_free(&snder_tcb->tx_buf);
 
@@ -55,18 +55,42 @@ ssize_t utcp_send(tcb_t *snder_tcb, int snder_sock, const void *buf, size_t payl
 ssize_t utcp_recv(int utcp_fd, void *buf, size_t len)
 {
     tcb_t *tcb = get_tcb(utcp_fd);
+    if (!tcb)
+    {
+        LOG_ERROR("[utcp_recv] Invalid UTCP FD");
+        return -1;
+    }
+
+    LOG_INFO("[utcp_recv] Locking the TCB...");
+    pthread_mutex_lock(&tcb->lock);
+
+    while (ring_buf_used(&tcb->rx_buf) == 0)
+    {
+        if (tcb->fsm_state == CLOSE_WAIT || tcb->fsm_state == CLOSED)
+        {
+            LOG_INFO("[utcp_recv] Peer initialized shutdown. Unlocking the TCB...");
+            pthread_mutex_lock(&tcb->lock);
+            return 0;
+        }
+
+        LOG_INFO("[utcp_recv] RX buffer is empty. Client going to sleep...");
+        pthread_cond_wait(&tcb->conn_cond, &tcb->lock);
+    }
 
     size_t used = ring_buf_used(&tcb->rx_buf);
-    if (used == 0)
-        return 0; // no data available
 
     if (len > used)
+    {
         len = used; // read the max data amount of data possible
-
+        LOG_WARN("[utcp_receive] Cannot fit all received data into the buffer. Truncating down to %u bytes", len);
+    }
+    
     ring_buf_read(&tcb->rx_buf, buf, len);
 
     tcb->rcv_wnd = ring_buf_free(&tcb->rx_buf);
 
+    LOG_INFO("[utcp_recv] Unlocking the TCB...");
+    pthread_mutex_lock(&tcb->lock);
     return len;
 }
 

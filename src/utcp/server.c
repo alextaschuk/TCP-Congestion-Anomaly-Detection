@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
@@ -110,11 +110,14 @@ int utcp_listen(int utcp_fd, int backlog)
 
 int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
 {
+
     if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
     {
-        printf("[utcp_accept] invalid socket\n");
+        err_sock(listen_tcb->src_udp_port, "[utcp_accept] Invalid socket");
         return -1;
     }
+
+    
 
     pthread_mutex_lock(&listen_tcb->accept_q.lock);
     
@@ -149,17 +152,17 @@ static int spawn_threads(socket_fds *args)
     pthread_t listen_thread;
     pthread_t ticker_thread;
 
-    printf("[spawn_threads] Spawning listener thread...\n");
+    LOG_INFO("[spawn_threads] Spawning listener thread...");
     if (pthread_create(&listen_thread, NULL, utcp_listen_thread, args) != 0)
     {
-        printf("[spawn_threads] Failed to create listener thread\n");
+        LOG_ERROR("[spawn_threads] Failed to create listener thread");
         return -1;
     }
 
-    printf("[spawn_threads] Spawning ticker thread...\n");
+    LOG_INFO("[spawn_threads] Spawning ticker thread...");
     if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
     {
-        printf("[spawn_threads] Failed to create ticker thread\n");
+        LOG_INFO("[spawn_threads] Failed to create ticker thread");
         return -1;
     }
     return 0;
@@ -194,8 +197,8 @@ int main(void) {
     { // main thread -- pretend to be the application
         if(new_tcb->fsm_state == ESTABLISHED)
         {
-        char *words = "This is a test payload from the server\n";
-        LOG_INFO("[main] Sending a test packet of data to the server containing [%s]", words);
+        char *words = "This is a test payload from the server";
+        LOG_INFO("[main] Sending a test packet of data to the server containing: %s", words);
 
         size_t len = strlen(words);
         size_t written = utcp_send(new_tcb, args->udp_fd, words, len);

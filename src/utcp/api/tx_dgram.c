@@ -59,24 +59,27 @@ int send_dgram(
     ts_opt[1] = 1; // NOP (TCPOPT_NOP)
     ts_opt[2] = 8; // Option-Kind = timestamp & previous timestamp's echo
     ts_opt[3] = 10; // Option-Length = 10 bytes
-    
-    uint32_t raw_val = htonl(tcp_now()); // update timestamp
-    uint32_t raw_ecr = htonl(snder_tcb->ts_rcv_val); // echo the peer's TSval
 
-    memcpy(&ts_opt[4], &raw_val, 4);
-    memcpy(&ts_opt[8], &raw_ecr, 4);
+    uint32_t raw_val = htonl(tcp_now()); // update timestamp
+    LOG_INFO("[send_dgram] Updated timestamp.");
+    uint32_t raw_ecr = htonl(snder_tcb->ts_rcv_val); // echo the peer's TSval
+    LOG_INFO("[send_dgram] TSval: %u, TSecr: %u", ntohl(raw_val), snder_tcb->ts_rcv_val);
+
+    memcpy(&ts_opt[4], &raw_val, 4); // TSval
+    memcpy(&ts_opt[8], &raw_ecr, 4); // TSecr
     memcpy(segment->data, ts_opt, opt_len);
 
     /* Add buffer to the payload and send the segment */
     if (payload_len > 0)
         memcpy(segment->data + opt_len, buf, payload_len); // offset pointer by opt_len so that timestamps arent overwritten
 
+    LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]...",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
     ssize_t bytes_sent = sendto(snder_sock, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)
-        err_sys("[send_dgram] error sending packet");
+        err_sys("[send_dgram] Error sending packet");
     
-    LOG_INFO("[send_dgram] Sending datagram to UTCP port %u, UDP port %u\n",  snder_tcb->fourtuple.dest_port, snder_tcb->dest_udp_port);
-    print_segment((u_int8_t *)segment, segment_size, 0);
+    
+    log_segment((u_int8_t *)segment, segment_size, 0, "[send_dgram] Segment that was sent:");
 
     snder_tcb->snd_nxt += payload_len;
 
@@ -90,7 +93,7 @@ int send_dgram(
         {
             int ticks = (snder_tcb->rto + 499) / 500;
             snder_tcb->t_timer[TCPT_REXMT] = ticks;
-            LOG_INFO("[send_dgram] REXMT timer counting down from %d ticks (%u ms)\n", ticks, snder_tcb->rto);
+            LOG_INFO("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, snder_tcb->rto);
         }
     }
 

@@ -48,7 +48,7 @@ int bind_UDP_sock(int pts)
     socklen_t len = sizeof(bound_addr);
     getsockname(sock, (struct sockaddr*)&bound_addr, &len);
 
-    LOG_INFO("[bind_UDP_sock] UDP socket bound to port %d\n", ntohs(bound_addr.sin_port));
+    LOG_INFO("[bind_UDP_sock] UDP socket bound to port %d", ntohs(bound_addr.sin_port));
     udp_sock_open = 1;
     return sock;
 }
@@ -67,7 +67,7 @@ int bind_UTCP_sock(struct sockaddr_in *addr)
     
     global->tcb_lookup[tcb->fd] = tcb;
 
-    LOG_INFO("[bind_UTCP_sock] UTCP socket bound to port: %i\n", tcb->fourtuple.source_port);
+    LOG_INFO("[bind_UTCP_sock] UTCP socket bound to port: %i", tcb->fourtuple.source_port);
     return tcb->fd;
 }
 
@@ -82,7 +82,7 @@ tcb_t *alloc_new_tcb(void)
             break;
 
     if (fd == MAX_CONNECTIONS) {
-        LOG_WARN("[allocate_new_tcb] Error: No sockets available in global table\n");
+        LOG_WARN("[allocate_new_tcb] Error: No sockets available in global table");
         return NULL; 
     }
 
@@ -91,8 +91,14 @@ tcb_t *alloc_new_tcb(void)
     if (!new_tcb)
         err_sys("[allocate_new_tcb] Failed to calloc *new_tcb");
 
+    pthread_mutex_init(&new_tcb->lock, NULL);
+    pthread_cond_init(&new_tcb->conn_cond, NULL);
+
+    LOG_INFO("[allopc_new_tcb] Locking the new TCB...");
+    pthread_mutex_lock(&new_tcb->lock);
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
+
     // set congestion avoidance & control variables
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
     new_tcb->rttvar = 0;
@@ -100,8 +106,11 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
     new_tcb->dupacks = 0;
     
-    new_tcb->snd_cwnd = MSS;
+    new_tcb->snd_cwnd = MSS * 10;
     new_tcb->snd_ssthresh = BUF_SIZE;
+    
+    LOG_INFO("[allopc_new_tcb] Unlocking the new TCB...");
+    pthread_mutex_unlock(&new_tcb->lock);
     
     global->tcb_lookup[fd] = new_tcb;
     return new_tcb;

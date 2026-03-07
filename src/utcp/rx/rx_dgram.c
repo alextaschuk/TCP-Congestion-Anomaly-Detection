@@ -56,8 +56,8 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &from.sin_addr, ip_str, sizeof(ip_str));
     
-    LOG_INFO("Received a packet from %s:%d\n", ip_str, ntohs(from.sin_port));
-    print_segment(buf, rcvsize, 1);
+    LOG_INFO("[rcv_dgram] Received a packet from %s:%d", ip_str, ntohs(from.sin_port));
+    log_segment(buf, rcvsize, 1, "[rcv_dgram] Received segment:");
 
     // deserialize & demux the packet
     deserialize_utcp_packet(buf, rcvsize, &hdr, &data, &data_len);
@@ -67,6 +67,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     uint16_t remote_udp_port = ntohs(from.sin_port);
 
     tcb_t *target_tcb = demux_tcb(global, local_utcp_port, remote_ip, remote_udp_port);
+    //LOG_INFO("[rcv_dgram] Variables before handling packet: \nrcv_wnd: %u \ncwnd: %u \nssthresh: %u \ndupacks: %u \nrto: %u", target_tcb->rcv_wnd, target_tcb->snd_cwnd, target_tcb->snd_ssthresh, target_tcb->dupacks, target_tcb->rto);
 
     if (target_tcb == NULL)
     {
@@ -107,7 +108,8 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
         default:
             LOG_ERROR("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
     }
-
+    
+    //LOG_INFO("[rcv_dgram] Variables after handling packet: \nrcv_wnd: %u \ncwnd: %u \nssthresh: %u \ndupacks: %u \nrto: %u", target_tcb->rcv_wnd, target_tcb->snd_cwnd, target_tcb->snd_ssthresh, target_tcb->dupacks, target_tcb->rto);
     free(buf);
     return rcvsize;
 }

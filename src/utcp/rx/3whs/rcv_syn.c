@@ -38,8 +38,8 @@ void rcv_syn(
         uint16_t dest_udp_port = ntohs(from.sin_port);
         uint16_t src_utcp_port = listen_tcb->fourtuple.source_port;
         
-        // create a new TCB for the incoming connection request
-        LOG_INFO("[rcv_syn] Received valid SYN. Spawning new TCB...\n");
+        /* create a new TCB for the incoming connection request */
+        LOG_INFO("[rcv_syn] Received valid SYN. Spawning new TCB...");
         tcb_t *new_tcb = alloc_new_tcb();
 
         // would be better to write this check in its own function so that it doesn't remove the existing
@@ -47,7 +47,7 @@ void rcv_syn(
         pthread_mutex_lock(&listen_tcb->syn_q.lock);
         if (remove_from_syn_queue(&listen_tcb->syn_q, dest_ip, dest_utcp_port) != NULL)
         {
-            LOG_INFO("Incoming request is already in SYN queue; ignoring this packet\n");
+            LOG_WARN("Incoming request is already in SYN queue; ignoring this packet");
             return;
         }
         pthread_mutex_unlock(&listen_tcb->syn_q.lock);
@@ -75,17 +75,18 @@ void rcv_syn(
 
         if (has_ts_opt)
         {
+            uint32_t old_ts_val = new_tcb->ts_rcv_val;
             new_tcb->ts_rcv_val = ts_val;
+            LOG_INFO("[rcv_syn] Updated ts_rcv_val from %u to %u", old_ts_val, new_tcb->ts_rcv_val);
         }
 
-        LOG_INFO("new TCB:\n");
-        print_tcb(new_tcb);
+        log_tcb(new_tcb, "[rcv_sny] New TCB:");
 
         // add the new TCB to the SYN queue
         pthread_mutex_lock(&listen_tcb->syn_q.lock);
         enqueue_tcb(new_tcb, &listen_tcb->syn_q);
         pthread_mutex_unlock(&listen_tcb->syn_q.lock);
         
-        LOG_INFO("[rcv_syn] Sending SYN-ACK\n");
+        LOG_INFO("[rcv_syn] Sending SYN-ACK");
         send_dgram(new_tcb, udp_fd, NULL, 0, TH_SYN | TH_ACK);
 }

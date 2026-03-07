@@ -30,7 +30,7 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
         }
 
         if (opt_len < 2)
-            err_data("[find_timestamps] Malformed options: cutt off before length byte");
+            err_data("[find_timestamps] Malformed options: cut off before length byte");
 
         /* check for multi-byte options that have length & value bytes*/
         uint8_t opt_size = opt_ptr[1];
@@ -63,7 +63,7 @@ bool find_timestamps(struct tcphdr *hdr, uint32_t *ts_val, uint32_t *ts_ecr)
 
                 *ts_val = ntohl(raw_val);
                 *ts_ecr = ntohl(raw_ecr);
-                LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u");
+                LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u", ntohl(raw_val), ntohl(raw_ecr));
 
                 return true;
                 }

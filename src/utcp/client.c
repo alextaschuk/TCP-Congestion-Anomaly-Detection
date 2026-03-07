@@ -65,21 +65,20 @@ static void init_hndshk(void *arg)
 
     ring_buf_init(&tcb->rx_buf);
     ring_buf_init(&tcb->tx_buf);
+    printf("intialized ring buffers");
 
     /* 3WHS */
     int SYN_dgram = send_dgram(tcb, args->udp_fd, NULL, 0, TH_SYN);
     update_fsm(args->utcp_fd, SYN_SENT);
     ssize_t ACK_dgram = rcv_dgram(args->udp_fd, BUF_SIZE);
 
-    print_tcb(tcb);
+    log_tcb(tcb, "[init_hndshk] TCB for new connection:");
 }
 
 
 void* begin_rcv(void *arg)
 {
-    current_thread_cat = "receive_thread";
     LOG_INFO("[begin_rcv] Receive thread running...");
-    //printf("[begin_rcv] Receive thread running...\n");
 
     socket_fds *args = (socket_fds*)arg;
 
@@ -102,10 +101,9 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     tcb_t *new_tcb = alloc_new_tcb();
     int utcp_fd = new_tcb->fd;
     new_tcb->src_udp_port = udp_fd;
-    
-    pthread_mutex_init(&new_tcb->lock, NULL);
-    pthread_cond_init(&new_tcb->conn_cond, NULL);
 
+    LOG_INFO("[utcp_connect] Locking the TCB...");
+    pthread_mutex_lock(&new_tcb->lock);
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
     new_tcb->fourtuple.source_ip   = htonl(INADDR_LOOPBACK);
@@ -120,19 +118,17 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     new_tcb->snd_nxt = new_tcb->iss;
     new_tcb->rcv_wnd = BUF_SIZE - 1; // reserve 1 byte for flow control
 
-    printf("[utcp_connect] Sending SYN packet...\n");
+    LOG_INFO("[utcp_connect] Sending SYN packet...");
     int SYN_dgram = send_dgram(new_tcb, udp_fd, NULL, 0, TH_SYN);
+
     update_fsm(utcp_fd, SYN_SENT);
 
-    // block and wait for SYN-ACK
-    pthread_mutex_lock(&new_tcb->lock);
-
-    while (new_tcb->fsm_state != ESTABLISHED)
+    while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
         pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);
 
+    LOG_INFO("[utcp_connect] Unlocking the TCB...");
     pthread_mutex_unlock(&new_tcb->lock);
 
-    printf("[utcp_connect] 3WHS complete.\n");
     return utcp_fd;
 }
 
@@ -141,21 +137,26 @@ static int spawn_threads(socket_fds *args)
     pthread_t rcv_thread;
     pthread_t ticker_thread;
 
-    printf("[spawn_threads] Spawning receiver thread...\n");
+    LOG_INFO("[spawn_threads] Spawning receiver thread...");
     if (pthread_create(&rcv_thread, NULL, begin_rcv, args) != 0)
     {
-        printf("[spawn_threads] Failed to create receiver thread\n");
+        LOG_FATAL("[spawn_threads] Failed to create receiver thread");
         return -1;
     }
+    pthread_detach(rcv_thread);
 
-    printf("[spawn_threads] Spawning ticker thread...\n");
+
+    LOG_INFO("[spawn_threads] Spawning ticker thread...");
     if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
     {
-        printf("[spawn_threads] Failed to create ticker thread\n");
+        LOG_FATAL("[spawn_threads] Failed to create ticker thread");
         return -1;
     }
+    pthread_detach(ticker_thread);
+
     return 0;
 }
+
 
 int main(void) {
     api_t *global = api_instance();
@@ -181,20 +182,35 @@ int main(void) {
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
 
-    // pretend to be the client
+    // pretend to be a client app
+    LOG_INFO("[Client App] connecting to server via utcp_connect()");
     args->utcp_fd = utcp_connect(args->udp_fd, &server);
     if (args->utcp_fd < 0)
-        err_sock(args->udp_fd, "[Client, main thread] Failed to connect");
+        err_sock(args->udp_fd, "[Client] Failed to connect");
+    
+    LOG_INFO("[utcp_connect] 3WHS complete.");
 
+    printf("UTCPFD %u", args->utcp_fd);
     tcb_t *tcb = get_tcb(args->utcp_fd);
 
-    while(1)
+    uint8_t buf[BUF_SIZE];
+    ssize_t total_received = 0;
+
+    while(total_received <= BUF_SIZE - 1)
     {
-        ssize_t rcvsize = rcv_dgram(args->udp_fd, BUF_SIZE);
+        ssize_t rcvsize = utcp_recv(args->utcp_fd, buf, sizeof(buf));
         if (rcvsize < 0)
             err_sys("[Server, listen thread] Error receiving packet");
+        else if (rcvsize > 0) 
+        {
+            size_t safe_len = (rcvsize < sizeof(buf)) ? rcvsize : sizeof(buf) - 1;
+            buf[safe_len] = '\0'; 
+            total_received += rcvsize;
+            
+            LOG_INFO("[Client App] Received %zd bytes: %s", rcvsize, buf);
+        }
     }
-    
-    free(args);
+
+    free(args); // unreachable
     return 0;
 }
