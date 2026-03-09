@@ -21,15 +21,20 @@ void rcv_syn_ack(
     if (data_len > 0) // we won't be using TCP Fast Open
         err_data("[rcv_syn_ack] ACK contains non-header data");
 
-    pthread_mutex_lock(&tcb->lock);
+    //LOG_DEBUG("[rcv_syn_ack] Locking the TCB with fd=%i to update it using the SYN-ACK segment...", tcb->fd);
+    //pthread_mutex_lock(&tcb->lock);
     
     if (hdr->th_ack != tcb->snd_nxt)
-        err_data("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
+    {
+        LOG_ERROR("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
+        return;
+    }
 
     tcb->irs = hdr->th_seq;
     tcb->snd_una = hdr->th_ack;
     tcb->rcv_nxt = hdr->th_seq + 1;
     tcb->rcv_wnd = hdr->th_win;
+    tcb->fsm_state = ESTABLISHED;
 
     pause_timer(tcb, TCPT_REXMT);
     LOG_INFO("[rcv_syn_ack] Client received SYN-ACK. REXMT timer paused.\n");
@@ -45,10 +50,16 @@ void rcv_syn_ack(
         tcb->ts_rcv_val = ts_val;
     }
 
-    tcb->fsm_state = ESTABLISHED;
-    
-    send_dgram(tcb, udp_fd, NULL, 0, TH_ACK); // TODO: allow client to add payload to final ACK
+    // stop the retransmission timer
+    tcb->t_timer[TCPT_REXMT] = 0;
+    tcb->rxtshift = 0;
 
+    tcb->t_flags |= F_ACKNOW;
+    
+    LOG_DEBUG("[rcv_syn_ack] Sending ACK for SYN-ACK...");
+    send_dgram(tcb);
+    
+    LOG_DEBUG("[rcv_syn_ack] Finished updating the TCB with fd=%i using SYN-ACK segment. Waking up thread blocking in utcp_connect...", tcb->fd);
     pthread_cond_signal(&tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
-    pthread_mutex_unlock(&tcb->lock);
+    //pthread_mutex_unlock(&tcb->lock);
 }

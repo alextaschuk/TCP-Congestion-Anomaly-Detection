@@ -28,6 +28,7 @@ configure_file(zlog_server.conf ${CMAKE_CURRENT_BINARY_DIR}/zlog_server.conf COP
 
 add_executable(client_app src/utcp/client.c ${COMMON_SRCS})
 add_executable(server_app src/utcp/server.c ${COMMON_SRCS})
+#add_executable(server_app src/app/server_application.c ${COMMON_SRCS})
 
 # link zlog so that the compiler knows where it is
 target_link_libraries(client_app PRIVATE zlog)

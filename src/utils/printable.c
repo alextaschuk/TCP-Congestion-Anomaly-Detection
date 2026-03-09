@@ -153,11 +153,12 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
         }
     }
 
-    /* 4. Append payload characters directly to the buffer */
+    /* print payload characters */
     if (payload_len > 0 && payload != NULL)
     {
         offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\tPayload Data\t : ");
-        size_t display_len = (payload_len > 64) ? 64 : payload_len;
+        //size_t display_len = (payload_len > 64) ? 64 : payload_len;
+        size_t display_len = payload_len;
         
         for (size_t i = 0; i < display_len; i++) 
         {
@@ -169,17 +170,15 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
             }
         }
     
-        if (payload_len > 64) {
-            offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, " [... truncated ...]");
-        }
+        //if (payload_len > 64) {
+        //    offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, " [... truncated ...]");
+        //}
         offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\n");
     }
 
     offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "--------------------------------------------\n");
 
-    /* 5. Execute a single log call */
     LOG_INFO("%s", log_buf);
-
     free(local_buf);
 }
 
@@ -202,6 +201,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\t\tsrc IP            : %s\n"
         "\t\tdest (UTCP) port  : %u\n"
         "\t\tdest IP           : %s\n"
+        "\tsrc_udp_port        : %u\n"
         "\tdest_udp_port       : %u\n"
         "\tfsm_state           : %s\n"
         "\tUTCP file descriptor: %u\n"
@@ -231,6 +231,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->fourtuple.dest_port,
         dest_ip,
         
+        tcb->src_udp_port,
         tcb->dest_udp_port,
         fsm_state_to_str(tcb->fsm_state),
         tcb->fd,

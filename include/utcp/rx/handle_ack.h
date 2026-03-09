@@ -16,6 +16,6 @@
  * @param *tcb The receiving UDP socket's FD.
  * @param *hdr The received TCP header.
  */
-void handle_ack(tcb_t *tcb, struct tcphdr *hdr);
+void handle_ack(tcb_t *tcb, struct tcphdr *hdr, ssize_t data_len);
 
 #endif

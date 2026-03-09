@@ -15,6 +15,7 @@ tcb_t* demux_tcb(
 {
     tcb_t *listen_tcb = NULL;
 
+    pthread_mutex_lock(&global->lookup_lock);
     /* look for a matching TCB that has an ESTABLISHED state */
     for (int i = 0; i < MAX_CONNECTIONS; i++)
     {
@@ -27,13 +28,12 @@ tcb_t* demux_tcb(
         uint32_t remote_ip = tcb->fourtuple.dest_ip;
         uint16_t remote_udp_port = tcb->dest_udp_port;
 
-        if
-        ( // check 4-tuple 
-            local_utcp_port == dest_utcp_port &&
-            remote_ip == src_ip &&
-            remote_udp_port == src_udp_port
-        )
+        // check 4-tuple 
+        if (local_utcp_port == dest_utcp_port && remote_ip == src_ip && remote_udp_port == src_udp_port)
+        {
+            pthread_mutex_unlock(&global->lookup_lock);
             return tcb;
+        }
 
         // we will return listener TCB to server if state isn't ESTABLISHED or SYN-RECEIVED
         if (local_utcp_port == dest_utcp_port && tcb->fsm_state == LISTEN)
@@ -64,16 +64,20 @@ tcb_t* demux_tcb(
             if (client_ip == src_ip && client_udp_port == src_udp_port)
             {
                 //LOG_INFO("[demux_tcb] Found a TCB with a half-open connection");
+                pthread_mutex_unlock(&global->lookup_lock);
                 pthread_mutex_unlock(&listen_tcb->syn_q.lock);
                 return syn_tcb;
             }
         }
+
+        pthread_mutex_unlock(&global->lookup_lock);
         pthread_mutex_unlock(&listen_tcb->syn_q.lock);
         
         //LOG_INFO("[demux_tcb] No TCB found; will handle incoming connection (SYN) request...");
         return listen_tcb;
     }
 
+    pthread_mutex_unlock(&global->lookup_lock);
     LOG_WARN("[demux_tcb] No TCB found, nor listen socket found.");
     return NULL; 
 }

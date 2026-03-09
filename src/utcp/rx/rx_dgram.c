@@ -38,6 +38,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     if (!buf)
         err_sys("[rcv_dgram] Failed to allocate receive buffer\n");
 
+    for(;;){
     rcvsize = recvfrom(udp_fd, buf, (size_t)buflen, 0, (struct sockaddr *)&from, &fromlen);
 
     if (rcvsize < 0)
@@ -67,8 +68,6 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     uint16_t remote_udp_port = ntohs(from.sin_port);
 
     tcb_t *target_tcb = demux_tcb(global, local_utcp_port, remote_ip, remote_udp_port);
-    //LOG_INFO("[rcv_dgram] Variables before handling packet: \nrcv_wnd: %u \ncwnd: %u \nssthresh: %u \ndupacks: %u \nrto: %u", target_tcb->rcv_wnd, target_tcb->snd_cwnd, target_tcb->snd_ssthresh, target_tcb->dupacks, target_tcb->rto);
-
     if (target_tcb == NULL)
     {
         LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.\n", local_utcp_port);
@@ -76,25 +75,30 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
         return rcvsize;
     }
 
-    target_tcb->snd_wnd = hdr->th_win;
+    LOG_DEBUG("[rcv_dgram] Locking the TCB while the received segment is handeled.");
+    pthread_mutex_lock(&target_tcb->lock);
+
+    //uint32_t old_snd_wnd = target_tcb->snd_wnd;
+    //target_tcb->snd_wnd = hdr->th_win;
+    //LOG_DEBUG("[rcv_dgram] snd_wnd updated from %u to %u", old_snd_wnd, target_tcb->snd_wnd);
 
     switch (target_tcb->fsm_state)
     {
-        case LISTEN:
-            if ((hdr->th_flags & TH_SYN) != 0)
+        case LISTEN: // waiting for incoming SYN; sends SYN-ACK
+            if (hdr->th_flags & TH_SYN)
                 rcv_syn(target_tcb, udp_fd, hdr, data_len, from);
             else
                 LOG_ERROR("[rcv_syn] Expected SYN flag, but none was found");
             break;
 
-        case SYN_SENT:
+        case SYN_SENT: // waiting for incoming SYN-ACK; sends ACK
             if ((hdr->th_flags & TH_SYN) && (hdr->th_flags & TH_ACK))
                 rcv_syn_ack(target_tcb, udp_fd, hdr, data_len);
             else
                 LOG_ERROR("[rcv_syn_ack] Missing SYN and/or ACK flag(s) for SYN-ACK");
             break;
 
-        case SYN_RECEIVED:
+        case SYN_RECEIVED: // waiting for ACK; start sending data
             if (hdr->th_flags & TH_ACK)
                 rcv_3whs_ack(target_tcb, hdr, from);
             else
@@ -109,7 +113,10 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
             LOG_ERROR("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
     }
     
-    //LOG_INFO("[rcv_dgram] Variables after handling packet: \nrcv_wnd: %u \ncwnd: %u \nssthresh: %u \ndupacks: %u \nrto: %u", target_tcb->rcv_wnd, target_tcb->snd_cwnd, target_tcb->snd_ssthresh, target_tcb->dupacks, target_tcb->rto);
+    LOG_DEBUG("[rcv_dgram] Unlocking the TCB.");
+    pthread_mutex_unlock(&target_tcb->lock);
+}
+
     free(buf);
     return rcvsize;
 }

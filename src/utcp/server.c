@@ -21,13 +21,12 @@
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
-#include <utcp/api/ring_buffer.h>
 #include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
 
 #include <zlog.h>
-
+#define CHUNK_SIZE 65536 // 64KB
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
@@ -38,16 +37,18 @@ tcb_t *active_tcbs[MAX_CONNECTIONS]; // global array of TCBs w/ ESTABLISHED stat
 
 static void init_server(socket_fds *args, api_t *global)
 {
+    args->udp_fd = bind_udp_sock(global->server_port);
+    global->udp_fd = args->udp_fd;
+
     struct sockaddr_in server = {
     .sin_family = AF_INET,
     .sin_port = htons(global->server_utcp_port),
     .sin_addr.s_addr = inet_addr("127.0.0.1"),
     };
 
-    args->udp_fd = bind_UDP_sock(global->server_port);
-    args->utcp_fd = bind_UTCP_sock(&server);
+    args->utcp_fd = bind_utcp_sock(&server);
 
-    LOG_INFO("[init_server] UDP & UTCP Sockets Initialized. UDP FD: %u,  Listen UTCP FD: %u", args->udp_fd, args->utcp_fd);
+    LOG_INFO("[init_server] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
 }
 
 
@@ -55,13 +56,14 @@ void* utcp_listen_thread(void *arg)
 {
     current_thread_cat = "listen_thread";
     LOG_INFO("[utcp_listen_thread] Listen thread running...");
+
     socket_fds *args = (socket_fds*)arg;
 
     while (1)
     {
         ssize_t rcvsize = rcv_dgram(args->udp_fd, BUF_SIZE);
         if (rcvsize < 0)
-            err_sys("[Server, listen thread] Error receiving packet");
+            err_sys("[Server, listen thread] Error receiving packet\n");
     }
     return 0;
 }
@@ -83,7 +85,7 @@ int utcp_listen(int utcp_fd, int backlog)
     tcb->syn_q.tcbs = calloc(backlog, sizeof(tcb_t*));
 
     if (!tcb->syn_q.tcbs)
-        err_sys("[utcp_listen] Failed to allocate the SYN queue");
+        err_sys("[utcp_listen] Failed to allocate the SYN queue\n");
 
     pthread_mutex_init(&tcb->syn_q.lock, NULL);
     tcb->syn_q.backlog = backlog;
@@ -95,7 +97,7 @@ int utcp_listen(int utcp_fd, int backlog)
     if (!tcb->accept_q.tcbs)
     {
         free(tcb->syn_q.tcbs);
-        err_sys("[utcp_listen] Failed to allocate the accept queue");
+        err_sys("[utcp_listen] Failed to allocate the accept queue\n");
     }
     
     pthread_mutex_init(&tcb->accept_q.lock, NULL);
@@ -108,17 +110,17 @@ int utcp_listen(int utcp_fd, int backlog)
 }
 
 
-int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
+int utcp_accept(socket_fds *args, struct sockaddr_in *client_addr)
 {
-
+    tcb_t *listen_tcb = get_tcb(args->utcp_fd);
     if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
     {
-        err_sock(listen_tcb->src_udp_port, "[utcp_accept] Invalid socket");
+        err_sock(listen_tcb->src_udp_fd, "[utcp_accept] Invalid listen socket\n");
         return -1;
     }
 
-    LOG_INFO("[utcp_accept] Locking the accept queue");
     pthread_mutex_lock(&listen_tcb->accept_q.lock);
+    LOG_DEBUG("[utcp_accept] Locked the accept queue and blocking until a connection is added.");
     
     // block until the queue is not empty (TCB added via rx_dgram())
     while (listen_tcb->accept_q.count == 0)
@@ -129,7 +131,7 @@ int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
 
-    LOG_INFO("[utcp_accept] Unlocking the accept queue");
+    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...\n");
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     // populate the client info so the app knows who is connected
@@ -140,9 +142,7 @@ int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr)
         client_addr->sin_port = htons(established_tcb->dest_udp_port);
     }
 
-    // initialize the RX and TX buffers
-    ring_buf_init(&established_tcb->rx_buf);
-    ring_buf_init(&established_tcb->tx_buf);
+    established_tcb->src_udp_fd = args->udp_fd;
 
     return established_tcb->fd;
 }
@@ -153,24 +153,25 @@ static int spawn_threads(socket_fds *args)
     pthread_t listen_thread;
     pthread_t ticker_thread;
 
-    LOG_INFO("[spawn_threads] Spawning listener thread...");
+    LOG_INFO("[spawn_threads] Spawning listener thread...\n");
     if (pthread_create(&listen_thread, NULL, utcp_listen_thread, args) != 0)
     {
-        LOG_ERROR("[spawn_threads] Failed to create listener thread");
+        LOG_ERROR("[spawn_threads] Failed to create listener thread\n");
         return -1;
     }
 
     LOG_INFO("[spawn_threads] Spawning ticker thread...");
     if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
     {
-        LOG_INFO("[spawn_threads] Failed to create ticker thread");
+        LOG_INFO("[spawn_threads] Failed to create ticker thread\n");
         return -1;
     }
     return 0;
 }
 
 
-int main(void) {
+int main(void)
+{
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -181,6 +182,7 @@ int main(void) {
         err_sys("[Server, main] Failed to allocate args");
 
     init_server(args, global);
+    LOG_DEBUG("[MAIN] args after init: %d, %d", args->udp_fd, args->utcp_fd);
 
     if (utcp_listen(args->utcp_fd, MAX_BACKLOG) != 0)
         err_sys("[Server, main] Error in utcp_listen");
@@ -190,33 +192,50 @@ int main(void) {
 
     tcb_t *listen_tcb = get_tcb(args->utcp_fd);
 
+    pthread_mutex_lock(&listen_tcb->lock);
+    listen_tcb->src_udp_fd = args->udp_fd;
+    pthread_mutex_unlock(&listen_tcb->lock);
+
     struct sockaddr_in client_info;
-    int new_conn_fd = utcp_accept(listen_tcb, &client_info);
-    tcb_t *new_tcb = get_tcb(new_conn_fd);
-    new_tcb->src_udp_port = args->udp_fd;
-    while(1) 
-    { // main thread -- pretend to be the application
-        if(new_tcb->fsm_state == ESTABLISHED)
-        {
-        //char *words = "This is a test payload from the server";
-        char *words = "Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. \nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos. \nLorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.";
-        size_t total_len = strlen(words);
-        size_t total_sent = 0;
+    int new_utcp_fd = utcp_accept(args, &client_info);
+    tcb_t *new_tcb = get_tcb(new_utcp_fd);
 
-        size_t written = utcp_send(new_tcb, args->udp_fd, words, total_len);
-        LOG_INFO("[main] Sent a test packet of data to the server with a payload size of %zu bytes", written);
+    pthread_mutex_lock(&new_tcb->lock);
+    new_tcb->src_udp_fd = args->udp_fd;
+    pthread_mutex_unlock(&new_tcb->lock);
 
-        if (written < 0)
+    LOG_INFO("[Server App] opening tgg.txt...");
+
+    //FILE *fp = fopen("/Users/alex/Desktop/directed-study/jungle_book.txt", "rb"); // rb to prevent OS from changing newline characters
+    FILE *fp = fopen("/Users/alex/Desktop/directed-study/tgg.txt", "rb"); // rb to prevent OS from changing newline characters
+    if (!fp)
+        err_sys("[Server App] Failed to open text file");
+            
+    uint8_t *snd_buf = malloc(BUF_SIZE);
+    size_t bytes_read = 0;
+    size_t total_file_bytes = 0;
+
+    //while ((bytes_read = fread(snd_buf, 1, sizeof(snd_buf), fp)) > 0) 
+    while((bytes_read = fread(snd_buf, 1, CHUNK_SIZE, fp)) > 0)
+    {
+        ssize_t sent = utcp_send(new_utcp_fd, args->udp_fd, snd_buf, bytes_read);
+        if (sent < 0)
         {
-            LOG_ERROR("[main] Connection closed or error occured during send.");
+            LOG_ERROR("[Server App] Connection dropped during file transfer.");
             break;
         }
-        total_sent += written;
 
-        LOG_INFO("Sent %zd bytes. Total sent so far: %zu / %zu", written, total_sent, total_len);
-        sleep(2);
-        }
+        total_file_bytes += sent;
     }
-    free(args); // unreachable
-    return 0;
+        // Wait for the background thread to finish draining the TX buffer before exiting!
+        tcb_t *active_tcb = get_tcb(new_utcp_fd);
+        while(active_tcb->tx_head > 0)
+            usleep(100000);
+        sleep(5); // Wait for final ACKs
+
+        fclose(fp);
+        LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
+
+        free(args);
+        return 0;
 }

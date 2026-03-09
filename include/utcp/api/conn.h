@@ -14,15 +14,15 @@ else.
 
 
 /**
- * @brief create and return a socket descriptor for 
- * an Internet datagram socket using UDP.
+ * @brief An application-side function to bind a UDP socket.
  * 
- * @param pts (port to set), the client passes in the 
- * client_port, and the server passes in the server_port variable
- * to dynamically set the values to the port that the kernel
- * chooses. If we hardcode the port, this value is not needed.
+ * This creates and returns a socket descriptor for an Internet datagram socket using UDP.
+ * 
+ * @param pts (port to set), the port that the app wants to bind a UDP socket to passes in the 
+ * 
+ * - If we hardcode the port, this value is not needed.
  */
-int bind_UDP_sock(int pts);
+int bind_udp_sock(int pts);
 
 /**
  * @brief We need to manually manage a `bind()` function
@@ -34,12 +34,12 @@ int bind_UDP_sock(int pts);
  * @return `int fd` on success, the UTCP socket's "file descriptor". I.e.,
  *  the newly created `tcb_t` struct is stored at `tcb_lookup[fd]`.
  */
-int bind_UTCP_sock(struct sockaddr_in *addr);
+int bind_utcp_sock(struct sockaddr_in *addr);
 
 /**
  * @brief Used in `utcp_accept()` function when a client wants to initiate a 3WHS.
  * 
- * This function is identical to `bind_UTCP_sock()`, except for 3 things:
+ * This function is identical to `bind_utcp_sock()`, except for 3 things:
  * 
  * 1. It doesn't set the newly-allocated TCB's source UTCP port or source IP. 
  * 

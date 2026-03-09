@@ -62,12 +62,12 @@ int utcp_listen(int utcp_fd, int backlog);
  * @brief An application-side function that is called when the app wants to accept
  * a connection request that is sitting in the accept queue.
  * 
- * @param listen_tcb The listening socket's TCB.
+ * @param *args Contains the listening socket's UDP and UTCP FDs.
  * @param *client_addr The client's info will be stored in here.
  * 
  * @returns `-1` for invalid socket, or `int fd`, a UTCP fd, on success.
  */
-int utcp_accept(tcb_t *listen_tcb, struct sockaddr_in *client_addr);
+int utcp_accept(socket_fds *args, struct sockaddr_in *client_addr);
 
 /**
  * Spawns the server's listen thread and ticker thread.

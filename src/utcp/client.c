@@ -17,7 +17,6 @@
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
-#include <utcp/api/ring_buffer.h>
 #include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 
@@ -26,58 +25,10 @@
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
-static void init_client(void *arg, api_t *global)
-{
-    socket_fds *args = (socket_fds*)arg;
-
-    // TODO move these structs to globals
-    struct sockaddr_in client = {
-    .sin_family = AF_INET,
-    .sin_port = htons(global->client_utcp_port),
-    .sin_addr.s_addr = inet_addr("127.0.0.1"),
-    };
-
-    struct sockaddr_in server = {
-    .sin_family = AF_INET,
-    .sin_port = htons(global->server_utcp_port),
-    .sin_addr.s_addr = inet_addr("127.0.0.1"),
-    };
-
-    args->udp_fd = bind_UDP_sock(global->client_port);
-    args->utcp_fd = bind_UTCP_sock(&client);
-
-    tcb_t *tcb = get_tcb(args->utcp_fd);
-    tcb->fourtuple.dest_port = ntohs(server.sin_port); //dest UTCP port
-    tcb->fourtuple.dest_ip = ntohl(server.sin_addr.s_addr); // dest IP
-    tcb->dest_udp_port = 4567; // dest UDP port number
-    
-    tcb->iss = 100; // will be randomly chosen in future
-    tcb->snd_una = tcb->iss; // hasn't been ack'd b/c SYN not yet sent
-    tcb->snd_nxt = tcb->iss;
-}
-
-
-static void init_hndshk(void *arg)
-{
-    /* Create and configure TCP header */
-    socket_fds *args = (socket_fds*)arg;
-    tcb_t *tcb = get_tcb(args->utcp_fd);
-
-    ring_buf_init(&tcb->rx_buf);
-    ring_buf_init(&tcb->tx_buf);
-    printf("intialized ring buffers");
-
-    /* 3WHS */
-    int SYN_dgram = send_dgram(tcb, args->udp_fd, NULL, 0, TH_SYN);
-    update_fsm(args->utcp_fd, SYN_SENT);
-    ssize_t ACK_dgram = rcv_dgram(args->udp_fd, BUF_SIZE);
-
-    log_tcb(tcb, "[init_hndshk] TCB for new connection:");
-}
-
 
 void* begin_rcv(void *arg)
 {
+    current_thread_cat = "receive_thread";
     LOG_INFO("[begin_rcv] Receive thread running...");
 
     socket_fds *args = (socket_fds*)arg;
@@ -97,13 +48,15 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
 {
     api_t *global = api_instance();
 
-    /* create a new TCB for the client's connection request */
-    tcb_t *new_tcb = alloc_new_tcb();
-    int utcp_fd = new_tcb->fd;
-    new_tcb->src_udp_port = udp_fd;
+    LOG_INFO("[utcp_connect] Creating a new TCB for the application's connection request...");
 
-    LOG_INFO("[utcp_connect] Locking the TCB...");
+    tcb_t *new_tcb = alloc_new_tcb();
+
     pthread_mutex_lock(&new_tcb->lock);
+    LOG_INFO("[utcp_connect] Locked the TCB...");
+    int utcp_fd = new_tcb->fd;
+    new_tcb->src_udp_fd = udp_fd;
+
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
     new_tcb->fourtuple.source_ip   = htonl(INADDR_LOOPBACK);
@@ -111,23 +64,25 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     new_tcb->dest_udp_port         = 4567;
 
-    ring_buf_init(&new_tcb->rx_buf);
-    ring_buf_init(&new_tcb->tx_buf);
     new_tcb->iss = 100;
     new_tcb->snd_una = new_tcb->iss;
     new_tcb->snd_nxt = new_tcb->iss;
-    new_tcb->rcv_wnd = BUF_SIZE - 1; // reserve 1 byte for flow control
-
-    LOG_INFO("[utcp_connect] Sending SYN packet...");
-    int SYN_dgram = send_dgram(new_tcb, udp_fd, NULL, 0, TH_SYN);
-
+    new_tcb->snd_max = new_tcb->iss;
+    new_tcb->rcv_wnd = BUF_SIZE;
     update_fsm(utcp_fd, SYN_SENT);
+
+    log_tcb(new_tcb, "[utcp_connect] Finished initializing variables for the new TCB:");
+
+    LOG_INFO("[utcp_connect] Sending SYN for UTCP FD %i...", utcp_fd);
+    int SYN_dgram = send_dgram(new_tcb);
 
     while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
         pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);
 
     LOG_INFO("[utcp_connect] Unlocking the TCB...");
     pthread_mutex_unlock(&new_tcb->lock);
+
+    LOG_INFO("[utcp_connect] 3WHS is complete.");
 
     return utcp_fd;
 }
@@ -169,7 +124,8 @@ int main(void) {
         err_sys("[Client, main] Failed to allocate args");
 
 
-    args->udp_fd = bind_UDP_sock(global->client_port);
+    args->udp_fd = bind_udp_sock(global->client_port);
+    global->udp_fd = args->udp_fd;
 
     if(spawn_threads(args) != 0)
     {
@@ -191,27 +147,66 @@ int main(void) {
     
     LOG_INFO("[utcp_connect] 3WHS complete.");
 
-    tcb_t *tcb = get_tcb(args->utcp_fd);
+    //tcb_t *tcb = get_tcb(args->utcp_fd);
 
-    uint8_t buf[BUF_SIZE];
-    ssize_t total_received = 0;
+    LOG_INFO("[Client App] Opening 'tgg_rcvd.txt'...");
+    //FILE *fp = fopen("/Users/alex/Desktop/directed-study/jungle_book_rcvd.txt", "wb"); // wb to ensure it's an exact copy
 
-    while(1)
+    FILE *tgg = fopen("/Users/alex/Desktop/directed-study/tgg.txt", "rb");
+    long file_size_bytes = -1;
+    if (fseek(tgg, 0L, SEEK_END) == 0) { // Move to the end
+        file_size_bytes = ftell(tgg); // Get the position, which is the size
+
+        LOG_INFO("[CLIENT] size of tgg: %ld", file_size_bytes);
+
+        if (file_size_bytes == -1L)
+            perror("Error getting file position");
+    }
+
+    if (fclose(tgg) != 0) {
+        perror("Error closing file");
+    }
+    
+    FILE *fp = fopen("/Users/alex/Desktop/directed-study/tgg_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+    if (!fp) {
+        err_sys("[Client App] Failed to create destination file");
+    }
+
+    uint8_t *app_rcv_buf = malloc(BUF_SIZE + 1);
+    size_t total_received = 0;
+    //#define TARGET_SIZE (10 * 24 *24) // send 10mb total
+
+    while(total_received < file_size_bytes)
     {
-        ssize_t rcvsize = utcp_recv(args->utcp_fd, buf, sizeof(buf));
-        LOG_DEBUG("RECEIVE SIZE: %zu", rcvsize);
-        if (rcvsize < 0)
-            err_sys("[Client, listen thread] Error receiving packet");
-        else if (rcvsize > 0) 
+        ssize_t bytes_rcvd = utcp_recv(args->utcp_fd, app_rcv_buf, BUF_SIZE);
+        
+        if (bytes_rcvd > 0)
         {
-            size_t safe_len = (rcvsize < sizeof(buf)) ? rcvsize : sizeof(buf) - 1;
-            buf[safe_len] = '\0'; 
-            total_received += rcvsize;
-            
-            LOG_INFO("[Client App] Received %zd bytes: %s", rcvsize, buf);
+            fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
+            fflush(fp); // forces the OS to write to the txt file immediately
+            total_received += bytes_rcvd;
+            LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu", bytes_rcvd, total_received);
+        }
+        if (bytes_rcvd < 0) {
+            LOG_ERROR("[Client App] Error receiving data.");
+            break; 
+        }
+        else if (bytes_rcvd == 0) {
+            // This triggers when the server sends a FIN flag
+            LOG_INFO("[Client App] Server gracefully closed the connection.");
+            break;
         }
     }
 
+    tcb_t *active_tcb = get_tcb(args->utcp_fd);
+    while(active_tcb->rx_head > 0)
+        usleep(100000);
+    sleep(2);
+
+    fclose(fp);
+    LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
+
     free(args); // unreachable
+    free(app_rcv_buf);
     return 0;
 }

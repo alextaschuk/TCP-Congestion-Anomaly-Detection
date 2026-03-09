@@ -28,7 +28,7 @@ client will need access to.
  * The number of bytes our `rx` and `tx` buffers can hold
  * @note See https://en.wikipedia.org/wiki/TCP_tuning#Buffers
  */
-#define BUF_SIZE 65535
+#define BUF_SIZE 65536
 
 /**
  * The default Maximum Segment Size value of a TCP segment.
@@ -37,7 +37,7 @@ client will need access to.
 #define MSS 536
 
 /* Congestion Control  Related */
-#define CA_ALGO TAHOE /* Determine which CA algo we use. */
+#define CA_ALGO RENO /* Determine which CA algo we use. */
 //#define TCPT_NTIMERS 4                /* number of counters in `t_timer[]` */
 
  /* Retransmission Timer Stuff */
@@ -69,6 +69,8 @@ typedef struct api_t /* Stores all global vars */
     uint16_t server_port;
     int server_utcp_port;
     char* server_ip;
+
+    int udp_fd;
 
     tcb_t *tcb_lookup[MAX_CONNECTIONS]; /* TCB lookup table. Contains all connections. */
     pthread_mutex_t lookup_lock;        /* Mutex to lock iterating over lookup table. */

@@ -55,21 +55,23 @@ struct tcb_t *get_tcb(int utcp_fd)
 {
     if (utcp_fd < 0 || utcp_fd >= MAX_CONNECTIONS)
     {
-        LOG_WARN("[get_tcb] Invalid lookup table position: %i\n", utcp_fd);
+        LOG_ERROR("[get_tcb] fd=%i is an invalid lookup table position:", utcp_fd);
         return NULL;
     }
 
     api_t *global = api_instance();
+
+    pthread_mutex_lock(&global->lookup_lock);
     tcb_t *tcb = global->tcb_lookup[utcp_fd];
+    pthread_mutex_unlock(&global->lookup_lock);
 
     if (tcb == NULL)
     {
-        LOG_WARN("[get_tcb] TCB with FD %u was not found", utcp_fd);
+        LOG_WARN("[get_tcb] TCB with fd=%u was not found", utcp_fd);
         return NULL;
     }
-        
 
-    LOG_INFO("[get_tcb] Found the TCB you're looking for at FD %u", utcp_fd);
+    //LOG_INFO("[get_tcb] Found the TCB you're looking for at FD %u", utcp_fd);
     return tcb;
 }
 
@@ -78,7 +80,11 @@ void update_fsm(int utcp_fd, enum conn_state state)
 { 
     tcb_t *tcb = get_tcb(utcp_fd);
     if (tcb == NULL)
-        err_sys("[update_fsm]Invalid UTCP socket");
+        LOG_ERROR("[update_fsm] TCB with fd=%i is invalid.", utcp_fd);
     
+    char *old_state = fsm_state_to_str(tcb->fsm_state);
+
     tcb->fsm_state = state;
+
+    LOG_DEBUG("[update_fsm] TCB with fd=%i changed from %s to %s", utcp_fd, old_state, fsm_state_to_str(tcb->fsm_state));
 }

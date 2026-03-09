@@ -45,6 +45,9 @@ void utcp_slowtimo(void)
         if (!tcb)
             continue; 
 
+        //LOG_INFO("[utcp_slowtimo] Locking the TCB lock...");
+        pthread_mutex_lock(&tcb->lock);
+
         for (int timer_idx = 0; timer_idx < TCPT_NTIMERS; timer_idx++) 
         {
             if (tcb->t_timer[timer_idx] > 0) 
@@ -59,6 +62,8 @@ void utcp_slowtimo(void)
                 }
             }
         }
+        //LOG_INFO("[utcp_slowtimo] Unlocking the TCB lock...");
+        pthread_mutex_unlock(&tcb->lock);
     }
 
     //LOG_INFO("[utcp_slowtimo] Unlocking the lookup lock...");
@@ -138,7 +143,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
     //LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
 
     tcb->rto = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
-    LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rto);
+    //LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rto);
 
     /**
      * Enforce bounds (e.g., Min 200ms, Max 60 seconds)
@@ -151,7 +156,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 
 static void handle_rexmt_timeout(tcb_t *tcb)
 {
-    LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u -> %u", tcb->fourtuple.source_port, tcb->fourtuple.dest_port);
+    LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u", tcb->fd);
 
     /* Exponential backoff */
     tcb->rto = tcb->rto * 2; // wait twice as long before trying again
@@ -163,7 +168,7 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     
     LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->snd_cwnd, tcb->snd_ssthresh);
 
-    retransmit_data(tcb);
+    retransmit_data(tcb, tcb->snd_nxt);
 
     int ticks = (tcb->rto + 499) / 500; // restart the timer
     tcb->t_timer[TCPT_REXMT] = ticks;
@@ -172,7 +177,9 @@ static void handle_rexmt_timeout(tcb_t *tcb)
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
     int ticks = (tcb->rto + 499) / 500;
+    LOG_DEBUG("[reset_timer] Resetting the retransmission timer to (rto=%u + 499) ÷ 500 = %d", tcb->rto, ticks);
     tcb->t_timer[timer_idx] = ticks;
+    return ticks;
 }
 
 void pause_timer(tcb_t *tcb, uint8_t timer_idx)

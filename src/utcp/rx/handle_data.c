@@ -21,8 +21,9 @@ void handle_data(
 
     if (seg_seq > tcb->rcv_nxt)
     {
-        LOG_WARN("[handle_data] Out-of-order data (seq=%u expected=%u). Sending dup ACK.\n", seg_seq, tcb->rcv_nxt);
-        send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
+        LOG_WARN("[handle_data] Out-of-order data (seq=%u expected=%u). Sending duplicate ACK.\n", seg_seq, tcb->rcv_nxt);
+        tcb->t_flags |= F_ACKNOW;
+        send_dgram(tcb);
         return;
     }
 
@@ -31,8 +32,9 @@ void handle_data(
         uint32_t overlap = tcb->rcv_nxt - seg_seq;
         if ((size_t)overlap >= (size_t)data_len)
         {
-            LOG_WARN("[handle_data] Fully duplicate retransmission. Sending dup ACK.\n");
-            send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
+            LOG_WARN("[handle_data] Fully duplicate transmission. Ignoring and sending a duplicate ACK.\n");
+            tcb->t_flags |= F_ACKNOW;
+            send_dgram(tcb);
             return;
         }
 
@@ -66,33 +68,51 @@ void handle_data(
 
     if (hdr->th_flags & TH_ACK)
     {
-        handle_ack(tcb, hdr);
+        handle_ack(tcb, hdr, data_len);
     }
 
     if (data_len <= 0)
         return;
 
-    size_t free = ring_buf_free(&tcb->rx_buf);
-    if (free == 0)
+    uint32_t curr_buffered = tcb->rx_tail - tcb->rx_head;
+    uint32_t free_space = BUF_SIZE - curr_buffered;
+    if (free_space == 0)
     {
-        LOG_WARN("[handle_data] rx buffer full, cannot accept data.\n");
-        send_dgram(tcb, udp_fd, NULL, 0, TH_ACK);
+        LOG_WARN("[handle_data] rx buffer full, cannot accept data.");
+        send_dgram(tcb);
         return;
     }
 
-    if ((size_t)data_len > free)
+    if ((uint32_t)data_len > free_space)
     {
-        LOG_WARN("[handle_data] rx buffer limited, truncating payload from %zd to %zu bytes.\n", data_len, free);
-        data_len = (ssize_t)free;
+        LOG_WARN("[handle_data] rx buffer limited, truncating payload from %zd to %u bytes.", data_len, free_space);
+        data_len = (ssize_t)free_space;
     }
 
-    size_t written = ring_buf_write(&tcb->rx_buf, data, (size_t)data_len);
-    LOG_DEBUG("[handle_data] Wrote %zu bytes to the RX buffer for UTCP FD %i", written, tcb->fd);
-    pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
+    if (data_len <= (ssize_t)free_space)
+    { // copy data into RX byte-by-byte
+        uint32_t old_tail = tcb->rx_tail;
 
-    tcb->rcv_nxt += (uint32_t)written;
-    tcb->rcv_wnd = ring_buf_free(&tcb->rx_buf);
+        for(ssize_t i = 0; i < data_len; i++)
+        { // TODO: replace with memcpy
+            tcb->rx_buf[(tcb->rx_tail + i) % BUF_SIZE] = data[i];
+        }
 
-    //LOG_INFO("[handle_data] Received a valid packet, sending ACK... \nNumber of bytes in rx_buf: %zu", ring_buf_used(&tcb->rx_buf));
-    send_dgram(tcb, udp_fd, NULL, 0, TH_ACK); // ACK the received packet
+        tcb->rx_tail += data_len;
+        //tcb->rx_tail = (tcb->rx_tail + data_len) % BUF_SIZE;
+        tcb->rcv_nxt += data_len;
+
+        LOG_DEBUG("[handle_data]IN-ORDER DATA ACCEPTED: recv_buf_tail %u -> %u, rcv_nxt %u -> %u. Waking API threads.",
+                old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
+
+        pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
+
+        tcb->t_flags |= F_ACKNOW;
+    }
+    else
+    {
+        LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
+    }
+
+    send_dgram(tcb); // ACK the received packet
 }

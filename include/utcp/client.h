@@ -19,15 +19,6 @@ extern struct sockaddr_in server_addr;
 
 /* Define functions */
 
-/**
- * @brief Initiate a 3-way handshake with the server.
- * 
- * This function sends a SYN packet, receives and
- * handles a SYN-ACK packet, then responds with an
- * ACK packet.
- */
-static void init_hndshk(void *arg);
-
 void* begin_rcv(void *arg);
 
 /**

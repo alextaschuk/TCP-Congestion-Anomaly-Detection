@@ -26,7 +26,7 @@ typedef struct tcb_queue_t
     int backlog;
     int head;
     int tail;
-    int count;
+    int count; // number of TCBs in the queue.
     pthread_mutex_t lock;
     pthread_cond_t cond;
 } tcb_queue_t;
