@@ -123,14 +123,14 @@ int send_dgram(tcb_t *tcb)
                     LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rto);
                 }
                 
-                LOG_DEBUG("snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
+                LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
             }
 
             force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
 
             if (tcb->snd_nxt > tcb->snd_max) {
                 tcb->snd_max = tcb->snd_nxt;
-                LOG_DEBUG("Advanced snd_max to %u", tcb->snd_max);
+                LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
             }
 
             if (data_len == 0)

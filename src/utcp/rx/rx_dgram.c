@@ -38,7 +38,8 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     if (!buf)
         err_sys("[rcv_dgram] Failed to allocate receive buffer\n");
 
-    for(;;){
+    for(;;)
+    { // continuously listen for incoming packets
     rcvsize = recvfrom(udp_fd, buf, (size_t)buflen, 0, (struct sockaddr *)&from, &fromlen);
 
     if (rcvsize < 0)

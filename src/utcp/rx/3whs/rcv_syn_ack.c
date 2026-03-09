@@ -60,6 +60,6 @@ void rcv_syn_ack(
     send_dgram(tcb);
     
     LOG_DEBUG("[rcv_syn_ack] Finished updating the TCB with fd=%i using SYN-ACK segment. Waking up thread blocking in utcp_connect...", tcb->fd);
-    pthread_cond_signal(&tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
+    pthread_cond_broadcast(&tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
     //pthread_mutex_unlock(&tcb->lock);
 }

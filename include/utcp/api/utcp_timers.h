@@ -87,7 +87,8 @@ static void handle_rexmt_timeout(tcb_t *tcb);
 /**
  * Reset a timer.
  * 
- * @returns The new number of 500ms ticks until the timer times out.
+ * @returns The new number of 500ms ticks until the timer times out. Function assumes that
+ * it has been called  for a TCB with a lock already on it.
  * 
  * @note This currently only works for slow timers (which are decremented every 500ms).
  * In the future, when fast timers (decremented every 200ms) are implemented, the logic in
@@ -98,7 +99,8 @@ static void handle_rexmt_timeout(tcb_t *tcb);
 int reset_timer(tcb_t *tcb, uint8_t timer_idx);
 
 /**
- * Pauses a timer to prevent it from counting down.
+ * Pauses a timer to prevent it from counting down. Function assumes that it has been called 
+ * for a TCB with a lock already on it.
  * 
  * @param *tcb The TCB containing the timer to pause.
  * @param timer_idx The index of the timer in `tcb->t_timer` to be paused.

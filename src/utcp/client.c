@@ -152,7 +152,7 @@ int main(void) {
     LOG_INFO("[Client App] Opening 'tgg_rcvd.txt'...");
     //FILE *fp = fopen("/Users/alex/Desktop/directed-study/jungle_book_rcvd.txt", "wb"); // wb to ensure it's an exact copy
 
-    FILE *tgg = fopen("/Users/alex/Desktop/directed-study/tgg.txt", "rb");
+    FILE *tgg = fopen("/Users/alex/Desktop/directed-study/test_file.txt", "rb");
     long file_size_bytes = -1;
     if (fseek(tgg, 0L, SEEK_END) == 0) { // Move to the end
         file_size_bytes = ftell(tgg); // Get the position, which is the size
@@ -167,7 +167,7 @@ int main(void) {
         perror("Error closing file");
     }
     
-    FILE *fp = fopen("/Users/alex/Desktop/directed-study/tgg_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+    FILE *fp = fopen("/Users/alex/Desktop/directed-study/test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");
     }
@@ -176,15 +176,14 @@ int main(void) {
     size_t total_received = 0;
     //#define TARGET_SIZE (10 * 24 *24) // send 10mb total
 
-    while(total_received < file_size_bytes)
-    {
+    while(total_received < (size_t)file_size_bytes)
+    {   
         ssize_t bytes_rcvd = utcp_recv(args->utcp_fd, app_rcv_buf, BUF_SIZE);
-        
         if (bytes_rcvd > 0)
         {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
-            total_received += bytes_rcvd;
+            total_received += (size_t)bytes_rcvd;
             LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu", bytes_rcvd, total_received);
         }
         if (bytes_rcvd < 0) {
@@ -199,7 +198,7 @@ int main(void) {
     }
 
     tcb_t *active_tcb = get_tcb(args->utcp_fd);
-    while(active_tcb->rx_head > 0)
+    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
         usleep(100000);
     sleep(2);
 

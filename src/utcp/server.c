@@ -207,7 +207,7 @@ int main(void)
     LOG_INFO("[Server App] opening tgg.txt...");
 
     //FILE *fp = fopen("/Users/alex/Desktop/directed-study/jungle_book.txt", "rb"); // rb to prevent OS from changing newline characters
-    FILE *fp = fopen("/Users/alex/Desktop/directed-study/tgg.txt", "rb"); // rb to prevent OS from changing newline characters
+    FILE *fp = fopen("/Users/alex/Desktop/directed-study/test_file.txt", "rb"); // rb to prevent OS from changing newline characters
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             

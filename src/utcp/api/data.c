@@ -44,11 +44,11 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
         {
             LOG_DEBUG("[utcp_send] TX buffer is full for tcb %i. App thread will block until there is room to send...", snder_tcb->fd);
             pthread_cond_wait(&snder_tcb->conn_cond, &snder_tcb->lock);
+            LOG_DEBUG("[utcp_send] App thread was woken up because TX buffer has room for tcb %i.", snder_tcb->fd);
 
-            if (snder_tcb->fsm_state != ESTABLISHED && snder_tcb->fsm_state != CLOSE_WAIT)
+            if (snder_tcb->fsm_state != ESTABLISHED)
             { // network's connection dropped; unlock and exit.
                 LOG_DEBUG("[utcp_send] Network connection dropped. Unlocking the TCB for UTCP FD %i", snder_tcb->fd);
-                pthread_mutex_unlock(&snder_tcb->lock);
                 break;
             }
             continue;
@@ -102,6 +102,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
 
         LOG_DEBUG("[utcp_recv] RX buffer is empty for UTCP FD %i. App thread will block until there is room to send...", tcb->fd);
         pthread_cond_wait(&tcb->conn_cond, &tcb->lock);
+        LOG_DEBUG("[utcp_recv] App thread unblock because data was added to the RX buffer. Attempting to read from it...", tcb->fd);
     }
 
     /* Read either `app_buf_len` bytes from the RX buffer, or the entire buffer; whichever is smaller. */
@@ -114,7 +115,6 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     }
 
     tcb->rx_head += num_bytes_to_read;
-    //tcb->rx_head = (tcb->rx_head + num_bytes_to_read) % BUF_SIZE;
 
     /* Recalculate the app's rcv_wnd since it has read from the RX buffer (thus freeing up some space) */
     uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
