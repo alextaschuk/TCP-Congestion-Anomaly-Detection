@@ -17,7 +17,8 @@ api_t *api_instance(void)
         // client info
         global.client_port = 5555;
         global.client_utcp_port = 776; 
-        global.client_ip = "127.0.0.1";
+        //global.client_ip = "127.0.0.1";
+        global.client_ip = "40.82.162.155";
         // server info
         global.server_port = 4567;
         global.server_utcp_port = 332;

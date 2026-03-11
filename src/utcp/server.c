@@ -43,7 +43,7 @@ static void init_server(socket_fds *args, api_t *global)
     struct sockaddr_in server = {
     .sin_family = AF_INET,
     .sin_port = htons(global->server_utcp_port),
-    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    .sin_addr.s_addr = inet_addr(global->server_ip),
     };
 
     args->utcp_fd = bind_utcp_sock(&server);

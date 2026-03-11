@@ -35,7 +35,7 @@ static void init_client(socket_fds *args)
     struct sockaddr_in client = {
     .sin_family = AF_INET,
     .sin_port = htons(global->client_utcp_port),
-    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    .sin_addr.s_addr = inet_addr(global->client_ip),
     };
 
     args->utcp_fd = bind_utcp_sock(&client);
@@ -75,7 +75,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
 
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
-    new_tcb->fourtuple.source_ip   = htonl(INADDR_LOOPBACK);
+    new_tcb->fourtuple.source_ip   = inet_addr(global->client_ip);
     new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
     new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     new_tcb->dest_udp_port         = 4567;
@@ -146,7 +146,7 @@ int main(void) {
     struct sockaddr_in server = {
     .sin_family = AF_INET,
     .sin_port = htons(global->server_utcp_port),
-    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    .sin_addr.s_addr = inet_addr(global->server_ip),
     };
 
     // pretend to be a client app

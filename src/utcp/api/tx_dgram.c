@@ -247,7 +247,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(tcb->dest_udp_port);
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // hardcoded for now
+    addr.sin_addr.s_addr = inet_addr(tcb->fourtuple.dest_ip); // hardcoded for now
 
     char dest_ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr.sin_addr, dest_ip_str, sizeof(dest_ip_str));
