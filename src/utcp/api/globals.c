@@ -23,11 +23,11 @@ api_t *api_instance(void)
             .sin_port = htons(776) // UTCP port
         };
 
-        //if (inet_pton(AF_INET, "40.82.162.155", &global.client.sin_addr) <= 0)
-            //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
-        
-        if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr) <= 0)
+        if (inet_pton(AF_INET, "40.82.162.155", &global.client.sin_addr) <= 0)
             LOG_ERROR("[api_instance] Invalid client IPv4 address.");
+        
+        //if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr) <= 0)
+            //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
 
         /* Server connection info */
         global.server_udp_port = 4567;
