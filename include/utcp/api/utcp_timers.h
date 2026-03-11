@@ -1,5 +1,5 @@
-#ifndef TCP_TIMERS_H
-#define TCP_TIMERS_H
+#ifndef UTCP_TIMERS_H
+#define UTCP_TIMERS_H
 
 #include <tcp/tcb.h>
 
