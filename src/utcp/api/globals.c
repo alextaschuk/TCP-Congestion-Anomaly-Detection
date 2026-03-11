@@ -1,3 +1,7 @@
+/**
+ * Info that every TCB needs to know about itself
+ * and the peer it is connected with.
+ */
 #include <utcp/api/globals.h>
 
 #include <stdio.h>
@@ -15,12 +19,17 @@ api_t *api_instance(void)
     if (!initialized)
     {
         LOG_INFO("[api_instance] Initializing the global struct");
+
+        /* Connection info */
+        global.client_udp_port = 1515;
+        global.server_udp_port = 4567;
+
+        global.udp_fd = -1;
+        global.utcp_fd = -1;
         
-        /* Client connection info */
-        global.client_udp_port = 1970;
         global.client = (struct sockaddr_in) {
             .sin_family = AF_INET,
-            .sin_port = htons(776), // UTCP port
+            .sin_port = htons(8292), // UTCP port
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
 
@@ -29,9 +38,7 @@ api_t *api_instance(void)
         
         //if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr) <= 0)
             //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
-
-        /* Server connection info */
-        global.server_udp_port = 4567;
+        
         global.server = (struct sockaddr_in){
             .sin_family = AF_INET,
             .sin_port = htons(332), // UTCP port

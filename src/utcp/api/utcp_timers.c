@@ -70,39 +70,6 @@ void utcp_slowtimo(void)
 }
 
 
-void utcp_timeout(tcb_t *tcb, short timer)
-{
-    switch(timer)
-    {
-        case TCPT_REXMT: // retransmit
-            handle_rexmt_timeout(tcb);
-            break;
-
-        case TCPT_PERSIST: // persist
-        /* 
-         * There is data to send, but it is being stopped b/c the
-         * receiver's advertised window (tcb->rcv_wnd) is 0.
-        */
-        // TODO: tcp_setpersist calculates the next value for the persist
-        // timer and stores it in the TCPT_PERSIST counter. The flag t_force
-        // is set to 1, forcing tcp_output to send 1 byte, even though the window
-        //advertised by the other end is 0.
-            break;
-
-        case TCPT_KEEP: // keepalive
-            break;
-
-        case TCPT_2MSL: // 2MSL, or FIN_WAIT_2
-            break;
-
-        case TCPT_DELACK: // delayed ACK
-            break;
-            
-        default:
-            err_sys("Invalid timer");
-    }
-}
-
 uint32_t tcp_now(void)
 {
     struct timespec ts;
@@ -176,6 +143,41 @@ static void handle_rexmt_timeout(tcb_t *tcb)
 
     reset_timer(tcb, TCPT_REXMT);
 }
+
+
+void utcp_timeout(tcb_t *tcb, short timer)
+{
+    switch(timer)
+    {
+        case TCPT_REXMT: // retransmit
+            handle_rexmt_timeout(tcb);
+            break;
+
+        case TCPT_PERSIST: // persist
+        /* 
+         * There is data to send, but it is being stopped b/c the
+         * receiver's advertised window (tcb->rcv_wnd) is 0.
+        */
+        // TODO: tcp_setpersist calculates the next value for the persist
+        // timer and stores it in the TCPT_PERSIST counter. The flag t_force
+        // is set to 1, forcing tcp_output to send 1 byte, even though the window
+        //advertised by the other end is 0.
+            break;
+
+        case TCPT_KEEP: // keepalive
+            break;
+
+        case TCPT_2MSL: // 2MSL, or FIN_WAIT_2
+            break;
+
+        case TCPT_DELACK: // delayed ACK
+            break;
+            
+        default:
+            err_sys("Invalid timer");
+    }
+}
+
 
 uint32_t calc_ssthresh(uint32_t flight_size)
 {

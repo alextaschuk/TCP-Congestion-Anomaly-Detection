@@ -22,32 +22,6 @@ extern uint8_t data[]; //buffer to send data
 /* Begin function declarations */
 
 /**
- * @brief Initializes the server's UDP and UTCP sockets.
- * 
- * A UDP socket and UTCP socket are bound to the server.
- * `*arg` stores pointers to the socket file descriptors.
- * A TCB is made for the listen socket, and the bound UTCP
- * port and the server's IP address are stored in it.
- * @param *args A `socket_fds` struct.
- * @param *global A pointer to the global api struct.
- */
-static void init_server(socket_fds *args, api_t *global);
-
-/**
- * @brief Continuously listens for incoming connection requests and
- * handles them accordingly.
- * 
- * This function runs on a background listen thread that will
- * continuously listen for incoming SYN requests. When a valid request
- * comes in, a child TCB is made for the new connection and is placed
- * in a SYN queue. When the 3-way handshake is complete, it is moved to
- * an accept queue.
- * 
- * * @param *arg A `socket_fds` struct.
- */
-void* utcp_listen_thread(void *arg);
-
-/**
  * @brief An application-side function to tell us (pretending we're the OS)
  * that the app is ready to receive connection requests.
  * 
@@ -56,24 +30,18 @@ void* utcp_listen_thread(void *arg);
  * @param utcp_fd The listen socket's TCB FD
  * @param backlog The maximum number of TCBs that each queue can store at a time
  */
-int utcp_listen(int utcp_fd, int backlog);
+int utcp_listen(api_t *global, int backlog);
 
 /**
  * @brief An application-side function that is called when the app wants to accept
  * a connection request that is sitting in the accept queue.
  * 
- * @param *args Contains the listening socket's UDP and UTCP FDs.
  * @param *client_addr The client's info will be stored in here.
  * 
  * @returns `-1` for invalid socket, or `int fd`, a UTCP fd, on success.
  */
-int utcp_accept(socket_fds *args, struct sockaddr_in *client_addr);
+int utcp_accept(api_t *global, struct sockaddr_in *client_addr);
 
-/**
- * Spawns the server's listen thread and ticker thread.
- * @return `-1` on error, `0` on success.
- */
-static int spawn_threads(socket_fds *args);
 
 /* End function declarations */
 

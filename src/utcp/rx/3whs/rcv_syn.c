@@ -27,8 +27,8 @@ void rcv_syn(
         if (data_len > 0)
             err_data("[rcv_syn] SYN packet contains non-header data in its payload");
 
-        uint32_t dest_ip = ntohl(from.sin_addr.s_addr);
         uint16_t dest_utcp_port = hdr->th_sport;
+        uint32_t dest_ip = ntohl(from.sin_addr.s_addr);
         uint16_t dest_udp_port = ntohs(from.sin_port);
 
         uint16_t src_utcp_port = listen_tcb->fourtuple.source_port;

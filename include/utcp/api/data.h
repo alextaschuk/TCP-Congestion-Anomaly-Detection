@@ -18,7 +18,6 @@
  * then calls `tcp_output()` to send the packet. If there is no room in
  * TX, the application thread blocks until space is made available.
  * 
- * @param *args Contains the sending application's UDP and UTCP FDs.
  * @param *buf The payload of data to send.
  * @param payload_len The length of the payload, in bytes.
  * 

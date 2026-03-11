@@ -69,15 +69,15 @@ typedef struct tcb_t tcb_t;
 /*Define Structs*/
 typedef struct api_t /* Stores all global vars */
 {
-    /* client info */
+    /* Connection info */
     uint16_t client_udp_port;
-    struct sockaddr_in client;
-
-    /* server info */
     uint16_t server_udp_port;
-    struct sockaddr_in server;
 
     int udp_fd;
+    int utcp_fd;
+
+    struct sockaddr_in client;
+    struct sockaddr_in server;
 
     tcb_t *tcb_lookup[MAX_CONNECTIONS]; /* TCB lookup table. Contains all connections. */
     pthread_mutex_t lookup_lock;        /* Mutex to lock iterating over lookup table. */

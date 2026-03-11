@@ -19,14 +19,8 @@ extern struct sockaddr_in server_addr;
 
 /* Define functions */
 
-void* begin_rcv(void *args);
 
-/**
- * Initializes the client by binding its UDP and UTCP sockets,
- * then updates the client's TCB with the (dest) server's info
- */
-static void init_client(socket_fds *args);
-
+void* begin_rcv(api_t *global);
 
 /** 
  * @brief A application-side function that is used to establish a UTCP connection.
@@ -40,7 +34,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr);
 /**
  * Spawns the receive and ticker threads.
  */
-static int spawn_threads(socket_fds *args);
+static int spawn_threads(api_t *global);
 
 /* End define functions */
 #endif

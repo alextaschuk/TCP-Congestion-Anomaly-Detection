@@ -42,11 +42,6 @@ void *utcp_ticker_thread();
  */
 void utcp_slowtimo(void);
 
-/**
- * This function is called when one of our timers expires and performs necessary checks
- * and changes according to which timer expired.
- */
-void utcp_timeout(tcb_t *tcb, short timer);
 
 /**
  * @brief Gets the current time, in milliseconds, for the user.
@@ -83,6 +78,13 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr);
  * @param *tcb The TCB containing the timed-out timer.
  */
 static void handle_rexmt_timeout(tcb_t *tcb);
+
+
+/**
+ * This function is called when one of our timers expires and performs necessary checks
+ * and changes according to which timer expired.
+ */
+void utcp_timeout(tcb_t *tcb, short timer);
 
 
 /**

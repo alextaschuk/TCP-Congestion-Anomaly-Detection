@@ -25,34 +25,15 @@
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
-static void init_client(socket_fds *args)
-{
-    api_t *global = api_instance();
 
-    args->udp_fd = bind_udp_sock(global->client_udp_port);
-    global->udp_fd = args->udp_fd;
-
-    struct sockaddr_in client = {
-        .sin_family = AF_INET, 
-        .sin_port = htons(776), 
-        .sin_addr.s_addr = htonl(INADDR_ANY)
-    };
-
-    args->utcp_fd = bind_utcp_sock(&client);
-    LOG_INFO("[init_client] UDP & UTCP Sockets Initialized. UDP fd=%u,  Listen UTCP fd=%u\n", ntohs(args->udp_fd), args->utcp_fd);
-}
-
-
-void* begin_rcv(void *arg)
+void* begin_rcv(api_t *global)
 {
     current_thread_cat = "receive_thread";
     LOG_INFO("[begin_rcv] Receive thread running...");
 
-    socket_fds *args = (socket_fds*)arg;
-
     while (1)
     {
-        ssize_t rcv_size = rcv_dgram(args->udp_fd, BUF_SIZE);
+        ssize_t rcv_size = rcv_dgram(global->udp_fd, BUF_SIZE);
         if (rcv_size < 0)
             err_sys("[being_rcv] Error: failed to receive packet");
     }
@@ -104,15 +85,15 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     return utcp_fd;
 }
 
-static int spawn_threads(socket_fds *args)
+static int spawn_threads(api_t *global)
 {
-    pthread_t rcv_thread;
+    pthread_t listen_thread;
     pthread_t ticker_thread;
 
-    LOG_INFO("[spawn_threads] Spawning receiver thread...");
-    if (pthread_create(&rcv_thread, NULL, begin_rcv, args) != 0)
+    LOG_INFO("[spawn_threads] Spawning listener thread...");
+    if (pthread_create(&listen_thread, NULL, utcp_listen_thread, global) != 0)
     {
-        LOG_FATAL("[spawn_threads] Failed to create receiver thread");
+        LOG_FATAL("[spawn_threads] Failed to create listener thread");
         return -1;
     }
 
@@ -133,22 +114,22 @@ int main(void) {
 
     api_t *global = api_instance();
 
-    socket_fds *args = malloc(sizeof(socket_fds));
-    if (!args)
-        err_sys("[Client, main] Failed to allocate args");
 
-    init_client(args);
+    struct sockaddr_in client = {
+        .sin_family = AF_INET, 
+        .sin_port = htons(8292), 
+        .sin_addr.s_addr = htonl(INADDR_ANY)
+    };
+
+    init_host(global, client);
     
-    if(spawn_threads(args) != 0)
-    {
+    if(spawn_threads(global) != 0)
         err_sys("[Client] Error during thread creation");
-    }
-
 
     /* pretend to be a client app */
-    args->utcp_fd = utcp_connect(args->udp_fd, &global->server);
-    if (args->utcp_fd < 0)
-        err_sock(args->udp_fd, "[Client] Failed to connect");
+    int app_utcp_fd = utcp_connect(global->udp_fd, &global->server); // different from the UTCP fd in global
+    if (app_utcp_fd < 0)
+        err_sock(global->udp_fd, "[Client] Failed to connect.");
             
     FILE *fp = fopen("./test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
@@ -160,7 +141,7 @@ int main(void) {
 
     while(total_received < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(args->utcp_fd, app_rcv_buf, BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(app_utcp_fd, app_rcv_buf, BUF_SIZE);
         if (bytes_rcvd > 0)
         {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
@@ -174,7 +155,7 @@ int main(void) {
         }
     }
 
-    tcb_t *active_tcb = get_tcb(args->utcp_fd);
+    tcb_t *active_tcb = get_tcb(app_utcp_fd);
     while(active_tcb->rx_tail - active_tcb->rx_head > 0)
         usleep(100000);
     sleep(2);
@@ -182,7 +163,6 @@ int main(void) {
     fclose(fp);
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
 
-    free(args);
     free(app_rcv_buf);
     return 0;
 }

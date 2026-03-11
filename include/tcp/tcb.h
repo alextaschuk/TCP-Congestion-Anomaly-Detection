@@ -48,7 +48,7 @@ typedef struct tcb_t
 
     /* Congestion Avoidance*/
      /* Round Trip Time (RTT) and Retransmission Timeout (RTO) variables */
-     // we use TSval and TSecr, as define in https://www.rfc-editor.org/rfc/rfc1323#section-3 for calculating a packet's RTT.
+     // we use TSval and TSecr, as defined in https://www.rfc-editor.org/rfc/rfc1323#section-3 for calculating a packet's RTT.
     uint32_t ts_rcv_val;    /* Stores the peer's TSval timestamp that is included in a received packet (when you send a packet, this value is used for `TSecr`)*/
     uint32_t rto;           /* Current Retransmission Timeout value. */
     uint8_t rxtshift;       /* Number of retransmission timers that have expired. Used to calculate the backoff multiplier when a packet is retransmitted. */

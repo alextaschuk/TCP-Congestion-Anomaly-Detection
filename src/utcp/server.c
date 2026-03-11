@@ -26,52 +26,16 @@
 #include <utcp/api/utcp_timers.h>
 
 #include <zlog.h>
+//make clean && make && clear && clear && ./server_app
+
 #define CHUNK_SIZE 65536 // 64KB
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
-//make clean && make && clear && clear && ./server_app
 
-tcb_t *active_tcbs[MAX_CONNECTIONS]; // global array of TCBs w/ ESTABLISHED state
-
-
-static void init_server(socket_fds *args, api_t *global)
+int utcp_listen(api_t *global, int backlog)
 {
-    args->udp_fd = bind_udp_sock(global->server_udp_port);
-    global->udp_fd = args->udp_fd;
-
-    struct sockaddr_in server = {
-        .sin_family = AF_INET, 
-        .sin_port = htons(332), 
-        .sin_addr.s_addr = htonl(INADDR_ANY)
-    };
-
-    args->utcp_fd = bind_utcp_sock(&global->server);
-
-    LOG_INFO("[init_server] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
-}
-
-
-void* utcp_listen_thread(void *arg)
-{
-    current_thread_cat = "listen_thread";
-    LOG_INFO("[utcp_listen_thread] Listen thread running...");
-
-    socket_fds *args = (socket_fds*)arg;
-
-    while (1)
-    {
-        ssize_t rcvsize = rcv_dgram(args->udp_fd, BUF_SIZE);
-        if (rcvsize < 0)
-            err_sys("[Server, listen thread] Error receiving packet");
-    }
-    return 0;
-}
-
-
-int utcp_listen(int utcp_fd, int backlog)
-{
-    tcb_t *tcb = get_tcb(utcp_fd);
+    tcb_t *tcb = get_tcb(global->utcp_fd);
     if (!tcb)
         return -1;
 
@@ -105,14 +69,14 @@ int utcp_listen(int utcp_fd, int backlog)
 
     tcb->accept_q.backlog = backlog;
 
-    update_fsm(utcp_fd, LISTEN);
+    update_fsm(global->utcp_fd, LISTEN);
     return 0;   
 }
 
 
-int utcp_accept(socket_fds *args, struct sockaddr_in *client_addr)
+int utcp_accept(api_t *global, struct sockaddr_in *client_addr)
 {
-    tcb_t *listen_tcb = get_tcb(args->utcp_fd);
+    tcb_t *listen_tcb = get_tcb(global->utcp_fd);
     if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
     {
         err_sock(listen_tcb->src_udp_fd, "[utcp_accept] Invalid listen socket");
@@ -142,31 +106,9 @@ int utcp_accept(socket_fds *args, struct sockaddr_in *client_addr)
         client_addr->sin_port = htons(established_tcb->dest_udp_port);
     }
 
-    established_tcb->src_udp_fd = args->udp_fd;
+    established_tcb->src_udp_fd = global->udp_fd;
 
     return established_tcb->fd;
-}
-
-
-static int spawn_threads(socket_fds *args)
-{
-    pthread_t listen_thread;
-    pthread_t ticker_thread;
-
-    LOG_INFO("[spawn_threads] Spawning listener thread...");
-    if (pthread_create(&listen_thread, NULL, utcp_listen_thread, args) != 0)
-    {
-        LOG_ERROR("[spawn_threads] Failed to create listener thread\n");
-        return -1;
-    }
-
-    LOG_INFO("[spawn_threads] Spawning ticker thread...");
-    if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
-    {
-        LOG_INFO("[spawn_threads] Failed to create ticker thread\n");
-        return -1;
-    }
-    return 0;
 }
 
 
@@ -177,30 +119,32 @@ int main(void)
 
     api_t *global = api_instance();
 
-    socket_fds *args = malloc(sizeof(socket_fds));
-    if (!args)
-        err_sys("[Server, main] Failed to allocate args");
+    struct sockaddr_in server = {
+        .sin_family = AF_INET, 
+        .sin_port = htons(332), 
+        .sin_addr.s_addr = htonl(INADDR_ANY)
+    };
 
-    init_server(args, global);
+    init_host(global, server);
 
-    if (utcp_listen(args->utcp_fd, MAX_BACKLOG) != 0)
+    if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[Server, main] Error in utcp_listen");
 
-    if(spawn_threads(args) != 0)
+    if(spawn_threads(global) != 0)
         err_sys("[Server] Error during thread creation");
 
-    tcb_t *listen_tcb = get_tcb(args->utcp_fd);
+    tcb_t *listen_tcb = get_tcb(global->utcp_fd);
 
     pthread_mutex_lock(&listen_tcb->lock);
-    listen_tcb->src_udp_fd = args->udp_fd;
+    listen_tcb->src_udp_fd = global->udp_fd;
     pthread_mutex_unlock(&listen_tcb->lock);
 
     struct sockaddr_in client_info;
-    int new_utcp_fd = utcp_accept(args, &client_info);
+    int new_utcp_fd = utcp_accept(global, &client_info);
     tcb_t *new_tcb = get_tcb(new_utcp_fd);
 
     pthread_mutex_lock(&new_tcb->lock);
-    new_tcb->src_udp_fd = args->udp_fd;
+    new_tcb->src_udp_fd = global->udp_fd;
     pthread_mutex_unlock(&new_tcb->lock);
 
     FILE *fp = fopen("../test_file.txt", "rb"); // rb to prevent OS from changing newline characters
@@ -214,7 +158,7 @@ int main(void)
     //while ((bytes_read = fread(snd_buf, 1, sizeof(snd_buf), fp)) > 0) 
     while((bytes_read = fread(snd_buf, 1, CHUNK_SIZE, fp)) > 0)
     {
-        ssize_t sent = utcp_send(new_utcp_fd, args->udp_fd, snd_buf, bytes_read);
+        ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);
         if (sent < 0)
         {
             LOG_ERROR("[Server App] Connection dropped during file transfer.");
@@ -232,6 +176,5 @@ int main(void)
         fclose(fp);
         LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
 
-        free(args);
         return 0;
 }

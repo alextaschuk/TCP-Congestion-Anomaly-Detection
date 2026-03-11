@@ -12,12 +12,21 @@
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
+#include <utcp/rx/rx_dgram.h>
 
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
 
-int bind_udp_sock(int pts)
+void init_host(api_t *global, struct sockaddr_in sock_info)
 {
+    global->udp_fd = bind_udp_sock(0);
+    global->utcp_fd = bind_utcp_sock(&global->server);
+}
+
+uint16_t bind_udp_sock(int pts)
+{
+    api_t *global = api_instance();
+
     if (udp_sock_open == 1)
         err_sock(-1, "[bind_udp_sock] socket already bound");
 
@@ -49,8 +58,10 @@ int bind_udp_sock(int pts)
         err_sys("getsockname failed");
 
     LOG_INFO("[bind_udp_sock] UDP socket bound to port %d. fd=%d (host order)", ntohs(bound_addr.sin_port), udp_fd);
+
     udp_sock_open = 1;
-    return udp_fd;
+    global->udp_fd = udp_fd;
+    return ntohs(bound_addr.sin_port);
 }
 
 int bind_utcp_sock(struct sockaddr_in *addr)
@@ -64,9 +75,8 @@ int bind_utcp_sock(struct sockaddr_in *addr)
 
     tcb->fsm_state = CLOSED;
 
-    LOG_INFO("[bind_utcp_sock] UTCP socket bound to port: %i", tcb->fourtuple.source_port);
     //pthread_mutex_unlock(&tcb->lock);
-    
+    LOG_INFO("[bind_utcp_sock] UDP & UTCP Sockets Initialized. UDP fd=%u,  Listen UTCP fd=%u", global->udp_fd, global->utcp_fd);
     return tcb->fd;
 }
 
@@ -149,4 +159,43 @@ tcb_t *find_listen_tcb(void)
     }
     LOG_WARN("[find_listen_tcb] Listen socket's TCB not found in the lookup table. Unlocking the TCB lookup table...");
     return NULL;
+}
+
+
+int spawn_threads(api_t *global)
+{
+    pthread_t listen_thread;
+    pthread_t ticker_thread;
+
+    LOG_INFO("[spawn_threads] Spawning listener thread...");
+    if (pthread_create(&listen_thread, NULL, utcp_listen_thread, global) != 0)
+    {
+        LOG_ERROR("[spawn_threads] Failed to create listener thread");
+        return -1;
+    }
+
+    LOG_INFO("[spawn_threads] Spawning ticker thread...");
+    if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
+    {
+        LOG_INFO("[spawn_threads] Failed to create ticker thread");
+        return -1;
+    }
+    return 0;
+}
+
+
+void *utcp_listen_thread(void *arg)
+{
+    current_thread_cat = "listen_thread";
+    LOG_INFO("[utcp_listen_thread] Listen thread running...");
+    
+    api_t *global = (api_t *)arg;
+
+    while (1)
+    {
+        ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);
+        if (rcvsize < 0)
+            err_sys("[Server, listen thread] Error receiving packet");
+    }
+    return 0;
 }

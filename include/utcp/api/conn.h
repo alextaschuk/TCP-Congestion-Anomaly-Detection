@@ -12,18 +12,30 @@ else.
 
 #include <tcp/tcb.h>
 
-extern unsigned int seed;
+
+/**
+ * Initializes the client/server by binding a UDP and UTCP socket.
+ * 
+ * @param *global pointer to the instance of the global `api_t` struct.
+ * @param sock_info The host's connection information.
+ */
+void init_host(api_t *global, struct sockaddr_in sock_info);
 
 /**
  * @brief An application-side function to bind a UDP socket.
  * 
- * This creates and returns a socket descriptor for an Internet datagram socket using UDP.
+ * After binding a socket to the given port, the socket's fd
+ * is stored in our global `api_t` struct.
  * 
- * @param pts (port to set), the port that the app wants to bind a UDP socket to passes in the 
- * 
+ * @param pts (Port to Set), the port that the app wants to bind a UDP socket to passes in the 
  * - If we hardcode the port, this value is not needed.
+ * 
+ * @returns The bound port. 
+ * 
+ * - If a hardcoded value (i.e., anything other than 0 is passed in), this value will be returned.
+ * 
  */
-int bind_udp_sock(int pts);
+uint16_t bind_udp_sock(int pts);
 
 /**
  * @brief We need to manually manage a `bind()` function
@@ -57,5 +69,14 @@ tcb_t *alloc_new_tcb(void);
  * @return A pointer to the listen TCB's struct, or `NULL` if it isn't found.
  */
 tcb_t *find_listen_tcb(void);
+
+
+void *utcp_listen_thread(void *arg);
+
+/**
+ * Spawns the listen thread and ticker thread.
+ * @return `-1` on error, `0` on success.
+ */
+int spawn_threads(api_t *global);
 
 #endif
