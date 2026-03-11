@@ -17,7 +17,7 @@ api_t *api_instance(void)
         LOG_INFO("[api_instance] Initializing the global struct");
         
         /* Client connection info */
-        global.client_udp_port = 5555;
+        global.client_udp_port = 1970;
         global.client = (struct sockaddr_in) {
             .sin_family = AF_INET,
             .sin_port = htons(776) // UTCP port
