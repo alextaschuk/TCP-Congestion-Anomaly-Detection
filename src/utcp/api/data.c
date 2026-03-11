@@ -127,7 +127,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     {
         LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
         tcb->t_flags |= F_ACKNOW;
-        utcp_output(tcb);
+        send_dgram(tcb);
     }
 
     LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
