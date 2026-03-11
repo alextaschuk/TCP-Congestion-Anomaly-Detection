@@ -38,17 +38,6 @@ client will need access to.
 
 /* Congestion Control  Related */
 #define CA_ALGO RENO /* Determine which CA algo we use. */
-//#define TCPT_NTIMERS 4                /* number of counters in `t_timer[]` */
-
- /* Retransmission Timer Stuff */
-#define TCPT_REXMT 0                    /* index of retransmission timer in `timer_t[]` */
-#define TCPTV_MIN 2                     /* minimum value of retransmission timer (1 sec)*/
-#define TCPTC_REXMTMAX 128              /* maximum value of retransmission timer (64 sec)*/
-#define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
-
- /* Persist Timer Stuff*/
-#define TCPTV_PERSMIN 10                /* minimum value of persist timer (5 sec)*/
-#define TCPTV_PERSMAX 120               /* maximum value of retransmission timer (60 sec)*/
 
  /* Convinience macros */
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */

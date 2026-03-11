@@ -6,12 +6,23 @@
 
 #define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
 
-#define TCPT_NTIMERS 4
-
-#define TCPT_REXMT   0  // Retransmission timer
+#define TCPT_NTIMERS 4  /* number of counters in `t_timer[]` */
+#define TCPT_REXMT 0    /* index of retransmission timer in `timer_t[]` */
 #define TCPT_PERSIST 1  // Persist timer (for zero window probes)
 #define TCPT_KEEP    2  // Keepalive timer
 #define TCPT_2MSL    3  // 2*MSL timer (TIME_WAIT state)
+#define TCPT_DELACK  4  // Delayed ACK timer
+
+/* Retransmission Timer Stuff */
+
+#define TCPTV_MIN 2                     /* minimum value of retransmission timer (1 sec)*/
+#define TCPTC_REXMTMAX 128              /* maximum value of retransmission timer (64 sec)*/
+#define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
+
+ /* Persist Timer Stuff*/
+#define TCPTV_PERSMIN 10                /* minimum value of persist timer (5 sec)*/
+#define TCPTV_PERSMAX 120               /* maximum value of retransmission timer (60 sec)*/
+
 
 /**
  * @brief Sets a timer to a given value, making certain the value is between the specified
