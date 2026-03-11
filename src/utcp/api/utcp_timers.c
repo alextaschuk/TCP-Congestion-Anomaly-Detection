@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <netinet/tcp_timer.h>
 #include <pthread.h>
 
 #include <tcp/hndshk_fsm.h>

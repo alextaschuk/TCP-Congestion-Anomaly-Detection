@@ -5,7 +5,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <netinet/tcp_timer.h>
 #include <netinet/tcp_var.h>
 #include <pthread.h>
 

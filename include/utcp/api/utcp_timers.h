@@ -6,6 +6,13 @@
 
 #define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
 
+#define TCPT_NTIMERS 4
+
+#define TCPT_REXMT   0  // Retransmission timer
+#define TCPT_PERSIST 1  // Persist timer (for zero window probes)
+#define TCPT_KEEP    2  // Keepalive timer
+#define TCPT_2MSL    3  // 2*MSL timer (TIME_WAIT state)
+
 /**
  * @brief Sets a timer to a given value, making certain the value is between the specified
  * min and max. This is used for the retransmission timer and persist timer.
