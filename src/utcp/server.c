@@ -197,7 +197,7 @@ int main(void)
     new_tcb->src_udp_fd = args->udp_fd;
     pthread_mutex_unlock(&new_tcb->lock);
 
-    FILE *fp = fopen("./test_file.txt", "rb"); // rb to prevent OS from changing newline characters
+    FILE *fp = fopen("../test_file.txt", "rb"); // rb to prevent OS from changing newline characters
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             

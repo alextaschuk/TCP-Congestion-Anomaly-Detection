@@ -33,7 +33,7 @@ int bind_udp_sock(int pts)
     if (udp_fd == -1)
         err_sock(udp_fd, "[bind_udp_sock] failed to initialize socket");
     
-    // prevent "address already in use" message when trying to rerun the program
+    /* prevent "address already in use" message when trying to rerun the program */
     int yes = 1;
     if(setsockopt(udp_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
         err_sock(udp_fd, "[bind_udp_sock] setsockopt");
@@ -41,7 +41,7 @@ int bind_udp_sock(int pts)
     if (bind(udp_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
         err_sock(udp_fd, "[bind_udp_sock] bind failed");
 
-    // get the bound port
+    /* get the bound port */
     struct sockaddr_in bound_addr;
     socklen_t addrlen = sizeof(bound_addr);
 

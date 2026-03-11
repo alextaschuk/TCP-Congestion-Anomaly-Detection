@@ -70,16 +70,11 @@ typedef struct tcb_t tcb_t;
 typedef struct api_t /* Stores all global vars */
 {
     /* client info */
-
     uint16_t client_udp_port;
-    int client_utcp_port; 
-    char* client_ip;
     struct sockaddr_in client;
-    /* server info */
 
+    /* server info */
     uint16_t server_udp_port;
-    int server_utcp_port;
-    char* server_ip;
     struct sockaddr_in server;
 
     int udp_fd;
