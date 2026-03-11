@@ -121,18 +121,19 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(tcb->dest_udp_port);
-    addr.sin_addr.s_addr = ntohl(tcb->fourtuple.dest_ip);
+    addr.sin_addr.s_addr = htonl(tcb->fourtuple.dest_ip);
 
     char dest_ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr.sin_addr, dest_ip_str, sizeof(dest_ip_str));
 
+    uint32_t src_ip_net = htonl(tcb->fourtuple.source_ip);
     char src_ip_str[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &addr.sin_addr, src_ip_str, sizeof(src_ip_str));
+    inet_ntop(AF_INET, &src_ip_net, src_ip_str, sizeof(src_ip_str));
     
     LOG_DEBUG("[send_segment] Attempting to send a segment to %s:%d from %s:%d", dest_ip_str, ntohs(addr.sin_port), src_ip_str, ntohs(tcb->src_udp_fd));
     log_segment((u_int8_t *)segment, segment_size, 0, "[send_dgram] Segment that was sent:");
 
-    ssize_t bytes_sent = sendto(tcb->src_udp_port, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
+    ssize_t bytes_sent = sendto(tcb->src_udp_fd, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)
         err_sys("[send_dgram] Error sending packet");
 
