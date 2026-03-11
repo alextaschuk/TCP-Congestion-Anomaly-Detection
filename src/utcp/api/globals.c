@@ -36,7 +36,10 @@ api_t *api_instance(void)
             .sin_port = htons(4567) // UTCP port
         };
 
-        if (inet_pton(AF_INET, "127.0.0.1", &global.server.sin_addr) <= 0)
+        //if (inet_pton(AF_INET, "127.0.0.1", &global.server.sin_addr) <= 0)
+        //    LOG_ERROR("[api_instance] Invalid server IPv4 address.");
+
+        if (inet_pton(AF_INET, INADDR_ANY, &global.server.sin_addr) <= 0)
             LOG_ERROR("[api_instance] Invalid server IPv4 address.");
 
         /* TCB lookup table config */
