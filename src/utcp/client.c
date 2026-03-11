@@ -26,21 +26,6 @@
 _Thread_local const char* current_thread_cat = "main_thread";
 
 
-void* begin_rcv(api_t *global)
-{
-    current_thread_cat = "receive_thread";
-    LOG_INFO("[begin_rcv] Receive thread running...");
-
-    while (1)
-    {
-        ssize_t rcv_size = rcv_dgram(global->udp_fd, BUF_SIZE);
-        if (rcv_size < 0)
-            err_sys("[being_rcv] Error: failed to receive packet");
-    }
-    return NULL;
-}
-
-
 static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
 {
     api_t *global = api_instance();

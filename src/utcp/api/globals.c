@@ -33,9 +33,6 @@ api_t *api_instance(void)
             .sin_port = htons(8292), // UTCP port
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
-
-        if (inet_pton(AF_INET, "40.82.162.155", &global.client.sin_addr) <= 0)
-            LOG_ERROR("[api_instance] Invalid client IPv4 address.");
         
         //if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr) <= 0)
             //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
@@ -46,8 +43,8 @@ api_t *api_instance(void)
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
 
-        //if (inet_pton(AF_INET, "127.0.0.1", &global.server.sin_addr) <= 0)
-        //    LOG_ERROR("[api_instance] Invalid server IPv4 address.");
+        if (inet_pton(AF_INET, "40.82.162.155", &global.server.sin_addr) <= 0)
+            LOG_ERROR("[api_instance] Invalid client IPv4 address.");
 
         /* TCB lookup table config */
         pthread_mutex_init(&global.lookup_lock, NULL);

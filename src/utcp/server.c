@@ -125,7 +125,9 @@ int main(void)
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
 
-    init_host(global, server);
+    bind_udp_sock(0);
+    global->utcp_fd = bind_utcp_sock(&global->server);
+    //init_host(global, server);
     log_tcb(get_tcb(global->utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)

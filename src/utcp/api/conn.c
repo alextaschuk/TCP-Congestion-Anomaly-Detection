@@ -21,7 +21,7 @@ void init_host(api_t *global, struct sockaddr_in sock_info)
 {
     //global->udp_fd = bind_udp_sock(0);
     bind_udp_sock(0);
-    global->utcp_fd = bind_utcp_sock(&global->server);
+    global->utcp_fd = bind_utcp_sock(&sock_info);
 }
 
 uint16_t bind_udp_sock(int pts)

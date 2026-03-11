@@ -19,9 +19,6 @@ extern struct sockaddr_in server_addr;
 
 /* Define functions */
 
-
-void* begin_rcv(api_t *global);
-
 /** 
  * @brief A application-side function that is used to establish a UTCP connection.
  * 
