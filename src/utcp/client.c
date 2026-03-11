@@ -42,7 +42,7 @@ static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     //new_tcb->fourtuple.source_port = 49152 + (utcp_fd); // bind a UTCP port to the UTCP fd
     //new_tcb->fourtuple.source_ip   = ntohl(global->client.sin_addr.s_addr);
-    new_tcb->fourtuple.dest_ip     = dest_addr->sin_addr.s_addr;
+    new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     new_tcb->fourtuple.dest_port   = dest_addr->sin_port;
     
     new_tcb->dest_udp_port         = global->server_udp_port;
