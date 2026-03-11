@@ -191,10 +191,25 @@ int send_dgram(tcb_t *tcb)
                 uint32_t can_send = send_window - unacked_bytes_in_flight;
                 data_len = MIN(MIN(buffered_bytes, can_send), MSS); // don't send more bytes than the max segment size
 
-                //if (data_len > 0)
-                //{
-                //    LOG_DEBUG("[send_dgram] Attempting to send a segment with a payload size of %zu bytes", data_len);
-                //}
+                /**
+                 * Nagle's Algorithm: suppress tiny segments when there is already
+                 * unacknowledged data in flight.  Only send a sub-MSS segment if the
+                 * pipe is completely empty (no in-flight data), which means we have
+                 * reached the tail of the send buffer.  This prevents the sender-side
+                 * silly-window syndrome where every small ACK triggers an equally small
+                 * new data segment.
+                 */
+                if (data_len > 0 && data_len < MSS && unacked_bytes_in_flight > 0) {
+                    LOG_DEBUG("Nagle: suppressing %zu-byte segment (InFlight=%u). "
+                                "Waiting for full MSS or pipe drain.",
+                                data_len, unacked_bytes_in_flight);
+                    data_len = 0;
+                }
+
+                if (data_len > 0) {
+                    //LOG_INFO("Preparing to send %zu bytes of payload.", data_len);
+                }
+
             }
             else
             {

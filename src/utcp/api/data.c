@@ -120,11 +120,14 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
     tcb->rcv_wnd = BUF_SIZE - bytes_in_buf;
 
-    if (tcb->rcv_wnd >= MSS || (tcb->rcv_wnd < MSS && avail_bytes_to_read == BUF_SIZE))
+    // Silly window prevention with Classic Clark's algorithm: only send window update when
+    // we can offer at least min(MSS, RECV_BUF_SIZE/2) worth of new space.
+    uint32_t sws_threshold = MIN(MSS, BUF_SIZE / 2);
+    if (tcb->rcv_wnd >= sws_threshold || (tcb->rcv_wnd < sws_threshold && avail_bytes_to_read == BUF_SIZE))
     {
-        LOG_DEBUG("[utcp_recv] Silly Window Syndrome triggered on fd=%i: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
+        LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
         tcb->t_flags |= F_ACKNOW;
-        send_dgram(tcb);
+        utcp_output(tcb);
     }
 
     LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
