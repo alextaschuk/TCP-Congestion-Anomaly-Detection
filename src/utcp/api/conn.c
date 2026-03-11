@@ -17,16 +17,16 @@
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound to a port.
 
-void init_host(api_t *global, struct sockaddr_in sock_info)
-{
-    //global->udp_fd = bind_udp_sock(0);
-    bind_udp_sock(0);
-    global->utcp_fd = bind_utcp_sock(&sock_info);
-}
 
 uint16_t bind_udp_sock(int pts)
 {
     api_t *global = api_instance();
+
+    if (udp_sock_open)
+    {
+        LOG_DEBUG("[init_host] UTCP socket already bound. Skipping init.");
+        return global->udp_fd;
+    }
 
     if (udp_sock_open == 1)
         err_sock(-1, "[bind_udp_sock] socket already bound");
@@ -58,32 +58,50 @@ uint16_t bind_udp_sock(int pts)
     if (getsockname(udp_fd, (struct sockaddr *)&bound_addr, &addrlen) < 0)
         err_sys("getsockname failed");
 
-    LOG_INFO("[bind_udp_sock] UDP socket bound to port %d. fd=%d (host order)", ntohs(bound_addr.sin_port), udp_fd);
+    LOG_INFO("[bind_udp_sock] UDP socket bound to port %d, fd=%d", ntohs(bound_addr.sin_port), udp_fd);
 
-    udp_sock_open = 1;
     global->udp_fd = udp_fd;
     global->udp_port = ntohs(bound_addr.sin_port);
-    printf("udp_fd:%d\n", global->udp_fd);
+
+    spawn_threads(global);
+
+    udp_sock_open = 1;
+
     return ntohs(bound_addr.sin_port);
 }
 
-int bind_utcp_sock(struct sockaddr_in *addr)
+
+int init_utcp_sock(void)
 {
+    bind_udp_sock(1515);
+
     api_t *global = api_instance();
     tcb_t *tcb = alloc_new_tcb();
-    
+
+    return tcb->fd;
+}
+
+
+int bind_utcp_sock(int utcp_fd, struct sockaddr_in *addr)
+{
+    api_t *global = api_instance();
+
+    tcb_t *tcb = get_tcb(utcp_fd);
+    if (!tcb)
+        err_sys("[bind_utcp_sock] TCB not found");
+
     //pthread_mutex_lock(&tcb->lock);
     tcb->fourtuple.source_port = ntohs(addr->sin_port); // src UTCP port
     tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr);
 
-    tcb->fsm_state = CLOSED;
-
-    global->utcp_fd = tcb->fd;
+    tcb->src_udp_fd = global->udp_fd;
+    tcb->src_udp_port = global->udp_port;
 
     //pthread_mutex_unlock(&tcb->lock);
-    LOG_INFO("[bind_utcp_sock] UDP & UTCP Sockets Initialized. UDP fd=%u,  Listen UTCP fd=%u", global->udp_fd, global->utcp_fd);
+    LOG_INFO("[bind_utcp_sock] Bound UTCP fd=%d to UTCP port=%u", utcp_fd, tcb->fourtuple.source_port);
     return tcb->fd;
 }
+
 
 tcb_t *alloc_new_tcb(void)
 {
@@ -118,11 +136,17 @@ tcb_t *alloc_new_tcb(void)
 
     //LOG_INFO("[alloc_new_tcb] Locking the new TCB to initialize its variables...", new_tcb->fd);
     //pthread_mutex_lock(&new_tcb->lock);
-    new_tcb->src_udp_fd = global->udp_fd;
-    new_tcb->src_udp_port = global->udp_port;
+    //new_tcb->src_udp_fd = global->udp_fd;
+    //new_tcb->src_udp_port = global->udp_port;
 
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
+
+    new_tcb->iss = 0;
+    new_tcb->snd_una = new_tcb->iss;
+    new_tcb->snd_nxt = new_tcb->iss;
+    new_tcb->snd_max = new_tcb->iss;
+    new_tcb->rcv_wnd = BUF_SIZE;
 
     // set congestion avoidance & control variables
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
@@ -198,7 +222,7 @@ void *utcp_listen_thread(void *arg)
     LOG_INFO("[utcp_listen_thread] Listen thread running...");
     
     api_t *global = (api_t *)arg;
-    printf("udp fd:%d\n", htons(global->udp_fd));
+    printf("[utcp_listen_thread]udp fd:%d\n", htons(global->udp_fd));
     while (1)
     {
         ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);

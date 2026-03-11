@@ -74,7 +74,7 @@ int utcp_listen(api_t *global, int backlog)
 }
 
 
-int utcp_accept(api_t *global, struct sockaddr_in *client_addr)
+int utcp_accept(api_t *global)
 {
     tcb_t *listen_tcb = get_tcb(global->utcp_fd);
     if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
@@ -98,14 +98,6 @@ int utcp_accept(api_t *global, struct sockaddr_in *client_addr)
     //LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...");
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
-    // populate the client info so the app knows who is connected
-    if (client_addr)
-    {
-        client_addr->sin_family = AF_INET;
-        client_addr->sin_addr.s_addr = htonl(established_tcb->fourtuple.dest_ip);
-        client_addr->sin_port = htons(established_tcb->dest_udp_port);
-    }
-
     established_tcb->src_udp_fd = global->udp_fd;
 
     return established_tcb->fd;
@@ -118,32 +110,35 @@ int main(void)
         err_sys("Error initializing zlog");
 
     api_t *global = api_instance();
+    global->utcp_fd = 0; // listen socket will always have fd of 0
+    int utcp_fd = init_utcp_sock();
 
     struct sockaddr_in server = {
         .sin_family = AF_INET, 
-        .sin_port = htons(332), 
+        .sin_port = htons(332), // UTCP port 
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
-
-    bind_udp_sock(0);
-    global->utcp_fd = bind_utcp_sock(&global->server);
+    
+    bind_utcp_sock(utcp_fd, &server);
+    
+    //bind_udp_sock(1515);
+    //global->utcp_fd = bind_utcp_sock(&global->server);
     //init_host(global, server);
-    log_tcb(get_tcb(global->utcp_fd), "Post init TCB:");
+    log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[main] Error in utcp_listen");
 
     if(spawn_threads(global) != 0)
         err_sys("[main] Error during thread creation");
-
-    tcb_t *listen_tcb = get_tcb(global->utcp_fd);
+    
+    tcb_t *listen_tcb = get_tcb(utcp_fd);
 
     pthread_mutex_lock(&listen_tcb->lock);
     listen_tcb->src_udp_fd = global->udp_fd;
     pthread_mutex_unlock(&listen_tcb->lock);
 
-    struct sockaddr_in client_info;
-    int new_utcp_fd = utcp_accept(global, &client_info);
+    int new_utcp_fd = utcp_accept(global);
     tcb_t *new_tcb = get_tcb(new_utcp_fd);
 
     pthread_mutex_lock(&new_tcb->lock);

@@ -14,14 +14,6 @@ else.
 
 
 /**
- * Initializes the client/server by binding a UDP and UTCP socket.
- * 
- * @param *global pointer to the instance of the global `api_t` struct.
- * @param sock_info The host's connection information.
- */
-void init_host(api_t *global, struct sockaddr_in sock_info);
-
-/**
  * @brief An application-side function to bind a UDP socket.
  * 
  * After binding a socket to the given port, the socket's fd
@@ -47,7 +39,12 @@ uint16_t bind_udp_sock(int pts);
  * @return `int fd` on success, the UTCP socket's "file descriptor". I.e.,
  *  the newly created `tcb_t` struct is stored at `tcb_lookup[fd]`.
  */
-int bind_utcp_sock(struct sockaddr_in *addr);
+int bind_utcp_sock(int utcp_fd, struct sockaddr_in *addr);
+
+
+int init_utcp_sock(void);
+
+
 
 /**
  * @brief Used in `utcp_accept()` function when a client wants to initiate a 3WHS.
@@ -72,6 +69,7 @@ tcb_t *find_listen_tcb(void);
 
 
 void *utcp_listen_thread(void *arg);
+
 
 /**
  * Spawns the listen thread and ticker thread.

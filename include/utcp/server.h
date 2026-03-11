@@ -36,11 +36,9 @@ int utcp_listen(api_t *global, int backlog);
  * @brief An application-side function that is called when the app wants to accept
  * a connection request that is sitting in the accept queue.
  * 
- * @param *client_addr The client's info will be stored in here.
- * 
  * @returns `-1` for invalid socket, or `int fd`, a UTCP fd, on success.
  */
-int utcp_accept(api_t *global, struct sockaddr_in *client_addr);
+int utcp_accept(api_t *global);
 
 
 /* End function declarations */

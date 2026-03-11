@@ -26,32 +26,28 @@
 _Thread_local const char* current_thread_cat = "main_thread";
 
 
-static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
+static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
 {
     api_t *global = api_instance();
 
     LOG_INFO("[utcp_connect] Creating a new TCB for the application's connection request...");
 
-    tcb_t *new_tcb = alloc_new_tcb();
+    //tcb_t *new_tcb = alloc_new_tcb();
+    tcb_t *new_tcb = get_tcb(utcp_fd);
 
     pthread_mutex_lock(&new_tcb->lock);
     //LOG_INFO("[utcp_connect] Locked the TCB...");
-    int utcp_fd = new_tcb->fd;
+    //int utcp_fd = new_tcb->fd;
 
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
-    new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
-    new_tcb->fourtuple.source_ip   = ntohl(global->client.sin_addr.s_addr);
+    //new_tcb->fourtuple.source_port = 49152 + (utcp_fd); // bind a UTCP port to the UTCP fd
+    //new_tcb->fourtuple.source_ip   = ntohl(global->client.sin_addr.s_addr);
+    new_tcb->fourtuple.dest_ip     = dest_addr->sin_addr.s_addr;
     new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
-    new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     
     new_tcb->dest_udp_port         = global->server_udp_port;
-    new_tcb->src_udp_port          = global->client_udp_port;
+    new_tcb->src_udp_port          = global->udp_port; // assigned by the OS
 
-    new_tcb->iss = 100;
-    new_tcb->snd_una = new_tcb->iss;
-    new_tcb->snd_nxt = new_tcb->iss;
-    new_tcb->snd_max = new_tcb->iss;
-    new_tcb->rcv_wnd = BUF_SIZE;
     update_fsm(utcp_fd, SYN_SENT);
 
     log_tcb(new_tcb, "[utcp_connect] Finished initializing variables for the new TCB:");
@@ -76,6 +72,9 @@ int main(void) {
 
     api_t *global = api_instance();
 
+    //init_host(global, client);
+    bind_udp_sock(0);
+    int utcp_fd = init_utcp_sock();
 
     struct sockaddr_in client = {
         .sin_family = AF_INET, 
@@ -83,15 +82,22 @@ int main(void) {
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
 
-    init_host(global, client);
+    struct sockaddr_in server = {
+        .sin_family = AF_INET, 
+        .sin_port = htons(332), 
+        .sin_addr.s_addr = inet_addr("40.82.162.155")
+    };
+
+    bind_utcp_sock(utcp_fd, &client);
+    utcp_connect(utcp_fd, &server);
     
-    if(spawn_threads(global) != 0)
-        err_sys("[Client] Error during thread creation");
+    //if(spawn_threads(global) != 0)
+    //    err_sys("[Client] Error during thread creation");
 
     /* pretend to be a client app */
-    int app_utcp_fd = utcp_connect(global->udp_fd, &global->server); // different from the UTCP fd in global
-    if (app_utcp_fd < 0)
-        err_sock(global->udp_fd, "[Client] Failed to connect.");
+    //int app_utcp_fd = utcp_connect(global->udp_fd, &server); // different from the UTCP fd in global
+    //if (app_utcp_fd < 0)
+    //    err_sock(global->udp_fd, "[Client] Failed to connect.");
             
     FILE *fp = fopen("./test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
@@ -103,7 +109,7 @@ int main(void) {
 
     while(total_received < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(app_utcp_fd, app_rcv_buf, BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, BUF_SIZE);
         if (bytes_rcvd > 0)
         {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
@@ -117,7 +123,7 @@ int main(void) {
         }
     }
 
-    tcb_t *active_tcb = get_tcb(app_utcp_fd);
+    tcb_t *active_tcb = get_tcb(utcp_fd);
     while(active_tcb->rx_tail - active_tcb->rx_head > 0)
         usleep(100000);
     sleep(2);

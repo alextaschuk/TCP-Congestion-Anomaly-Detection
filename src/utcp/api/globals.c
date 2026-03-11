@@ -21,8 +21,8 @@ api_t *api_instance(void)
         LOG_INFO("[api_instance] Initializing the global struct");
 
         /* Connection info */
-        global.client_udp_port = 1515;
-        global.server_udp_port = 4567;
+        //global.client_udp_port = 4567;
+        global.server_udp_port = 1515;
 
         global.udp_fd = -1; // global udp fd
         global.utcp_fd = -1; // listen utcp socket's fd

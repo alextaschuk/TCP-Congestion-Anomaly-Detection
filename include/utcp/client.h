@@ -26,7 +26,7 @@ extern struct sockaddr_in server_addr;
  * 
  * @return The FD of the newly-created TCB.
  */
-static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr);
+static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr);
 
 /* End define functions */
 #endif
