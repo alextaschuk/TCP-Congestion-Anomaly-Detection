@@ -43,7 +43,7 @@ typedef struct tcb_t
     uint32_t rcv_nxt;       /* Next expected sequence number. */
     uint32_t rcv_wnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept) */
     
-    u_short t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
+    uint16_t t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
     #define F_ACKNOW 0x0001 /* Send an immediate ACK segment with an empty payload. */
 
     /* Congestion Avoidance*/

@@ -160,31 +160,16 @@ int main(void) {
 
     LOG_INFO("[Client App] Opening 'tgg_rcvd.txt'...");
 
-    // get filesize (in bytes) of the file the client will be reconstructing
-    FILE *tgg = fopen("/Users/alex/Desktop/directed-study/test_file.txt", "rb");
-    long file_size_bytes = -1;
-    if (fseek(tgg, 0L, SEEK_END) == 0) { // Move to the end
-        file_size_bytes = ftell(tgg); // Get the position, which is the size
-
-        LOG_INFO("[CLIENT] size of tgg: %ld", file_size_bytes);
-
-        if (file_size_bytes == -1L)
-            perror("Error getting file position");
-    }
-
-    if (fclose(tgg) != 0) {
-        perror("Error closing file");
-    }
-    
-    FILE *fp = fopen("/Users/alex/Desktop/directed-study/test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+        
+    FILE *fp = fopen("./test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");
     }
-
+    size_t file_size_bytes = 1000000000; // 1GB
     uint8_t *app_rcv_buf = malloc(BUF_SIZE + 1);
     size_t total_received = 0;
 
-    while(total_received < (size_t)file_size_bytes)
+    while(total_received < file_size_bytes)
     {   
         ssize_t bytes_rcvd = utcp_recv(args->utcp_fd, app_rcv_buf, BUF_SIZE);
         if (bytes_rcvd > 0)

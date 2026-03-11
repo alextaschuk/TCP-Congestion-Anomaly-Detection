@@ -6,7 +6,7 @@
 
 #define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
 
-#define TCPT_NTIMERS 4  /* number of counters in `t_timer[]` */
+#define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
 #define TCPT_REXMT 0    /* index of retransmission timer in `timer_t[]` */
 #define TCPT_PERSIST 1  // Persist timer (for zero window probes)
 #define TCPT_KEEP    2  // Keepalive timer
