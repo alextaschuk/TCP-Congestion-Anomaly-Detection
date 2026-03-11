@@ -17,10 +17,11 @@ api_t *api_instance(void)
         LOG_INFO("[api_instance] Initializing the global struct");
         
         /* Client connection info */
-        global.client_udp_port = 5555;
+        global.client_udp_port = 1970;
         global.client = (struct sockaddr_in) {
             .sin_family = AF_INET,
-            .sin_port = htons(776) // UTCP port
+            .sin_port = htons(776), // UTCP port
+            .sin_addr.s_addr = htonl(INADDR_ANY)
         };
 
         if (inet_pton(AF_INET, "40.82.162.155", &global.client.sin_addr) <= 0)
@@ -30,7 +31,7 @@ api_t *api_instance(void)
             //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
 
         /* Server connection info */
-        global.server_udp_port = 1970;
+        global.server_udp_port = 4567;
         global.server = (struct sockaddr_in){
             .sin_family = AF_INET,
             .sin_port = htons(332), // UTCP port

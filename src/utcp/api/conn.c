@@ -57,14 +57,11 @@ int bind_utcp_sock(struct sockaddr_in *addr)
 {
     api_t *global = api_instance();
     tcb_t *tcb = alloc_new_tcb();
-
-    // TODO: dynamically select client/server UTCP port number
-     // also need to validate src port and ip
     
     //pthread_mutex_lock(&tcb->lock);
     tcb->fourtuple.source_port = ntohs(addr->sin_port); // src UTCP port
     tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr);
-    //tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr); // src IP addr
+
     tcb->fsm_state = CLOSED;
 
     LOG_INFO("[bind_utcp_sock] UTCP socket bound to port: %i", tcb->fourtuple.source_port);

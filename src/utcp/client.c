@@ -32,8 +32,14 @@ static void init_client(socket_fds *args)
     args->udp_fd = bind_udp_sock(global->client_udp_port);
     global->udp_fd = args->udp_fd;
 
-    args->utcp_fd = bind_utcp_sock(&global->client);
-    LOG_INFO("[init_client] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
+    struct sockaddr_in client = {
+        .sin_family = AF_INET, 
+        .sin_port = htons(776), 
+        .sin_addr.s_addr = htonl(INADDR_ANY)
+    };
+
+    args->utcp_fd = bind_utcp_sock(&client);
+    LOG_INFO("[init_client] UDP & UTCP Sockets Initialized. UDP fd=%u,  Listen UTCP fd=%u\n", ntohs(args->udp_fd), args->utcp_fd);
 }
 
 
