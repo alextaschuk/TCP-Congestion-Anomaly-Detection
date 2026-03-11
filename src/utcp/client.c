@@ -80,6 +80,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     
     new_tcb->dest_udp_port         = global->server_udp_port;
+    new_tcb->src_udp_port          = global->client_udp_port;
 
     new_tcb->iss = 100;
     new_tcb->snd_una = new_tcb->iss;
