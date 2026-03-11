@@ -25,13 +25,13 @@ api_t *api_instance(void)
 
         pthread_mutex_init(&global.lookup_lock, NULL);
         
-        LOG_INFO("[api_instance] Locking the lookup table to initialize it with NULL");
+        //LOG_INFO("[api_instance] Locking the lookup table to initialize it with NULL");
         pthread_mutex_lock(&global.lookup_lock);
         
         for (int i = 0; i < MAX_CONNECTIONS; i++)
             global.tcb_lookup[i] = NULL;
         
-        LOG_INFO("[api_instance] Finished lookup table init. Unlocking the lookup table.");
+        //LOG_INFO("[api_instance] Finished lookup table init. Unlocking the lookup table.");
         pthread_mutex_unlock(&global.lookup_lock);
 
         initialized = 1;

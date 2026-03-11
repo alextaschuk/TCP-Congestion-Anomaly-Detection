@@ -45,8 +45,8 @@ void utcp_slowtimo(void)
         if (!tcb)
             continue; 
 
-        //LOG_INFO("[utcp_slowtimo] Locking the TCB lock...");
-        pthread_mutex_lock(&tcb->lock);
+        //LOG_INFO("[utcp_slowtimo] Locking the TCB...");
+        //pthread_mutex_lock(&tcb->lock);
 
         for (int timer_idx = 0; timer_idx < TCPT_NTIMERS; timer_idx++) 
         {
@@ -63,7 +63,7 @@ void utcp_slowtimo(void)
             }
         }
         //LOG_INFO("[utcp_slowtimo] Unlocking the TCB lock...");
-        pthread_mutex_unlock(&tcb->lock);
+        //pthread_mutex_unlock(&tcb->lock);
     }
 
     //LOG_INFO("[utcp_slowtimo] Unlocking the lookup lock...");
@@ -162,16 +162,26 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     tcb->rto = tcb->rto * 2; // wait twice as long before trying again
     TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
 
-    /* Set ssthresh to 50% of cwnd, reset cwnd, and re-enter slow start */
-    tcb->snd_ssthresh = tcb->snd_cwnd >> 1;
-    tcb->snd_cwnd = MSS;
+    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
+    tcb->ssthresh = calc_ssthresh(flight_size);
+    tcb->cwnd = MSS;
     
-    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->snd_cwnd, tcb->snd_ssthresh);
+    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
 
-    retransmit_data(tcb, tcb->snd_nxt);
+    tcb->dupacks = 0;
+    tcb->fast_recovery = false;
+    tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window (idk if this should be here)
 
-    int ticks = (tcb->rto + 499) / 500; // restart the timer
-    tcb->t_timer[TCPT_REXMT] = ticks;
+    send_dgram(tcb);
+    //retransmit_data(tcb, tcb->snd_una);
+
+    reset_timer(tcb, TCPT_REXMT);
+}
+
+uint32_t calc_ssthresh(uint32_t flight_size)
+{
+    uint32_t half_flight = flight_size / 2;
+    return MAX(half_flight, 2 * MSS);
 }
 
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)

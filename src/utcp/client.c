@@ -25,6 +25,23 @@
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
+static void init_client(socket_fds *args)
+{
+    api_t *global = api_instance();
+
+    args->udp_fd = bind_udp_sock(global->client_port);
+    global->udp_fd = args->udp_fd;
+
+    struct sockaddr_in client = {
+    .sin_family = AF_INET,
+    .sin_port = htons(global->client_utcp_port),
+    .sin_addr.s_addr = inet_addr("127.0.0.1"),
+    };
+
+    args->utcp_fd = bind_utcp_sock(&client);
+    LOG_INFO("[init_client] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
+}
+
 
 void* begin_rcv(void *arg)
 {
@@ -36,9 +53,8 @@ void* begin_rcv(void *arg)
     while (1)
     {
         ssize_t rcv_size = rcv_dgram(args->udp_fd, BUF_SIZE);
-
         if (rcv_size < 0)
-            err_sys("[being_rcv] Error: failed to receive packet\n");
+            err_sys("[being_rcv] Error: failed to receive packet");
     }
     return NULL;
 }
@@ -53,7 +69,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     tcb_t *new_tcb = alloc_new_tcb();
 
     pthread_mutex_lock(&new_tcb->lock);
-    LOG_INFO("[utcp_connect] Locked the TCB...");
+    //LOG_INFO("[utcp_connect] Locked the TCB...");
     int utcp_fd = new_tcb->fd;
     new_tcb->src_udp_fd = udp_fd;
 
@@ -79,7 +95,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
         pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);
 
-    LOG_INFO("[utcp_connect] Unlocking the TCB...");
+    //LOG_INFO("[utcp_connect] Unlocking the TCB...");
     pthread_mutex_unlock(&new_tcb->lock);
 
     LOG_INFO("[utcp_connect] 3WHS is complete.");
@@ -98,8 +114,6 @@ static int spawn_threads(socket_fds *args)
         LOG_FATAL("[spawn_threads] Failed to create receiver thread");
         return -1;
     }
-    pthread_detach(rcv_thread);
-
 
     LOG_INFO("[spawn_threads] Spawning ticker thread...");
     if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
@@ -107,26 +121,23 @@ static int spawn_threads(socket_fds *args)
         LOG_FATAL("[spawn_threads] Failed to create ticker thread");
         return -1;
     }
-    pthread_detach(ticker_thread);
 
     return 0;
 }
 
 
 int main(void) {
-    api_t *global = api_instance();
-    
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
+
+    api_t *global = api_instance();
 
     socket_fds *args = malloc(sizeof(socket_fds));
     if (!args)
         err_sys("[Client, main] Failed to allocate args");
 
-
-    args->udp_fd = bind_udp_sock(global->client_port);
-    global->udp_fd = args->udp_fd;
-
+    init_client(args);
+    
     if(spawn_threads(args) != 0)
     {
         err_sys("[Client] Error during thread creation");
@@ -147,11 +158,9 @@ int main(void) {
     
     LOG_INFO("[utcp_connect] 3WHS complete.");
 
-    //tcb_t *tcb = get_tcb(args->utcp_fd);
-
     LOG_INFO("[Client App] Opening 'tgg_rcvd.txt'...");
-    //FILE *fp = fopen("/Users/alex/Desktop/directed-study/jungle_book_rcvd.txt", "wb"); // wb to ensure it's an exact copy
 
+    // get filesize (in bytes) of the file the client will be reconstructing
     FILE *tgg = fopen("/Users/alex/Desktop/directed-study/test_file.txt", "rb");
     long file_size_bytes = -1;
     if (fseek(tgg, 0L, SEEK_END) == 0) { // Move to the end
@@ -174,7 +183,6 @@ int main(void) {
 
     uint8_t *app_rcv_buf = malloc(BUF_SIZE + 1);
     size_t total_received = 0;
-    //#define TARGET_SIZE (10 * 24 *24) // send 10mb total
 
     while(total_received < (size_t)file_size_bytes)
     {   
@@ -190,11 +198,6 @@ int main(void) {
             LOG_ERROR("[Client App] Error receiving data.");
             break; 
         }
-        else if (bytes_rcvd == 0) {
-            // This triggers when the server sends a FIN flag
-            LOG_INFO("[Client App] Server gracefully closed the connection.");
-            break;
-        }
     }
 
     tcb_t *active_tcb = get_tcb(args->utcp_fd);
@@ -205,7 +208,7 @@ int main(void) {
     fclose(fp);
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
 
-    free(args); // unreachable
+    free(args);
     free(app_rcv_buf);
     return 0;
 }

@@ -19,13 +19,13 @@ extern struct sockaddr_in server_addr;
 
 /* Define functions */
 
-void* begin_rcv(void *arg);
+void* begin_rcv(void *args);
 
 /**
  * Initializes the client by binding its UDP and UTCP sockets,
  * then updates the client's TCB with the (dest) server's info
  */
-static void init_client(void *arg, api_t *global);
+static void init_client(socket_fds *args);
 
 
 /** 

@@ -12,6 +12,7 @@ else.
 
 #include <tcp/tcb.h>
 
+extern unsigned int seed;
 
 /**
  * @brief An application-side function to bind a UDP socket.

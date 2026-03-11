@@ -15,6 +15,7 @@
 
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
+unsigned int seed = 15;
 
 int bind_udp_sock(int pts)
 {
@@ -80,14 +81,14 @@ tcb_t *alloc_new_tcb(void)
     api_t *global = api_instance();
 
     pthread_mutex_lock(&global->lookup_lock);
-    LOG_INFO("[alloc_new_tcb] Locked the TCB lookup table to search for an avalaible spot");
+    //LOG_INFO("[alloc_new_tcb] Locked the TCB lookup table to search for an avalaible spot");
     /* Find the first available spot in the lookup table */
     for (fd = 0; fd < MAX_CONNECTIONS; fd++)
         if (global->tcb_lookup[fd] == NULL)
             break;
 
     if (fd == MAX_CONNECTIONS) {
-        LOG_WARN("[alloc_new_tcb] No sockets available in lookup table. Unlocking the lookup table...");
+        //LOG_WARN("[alloc_new_tcb] No sockets available in lookup table. Unlocking the lookup table...");
         pthread_mutex_unlock(&global->lookup_lock);
         return NULL; 
     }
@@ -99,7 +100,7 @@ tcb_t *alloc_new_tcb(void)
 
     global->tcb_lookup[fd] = new_tcb;
 
-    LOG_INFO("[alloc_new_tcb] Added the new TCB to the lookup table. Unlocking the lookup table...");
+    //LOG_INFO("[alloc_new_tcb] Added the new TCB to the lookup table. Unlocking the lookup table...");
     pthread_mutex_unlock(&global->lookup_lock);
 
     pthread_mutex_init(&new_tcb->lock, NULL);
@@ -117,8 +118,8 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
     new_tcb->dupacks = 0;
     
-    new_tcb->snd_cwnd = MSS * 10;
-    new_tcb->snd_ssthresh = BUF_SIZE;
+    new_tcb->cwnd = MSS * 10;
+    new_tcb->ssthresh = BUF_SIZE;
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
@@ -135,7 +136,7 @@ tcb_t *find_listen_tcb(void)
     api_t *global = api_instance();
 
     pthread_mutex_lock(&global->lookup_lock);
-    LOG_DEBUG("[find_listen_tcb] Locked the TCB lookup table to search for the listen socket's TCB...");
+    //LOG_DEBUG("[find_listen_tcb] Locked the TCB lookup table to search for the listen socket's TCB...");
 
     for (int i = 0; i < MAX_CONNECTIONS; i++)
     {
@@ -146,7 +147,7 @@ tcb_t *find_listen_tcb(void)
 
         if (curr_tcb->fsm_state == LISTEN)
         {
-            LOG_DEBUG("[find_listen_tcb] Found the listen socket's TCB in the lookup table at fd=%i. Unlocking the TCB lookup table...", i);
+            //LOG_DEBUG("[find_listen_tcb] Found the listen socket's TCB in the lookup table at fd=%i. Unlocking the TCB lookup table...", i);
             pthread_mutex_unlock(&global->lookup_lock);
             return curr_tcb;
         }

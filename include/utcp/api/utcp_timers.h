@@ -84,6 +84,13 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr);
  */
 static void handle_rexmt_timeout(tcb_t *tcb);
 
+
+/**
+ * When a triple ACK or timeout occurs, the ssthresh needs to
+ * be recalculated. It is set to `MAX(50% of bytes in flight, 2 MSS)`
+ */
+uint32_t calc_ssthresh(uint32_t flight_size);
+
 /**
  * Reset a timer.
  * 

@@ -11,6 +11,7 @@
 #include <utils/printable.h>
 #include <utils/logger.h>
 #include <utils/err.h>
+#include <utcp/api/conn.h>
 #include <utcp/api/globals.h>
 
 uint8_t tcp_outflags[] = {
@@ -22,11 +23,9 @@ uint8_t tcp_outflags[] = {
 int send_dgram(tcb_t *tcb)
 {
     uint8_t flags = tcp_outflags[tcb->fsm_state];
-    LOG_DEBUG("[send_dgram] Initial state: %s, Base Flags: 0x%02X", fsm_state_to_str(tcb->fsm_state), flags);
-    int total_bytes_sent = 0;
-    int segments_sent = 0;
     bool force_ack = false;
 
+    LOG_DEBUG("[send_dgram] Initial state: %s, Base Flags: 0x%02X", fsm_state_to_str(tcb->fsm_state), flags);
     /**
      * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding
      * 
@@ -43,6 +42,9 @@ int send_dgram(tcb_t *tcb)
         tcb->t_flags &= ~F_ACKNOW; // put the flag down
     }
 
+    int total_bytes_sent = 0;
+    int segments_sent = 0;
+
     while(1)
     {
         size_t data_len = 0;
@@ -50,41 +52,39 @@ int send_dgram(tcb_t *tcb)
         if (tcb->fsm_state == ESTABLISHED)
         {
             /* Calculate how much data can be sent according to the receiver's window and the cwnd */
-            uint32_t send_window = MIN(tcb->snd_wnd, tcb->snd_cwnd); // (effective window)
+            uint32_t send_window = MIN(tcb->snd_wnd, tcb->cwnd); // (effective window)
             uint32_t unacked_bytes_in_flight = tcb->snd_nxt - tcb->snd_una; // bytes that have been sent (in flight) (on the wire)
-            LOG_INFO("[send_dgram] Send Window: %u, unACKed bytes in flight: %u", send_window, unacked_bytes_in_flight);
+            //LOG_INFO("[send_dgram] Send Window: %u, unACKed bytes in flight: %u", send_window, unacked_bytes_in_flight);
         
             /**
              * Calculate the total number of payload bytes that have been sent during the connection's entire session.
              * This includes the sum of payload bytes - 1 (for the SYN flag), or 0 if only a SYN request has been made.
              */
-            uint32_t data_bytes_sent = (tcb->snd_nxt > tcb->iss) ? (tcb ->snd_nxt - tcb->iss - 1) : 0;
+            uint32_t data_bytes_sent = SEQ_GT(tcb->snd_nxt, tcb->iss) ? (tcb->snd_nxt - tcb->iss - 1) : 0;
 
             uint32_t buffered_bytes = 0; // The number of bytes the application has written to TX and are waiting to be sent.
             if (tcb->tx_tail > data_bytes_sent)
                 buffered_bytes = tcb->tx_tail - data_bytes_sent;
 
             LOG_DEBUG("[send_dgram] Window Calculation: Used snd_wnd=%u, cwnd=%u, to calculate effective wnd=%u, bytes in flight=%u, bytes buffered=%u",
-                        tcb->snd_wnd, tcb->snd_cwnd, send_window, unacked_bytes_in_flight, buffered_bytes);
+                        tcb->snd_wnd, tcb->cwnd, send_window, unacked_bytes_in_flight, buffered_bytes);
 
             /* How many bytes can we fit into the current segment? */
             if (send_window > unacked_bytes_in_flight)
             {
                 uint32_t can_send = send_window - unacked_bytes_in_flight;
-                data_len = MIN(buffered_bytes, can_send);
+                data_len = MIN(MIN(buffered_bytes, can_send), MSS); // don't send more bytes than the max segment size
 
-                data_len = MIN(data_len, MSS); // don't send more bytes than the max segment size
-
-                if (data_len > 0)
-                {
-                    LOG_DEBUG("[send_dgram] Attempting to send a segment with a payload size of %zu bytes", data_len);
-                }
+                //if (data_len > 0)
+                //{
+                //    LOG_DEBUG("[send_dgram] Attempting to send a segment with a payload size of %zu bytes", data_len);
+                //}
             }
             else
             {
                 data_len = 0;
-                LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u, cwnd=%u, bytes in flight=%u",
-                            tcb->snd_wnd, tcb->snd_cwnd, unacked_bytes_in_flight);
+                //LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u, cwnd=%u, bytes in flight=%u",
+                //           tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
             }
         }
 
@@ -93,7 +93,7 @@ int send_dgram(tcb_t *tcb)
 
             LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
 
-            if (data_len == 0 && !is_syn_fin && !force_ack)
+            if (data_len == 0 && !sending_new_syn_fin && !force_ack)
             { // no payload and it's not a SYN or FIN, so no point in sending the packet
                 LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
                 break;
@@ -118,20 +118,20 @@ int send_dgram(tcb_t *tcb)
 
                 if(tcb->t_timer[TCPT_REXMT] == 0)
                 { // start the retransmission timer
-                    int ticks = (tcb->rto + 499) / 500;
-                    tcb->t_timer[TCPT_REXMT] = ticks;
+                    int ticks = reset_timer(tcb, TCPT_REXMT);
                     LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rto);
                 }
-                
+    
                 LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
             }
 
-            force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
-
-            if (tcb->snd_nxt > tcb->snd_max) {
+            if (SEQ_GT(tcb->snd_nxt, tcb->snd_max))
+            {
                 tcb->snd_max = tcb->snd_nxt;
                 LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
             }
+
+            force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
 
             if (data_len == 0)
             { // the segment that was sent was either an empty ACK, a SYN, or a FIN, so we can exit the loop.
@@ -148,17 +148,16 @@ int send_dgram(tcb_t *tcb)
 
 int retransmit_data(tcb_t *tcb, uint32_t seq)
 {
+    LOG_DEBUG("[retransmit_data] retransmission requested. target sequence number=%u", seq);
     if(tcb->fsm_state != ESTABLISHED)
         return 0;
 
     uint8_t flags = tcp_outflags[tcb->fsm_state];
     
     /**
-     * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding
-     * 
+     * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding.
      * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
-     * padding, which is not divisible by 4. So the options part of the segment looks like this:
-     * NOP, NOP, Kind, Length, TSval, TSecr.
+     * padding, which is not divisible by 4. 
      */
     size_t opt_len = 12;
 
@@ -175,8 +174,9 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
                 buffered_data, send_len);
 
     int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);
+    //tcb->snd_nxt += send_len;
     
-    //int udp_fd = tcb->src_udp_fd;
+    log_tcb(tcb, "[retransmit_data] retransmit post-send:");
     return  bytes_sent;
 }
 
@@ -191,18 +191,21 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
 
     /* Initialize the segment's base header */
     memset(&segment->hdr, 0, sizeof(struct tcphdr));
+
     segment->hdr.th_sport = htons(tcb->fourtuple.source_port);
     segment->hdr.th_dport = htons(tcb->fourtuple.dest_port);
-    segment->hdr.th_seq = htonl(tcb->snd_nxt);
+    //segment->hdr.th_seq = htonl(tcb->snd_nxt);
+    segment->hdr.th_seq = htonl(seq);
     segment->hdr.th_ack = htonl(tcb->rcv_nxt);
     segment->hdr.th_off = (sizeof(struct tcphdr) + opt_len) / 4; // convert into 32-bit words
     segment->hdr.th_flags = flags;
 
     /* calculate available space and clamp to header */
-    uint32_t available_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
-    uint32_t adv_wnd = MIN(available_space, BUF_SIZE - 1); // we need -1 to prevent int overflow
-    //LOG_DEBUG("[send_segment] ")
-    segment->hdr.th_win = htons(adv_wnd);
+    uint32_t bytes_in_buffer = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
+    uint32_t current_free_space = BUF_SIZE - bytes_in_buffer - 1;
+    //uint32_t current_free_space = MIN(bytes_in_buffer, BUF_SIZE);
+
+    segment->hdr.th_win = htons(current_free_space);
 
     /* Add timestamps for RTT calculation */
     uint8_t ts_opt[12];
@@ -224,8 +227,8 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
         uint32_t buf_offset = (seq - tcb->iss - 1) % BUF_SIZE;
 
         if (buf_offset + data_len <= BUF_SIZE)
-        {
-            memcpy(segment->data + opt_len, &tcb->tx_buf[buf_offset], data_len); // offset pointer by opt_len so that timestamps arent overwritten
+        {   // offset pointer by opt_len so that timestamps arent overwritten
+            memcpy(segment->data + opt_len, &tcb->tx_buf[buf_offset], data_len); 
         }
         else 
         {
@@ -246,15 +249,27 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     addr.sin_port = htons(tcb->dest_udp_port);
     addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // hardcoded for now
 
-
     char dest_ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr.sin_addr, dest_ip_str, sizeof(dest_ip_str));
 
     char src_ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr.sin_addr, src_ip_str, sizeof(src_ip_str));
     
-    LOG_DEBUG("[send_segment] Attempting to send a segment to %s:%d from %s:%d", dest_ip_str, ntohs(addr.sin_port), src_ip_str, ntohs(tcb->src_udp_fd));
+    //LOG_DEBUG("[send_segment] Attempting to send a segment to %s:%d from %s:%d", dest_ip_str, ntohs(addr.sin_port), src_ip_str, ntohs(tcb->src_udp_fd));
     log_segment((u_int8_t *)segment, segment_size, 0, "[send_dgram] Segment that was sent:");
+
+    /**
+     * Introduce a 10% chance that a packet is dropped over the network.
+     */
+    if (tcb->fsm_state == ESTABLISHED)
+    {
+        int result = (rand_r(&seed) % 100) + 1;
+        if (result < 2)
+        {
+            LOG_WARN("[send_segment] Outgoing packet will be dropped to simulate packet loss (10%% chance)");
+            return segment_size;
+        }
+    }
 
     ssize_t bytes_sent = sendto(tcb->src_udp_fd, segment, segment_size, 0, (struct sockaddr*)&addr, sizeof(addr));
     if (bytes_sent < 0)

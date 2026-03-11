@@ -43,6 +43,7 @@ tcb_t* demux_tcb(
             continue;
         }
     }
+    pthread_mutex_unlock(&global->lookup_lock);
 
     // no active connection found, look for half-open connection (3WHS is in-progress)
     if (listen_tcb != NULL)
@@ -50,11 +51,12 @@ tcb_t* demux_tcb(
         //LOG_INFO("[demux_tcb] Searching for TCB in SYN queue");
 
         pthread_mutex_lock(&listen_tcb->syn_q.lock);
+
         for (int i = 0; i < listen_tcb->syn_q.count; i++)
         {
             int idx = (listen_tcb->syn_q.head + i) % MAX_BACKLOG;
-            tcb_t *syn_tcb = &listen_tcb->syn_q.tcbs[idx];
 
+            tcb_t *syn_tcb = &listen_tcb->syn_q.tcbs[idx];
             if (syn_tcb == NULL)
                 continue;
             
@@ -64,20 +66,16 @@ tcb_t* demux_tcb(
             if (client_ip == src_ip && client_udp_port == src_udp_port)
             {
                 //LOG_INFO("[demux_tcb] Found a TCB with a half-open connection");
-                pthread_mutex_unlock(&global->lookup_lock);
                 pthread_mutex_unlock(&listen_tcb->syn_q.lock);
                 return syn_tcb;
             }
         }
-
-        pthread_mutex_unlock(&global->lookup_lock);
         pthread_mutex_unlock(&listen_tcb->syn_q.lock);
         
         //LOG_INFO("[demux_tcb] No TCB found; will handle incoming connection (SYN) request...");
         return listen_tcb;
     }
 
-    pthread_mutex_unlock(&global->lookup_lock);
     LOG_WARN("[demux_tcb] No TCB found, nor listen socket found.");
     return NULL; 
 }

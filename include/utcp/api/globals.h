@@ -53,6 +53,11 @@ client will need access to.
  /* Convinience macros */
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */
 #define MAX(a,b) ((a) > (b) ? (a) : (b)) /* Return the larger value between `a` and `b` */
+#define SEQ_LT(a, b)  ((int)((a) - (b)) < 0)
+#define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)
+#define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)
+#define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
+
 /* End define macros */
 
 /*Define Structs*/

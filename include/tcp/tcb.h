@@ -60,8 +60,8 @@ typedef struct tcb_t
 
 
     /* Congestion Control */
-    uint32_t snd_cwnd;      /* Congestion window */
-    uint32_t snd_ssthresh;  /* Slow start threshold */
+    uint32_t cwnd;      /* Congestion window */
+    uint32_t ssthresh;  /* Slow start threshold */
     uint8_t dupacks;        /* Counter for the number of consecutive duplicate ACKs received */
     bool fast_recovery;     /* `true` if `CA_ALGO == TAHOE` AND 3 duplicate ACKs have been detected, `false` otherwise */
 

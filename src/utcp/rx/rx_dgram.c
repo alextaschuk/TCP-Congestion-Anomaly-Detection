@@ -45,13 +45,13 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     if (rcvsize < 0)
     {
         free(buf);
-        err_sys("[rcv_dgram] Failed to receive datagram\n");
+        err_sys("[rcv_dgram] Failed to receive datagram");
     }
 
     if (rcvsize == 0)
     {
         free(buf);
-        printf("TODO handle connection shutdown process\n");
+        printf("TODO handle connection shutdown process");
         return rcvsize;
     }
 
@@ -71,17 +71,13 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
     tcb_t *target_tcb = demux_tcb(global, local_utcp_port, remote_ip, remote_udp_port);
     if (target_tcb == NULL)
     {
-        LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.\n", local_utcp_port);
+        LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.", local_utcp_port);
         free(buf);
         return rcvsize;
     }
 
-    LOG_DEBUG("[rcv_dgram] Locking the TCB while the received segment is handeled.");
+    //LOG_DEBUG("[rcv_dgram] Locking the TCB while the received segment is handled.");
     pthread_mutex_lock(&target_tcb->lock);
-
-    //uint32_t old_snd_wnd = target_tcb->snd_wnd;
-    //target_tcb->snd_wnd = hdr->th_win;
-    //LOG_DEBUG("[rcv_dgram] snd_wnd updated from %u to %u", old_snd_wnd, target_tcb->snd_wnd);
 
     switch (target_tcb->fsm_state)
     {
@@ -114,7 +110,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
             LOG_ERROR("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
     }
     
-    LOG_DEBUG("[rcv_dgram] Unlocking the TCB.");
+    //LOG_DEBUG("[rcv_dgram] Unlocking the TCB.");
     pthread_mutex_unlock(&target_tcb->lock);
 }
 

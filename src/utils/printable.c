@@ -218,8 +218,8 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\trto                 : %u\n"
         "\tsrtt                : %u\n"
         "\trttvar              : %u\n"
-        "\tsnd_cwnd            : %u\n"
-        "\tsnd_ssthresh        : %u\n"
+        "\tcwnd            : %u\n"
+        "\tssthresh        : %u\n"
         "\tdupacks             : %u\n"
         "\trxtcur              : %u\n"
         "\ttcpt_rexmt          : %u\n"
@@ -248,8 +248,8 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->rto,
         tcb->srtt,
         tcb->rttvar,
-        tcb->snd_cwnd,
-        tcb->snd_ssthresh,
+        tcb->cwnd,
+        tcb->ssthresh,
         tcb->dupacks,
         tcb->rxtcur,
         tcb->tcpt_rexmt
