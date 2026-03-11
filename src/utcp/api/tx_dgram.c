@@ -35,7 +35,7 @@ int send_dgram(tcb_t *tcb)
      */
     size_t opt_len = 12;
 
-    if (tcb->t_flags & TF_ACKNOW)
+    if (tcb->t_flags & F_ACKNOW)
     { // an ACK needs to be immediately sent.
         force_ack = true;
         LOG_DEBUG("[send_dgram] F_ACKNOW flag is up in the TCB. Sending a forced ACK.");
