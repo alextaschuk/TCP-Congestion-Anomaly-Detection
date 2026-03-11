@@ -15,7 +15,6 @@
 
 
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
-unsigned int seed = 15;
 
 int bind_udp_sock(int pts)
 {
@@ -26,7 +25,6 @@ int bind_udp_sock(int pts)
     {
         .sin_family = AF_INET,
         .sin_port = htons(pts), // 0 means the kernel chooses a port for us
-        //.sin_addr.s_addr = inet_addr("127.0.0.1"), // localhost
         .sin_addr.s_addr = htonl(INADDR_ANY), // accept datagrams at any of the machine's IP addresses
     };
 

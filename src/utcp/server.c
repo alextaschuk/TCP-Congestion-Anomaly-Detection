@@ -37,16 +37,10 @@ tcb_t *active_tcbs[MAX_CONNECTIONS]; // global array of TCBs w/ ESTABLISHED stat
 
 static void init_server(socket_fds *args, api_t *global)
 {
-    args->udp_fd = bind_udp_sock(global->server_port);
+    args->udp_fd = bind_udp_sock(global->server_udp_port);
     global->udp_fd = args->udp_fd;
 
-    struct sockaddr_in server = {
-    .sin_family = AF_INET,
-    .sin_port = htons(global->server_utcp_port),
-    .sin_addr.s_addr = inet_addr(global->server_ip),
-    };
-
-    args->utcp_fd = bind_utcp_sock(&server);
+    args->utcp_fd = bind_utcp_sock(&global->server);
 
     LOG_INFO("[init_server] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
 }

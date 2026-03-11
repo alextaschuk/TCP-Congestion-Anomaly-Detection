@@ -29,16 +29,10 @@ static void init_client(socket_fds *args)
 {
     api_t *global = api_instance();
 
-    args->udp_fd = bind_udp_sock(global->client_port);
+    args->udp_fd = bind_udp_sock(global->client_udp_port);
     global->udp_fd = args->udp_fd;
 
-    struct sockaddr_in client = {
-    .sin_family = AF_INET,
-    .sin_port = htons(global->client_utcp_port),
-    .sin_addr.s_addr = inet_addr(global->client_ip),
-    };
-
-    args->utcp_fd = bind_utcp_sock(&client);
+    args->utcp_fd = bind_utcp_sock(&global->client);
     LOG_INFO("[init_client] UDP & UTCP Sockets Initialized. UDP FD=%u,  Listen UTCP FD=%u\n", ntohs(args->udp_fd), args->utcp_fd);
 }
 
@@ -75,7 +69,7 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
 
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
-    new_tcb->fourtuple.source_ip   = inet_addr(global->client_ip);
+    new_tcb->fourtuple.source_ip   = global->client.sin_addr.s_addr;
     new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
     new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     new_tcb->dest_udp_port         = 4567;
@@ -99,7 +93,6 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     pthread_mutex_unlock(&new_tcb->lock);
 
     LOG_INFO("[utcp_connect] 3WHS is complete.");
-
     return utcp_fd;
 }
 
@@ -143,24 +136,12 @@ int main(void) {
         err_sys("[Client] Error during thread creation");
     }
 
-    struct sockaddr_in server = {
-    .sin_family = AF_INET,
-    .sin_port = htons(global->server_utcp_port),
-    .sin_addr.s_addr = inet_addr(global->server_ip),
-    };
 
-    // pretend to be a client app
-    LOG_INFO("[Client App] connecting to server via utcp_connect()");
-
-    args->utcp_fd = utcp_connect(args->udp_fd, &server);
+    /* pretend to be a client app */
+    args->utcp_fd = utcp_connect(args->udp_fd, &global->server);
     if (args->utcp_fd < 0)
         err_sock(args->udp_fd, "[Client] Failed to connect");
-    
-    LOG_INFO("[utcp_connect] 3WHS complete.");
-
-    LOG_INFO("[Client App] Opening 'tgg_rcvd.txt'...");
-
-        
+            
     FILE *fp = fopen("./test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");

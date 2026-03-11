@@ -5,6 +5,7 @@
 #include <tcp/hndshk_fsm.h>
 #include <utils/logger.h>
 #include <utcp/api/globals.h>
+#include <tcp/tcb.h>
 
 tcb_t* demux_tcb(
     api_t *global,

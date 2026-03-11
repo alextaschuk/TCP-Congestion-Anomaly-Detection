@@ -1,20 +1,24 @@
 /*
-Contains global API macros, variables,
-structs, etc. that both the server and
-client will need access to.
+Contains global API macros, variables, structs, etc. that both the server
+and client will need access to.
 */
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#include <netinet/in.h>
 #include <stdint.h>
 
-#include <tcp/tcb.h>
+#include <pthread.h>
+
+struct tcb_t;
+typedef struct tcb_t tcb_t;
 
 
 /* Define Macros */
 
  /*socket-related*/
 #define MAX_CONNECTIONS 1024 /* The maximum number of UTCP socket connections allowed at a time (in the lookup table). */
+
 /**
  * The maximum number of allowed TCBs in SYS & accept queues at a time.
  * @note This is typically determined with `SOMAXCONN` (SOcket MAXimum CONNections), but my system's stores
@@ -36,8 +40,21 @@ client will need access to.
  */
 #define MSS 536
 
-/* Congestion Control  Related */
+/* Congestion Control Related */
 #define CA_ALGO RENO /* Determine which CA algo we use. */
+
+/* Timer Stuff*/
+#define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
+
+/* Retransmission Timer Stuff */
+
+#define TCPTV_MIN 2                     /* minimum value of retransmission timer (1 sec)*/
+#define TCPTC_REXMTMAX 128              /* maximum value of retransmission timer (64 sec)*/
+#define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
+
+ /* Persist Timer Stuff*/
+#define TCPTV_PERSMIN 10                /* minimum value of persist timer (5 sec)*/
+#define TCPTV_PERSMAX 120               /* maximum value of retransmission timer (60 sec)*/
 
  /* Convinience macros */
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */
@@ -54,15 +71,16 @@ typedef struct api_t /* Stores all global vars */
 {
     /* client info */
 
-    uint16_t client_port;
+    uint16_t client_udp_port;
     int client_utcp_port; 
     char* client_ip;
-
+    struct sockaddr_in client;
     /* server info */
 
-    uint16_t server_port;
+    uint16_t server_udp_port;
     int server_utcp_port;
     char* server_ip;
+    struct sockaddr_in server;
 
     int udp_fd;
 
@@ -83,6 +101,14 @@ typedef struct socket_fds /* A helpful struct to consolidate our socket FDs for 
 enum cc_algos{ /* Congestion control algorithms */
     TAHOE = 1,
     RENO = 2
+};
+
+enum timers{
+    TCPT_REXMT =   0,  /* index of retransmission timer in `timer_t[]` */
+    TCPT_PERSIST = 1,  /* Persist timer (for zero window probes) */
+    TCPT_KEEP =    2,  /* Keepalive timer */
+    TCPT_2MSL =    3,  /* 2*MSL timer (TIME_WAIT state) */
+    TCPT_DELACK =  4  /* Delayed ACK timer */
 };
 /*End define enums*/
 

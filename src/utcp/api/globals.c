@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
 
 #include <utils/logger.h>
 
@@ -14,25 +15,32 @@ api_t *api_instance(void)
     if (!initialized)
     {
         LOG_INFO("[api_instance] Initializing the global struct");
-        // client info
-        global.client_port = 5555;
-        global.client_utcp_port = 776; 
-        //global.client_ip = "127.0.0.1";
-        global.client_ip = "40.82.162.155";
-        // server info
-        global.server_port = 4567;
-        global.server_utcp_port = 332;
-        global.server_ip = "127.0.0.1";
+        
+        /* Client connection info */
+        global.client_udp_port = 5555;
+        global.client = (struct sockaddr_in) {
+            .sin_family = AF_INET,
+            .sin_port = htons(776) // UTCP port
+        };
 
+        if (inet_pton(AF_INET, "40.82.162.155", &global.client.sin_addr.s_addr) <= 0)
+            LOG_ERROR("[api_instance] Invalid client IPv4 address.");
+
+        /* Server connection info */
+        global.server = (struct sockaddr_in){
+            .sin_family = AF_INET,
+            .sin_port = htons(4567) // UTCP port
+        };
+
+        if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr.s_addr) <= 0)
+            LOG_ERROR("[api_instance] Invalid server IPv4 address.");
+
+        /* TCB lookup table config */
         pthread_mutex_init(&global.lookup_lock, NULL);
-        
-        //LOG_INFO("[api_instance] Locking the lookup table to initialize it with NULL");
+
         pthread_mutex_lock(&global.lookup_lock);
-        
         for (int i = 0; i < MAX_CONNECTIONS; i++)
             global.tcb_lookup[i] = NULL;
-        
-        //LOG_INFO("[api_instance] Finished lookup table init. Unlocking the lookup table.");
         pthread_mutex_unlock(&global.lookup_lock);
 
         initialized = 1;
