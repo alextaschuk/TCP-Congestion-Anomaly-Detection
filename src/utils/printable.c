@@ -205,6 +205,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\tdest_udp_port       : %u\n"
         "\tfsm_state           : %s\n"
         "\tUTCP file descriptor: %u\n"
+        "\tUDP file descriptor : %u\n"
         "\n"
         "\tiss                 : %u\n"
         "\tsnd_una             : %u\n"
@@ -235,6 +236,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->dest_udp_port,
         fsm_state_to_str(tcb->fsm_state),
         tcb->fd,
+        tcb->src_udp_fd,
         
         tcb->iss,
         tcb->snd_una,

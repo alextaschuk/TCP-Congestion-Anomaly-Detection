@@ -52,7 +52,6 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
     pthread_mutex_lock(&new_tcb->lock);
     //LOG_INFO("[utcp_connect] Locked the TCB...");
     int utcp_fd = new_tcb->fd;
-    new_tcb->src_udp_fd = udp_fd;
 
     //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
     new_tcb->fourtuple.source_port = 49152 + (utcp_fd);
@@ -83,28 +82,6 @@ static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr)
 
     LOG_INFO("[utcp_connect] 3WHS is complete.");
     return utcp_fd;
-}
-
-static int spawn_threads(api_t *global)
-{
-    pthread_t listen_thread;
-    pthread_t ticker_thread;
-
-    LOG_INFO("[spawn_threads] Spawning listener thread...");
-    if (pthread_create(&listen_thread, NULL, utcp_listen_thread, global) != 0)
-    {
-        LOG_FATAL("[spawn_threads] Failed to create listener thread");
-        return -1;
-    }
-
-    LOG_INFO("[spawn_threads] Spawning ticker thread...");
-    if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
-    {
-        LOG_FATAL("[spawn_threads] Failed to create ticker thread");
-        return -1;
-    }
-
-    return 0;
 }
 
 

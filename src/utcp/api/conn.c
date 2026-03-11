@@ -15,11 +15,12 @@
 #include <utcp/rx/rx_dgram.h>
 
 
-int udp_sock_open = 0; // changes to 1 when UDP socket is bound.
+int udp_sock_open = 0; // changes to 1 when UDP socket is bound to a port.
 
 void init_host(api_t *global, struct sockaddr_in sock_info)
 {
-    global->udp_fd = bind_udp_sock(0);
+    //global->udp_fd = bind_udp_sock(0);
+    bind_udp_sock(0);
     global->utcp_fd = bind_utcp_sock(&global->server);
 }
 
@@ -61,6 +62,8 @@ uint16_t bind_udp_sock(int pts)
 
     udp_sock_open = 1;
     global->udp_fd = udp_fd;
+    global->udp_port = ntohs(bound_addr.sin_port);
+    printf("udp_fd:%d\n", global->udp_fd);
     return ntohs(bound_addr.sin_port);
 }
 
@@ -74,6 +77,8 @@ int bind_utcp_sock(struct sockaddr_in *addr)
     tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr);
 
     tcb->fsm_state = CLOSED;
+
+    global->utcp_fd = tcb->fd;
 
     //pthread_mutex_unlock(&tcb->lock);
     LOG_INFO("[bind_utcp_sock] UDP & UTCP Sockets Initialized. UDP fd=%u,  Listen UTCP fd=%u", global->udp_fd, global->utcp_fd);
@@ -113,6 +118,9 @@ tcb_t *alloc_new_tcb(void)
 
     //LOG_INFO("[alloc_new_tcb] Locking the new TCB to initialize its variables...", new_tcb->fd);
     //pthread_mutex_lock(&new_tcb->lock);
+    new_tcb->src_udp_fd = global->udp_fd;
+    new_tcb->src_udp_port = global->udp_port;
+
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
 
@@ -190,7 +198,7 @@ void *utcp_listen_thread(void *arg)
     LOG_INFO("[utcp_listen_thread] Listen thread running...");
     
     api_t *global = (api_t *)arg;
-
+    printf("udp fd:%d\n", htons(global->udp_fd));
     while (1)
     {
         ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);

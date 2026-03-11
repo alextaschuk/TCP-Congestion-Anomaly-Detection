@@ -73,6 +73,7 @@ typedef struct api_t /* Stores all global vars */
     uint16_t client_udp_port;
     uint16_t server_udp_port;
 
+    uint16_t udp_port;
     int udp_fd;
     int utcp_fd;
 

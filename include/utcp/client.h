@@ -31,10 +31,5 @@ void* begin_rcv(api_t *global);
  */
 static int utcp_connect(int udp_fd, const struct sockaddr_in *dest_addr);
 
-/**
- * Spawns the receive and ticker threads.
- */
-static int spawn_threads(api_t *global);
-
 /* End define functions */
 #endif

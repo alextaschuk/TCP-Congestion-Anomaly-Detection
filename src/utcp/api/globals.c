@@ -24,8 +24,9 @@ api_t *api_instance(void)
         global.client_udp_port = 1515;
         global.server_udp_port = 4567;
 
-        global.udp_fd = -1;
-        global.utcp_fd = -1;
+        global.udp_fd = -1; // global udp fd
+        global.utcp_fd = -1; // listen utcp socket's fd
+        global.udp_port = 0; // global udp port
         
         global.client = (struct sockaddr_in) {
             .sin_family = AF_INET,
