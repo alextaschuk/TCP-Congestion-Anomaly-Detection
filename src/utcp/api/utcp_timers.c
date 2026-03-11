@@ -133,6 +133,11 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     tcb->cwnd = MSS;
     
     LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
+    
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "cc_data";
+    LOG_INFO("INIT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    current_thread_cat = old_category;
 
     tcb->dupacks = 0;
     tcb->fast_recovery = false;

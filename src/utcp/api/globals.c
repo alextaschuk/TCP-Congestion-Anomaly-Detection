@@ -34,9 +34,6 @@ api_t *api_instance(void)
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
         
-        //if (inet_pton(AF_INET, "127.0.0.1", &global.client.sin_addr) <= 0)
-            //LOG_ERROR("[api_instance] Invalid client IPv4 address.");
-        
         global.server = (struct sockaddr_in){
             .sin_family = AF_INET,
             .sin_port = htons(332), // UTCP port

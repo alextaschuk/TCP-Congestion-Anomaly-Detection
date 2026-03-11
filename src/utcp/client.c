@@ -99,11 +99,12 @@ int main(void) {
     //if (app_utcp_fd < 0)
     //    err_sock(global->udp_fd, "[Client] Failed to connect.");
             
-    FILE *fp = fopen("./test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+    FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");
     }
-    size_t file_size_bytes = 1000000000; // 1GB
+    //size_t file_size_bytes = 1000000000; // 1GB
+    size_t file_size_bytes = 10000000; // 10mb
     uint8_t *app_rcv_buf = malloc(BUF_SIZE + 1);
     size_t total_received = 0;
 

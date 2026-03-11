@@ -160,6 +160,11 @@ tcb_t *alloc_new_tcb(void)
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
+
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "cc_data";
+    LOG_INFO("INIT,%u,%u", new_tcb->cwnd, new_tcb->ssthresh);
+    current_thread_cat = old_category;
     
     //LOG_INFO("[alloc_new_tcb] Unlocking the new TCB...");
     //pthread_mutex_unlock(&new_tcb->lock);
@@ -222,7 +227,7 @@ void *utcp_listen_thread(void *arg)
     LOG_INFO("[utcp_listen_thread] Listen thread running...");
     
     api_t *global = (api_t *)arg;
-    printf("[utcp_listen_thread]udp fd:%d\n", htons(global->udp_fd));
+    printf("[utcp_listen_thread]udp fd:%d", htons(global->udp_fd));
     while (1)
     {
         ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);
