@@ -28,7 +28,8 @@
 #include <zlog.h>
 //make clean && make && clear && clear && ./server_app
 
-#define CHUNK_SIZE 65536 // 64KB
+//#define CHUNK_SIZE 65536 // 64KB
+#define CHUNK_SIZE 1048576 // 1MB
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
@@ -149,11 +150,11 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             
+    size_t file_size_bytes = 10000000; // 10mb
     uint8_t *snd_buf = malloc(BUF_SIZE);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
-    //while ((bytes_read = fread(snd_buf, 1, sizeof(snd_buf), fp)) > 0) 
     while((bytes_read = fread(snd_buf, 1, CHUNK_SIZE, fp)) > 0)
     {
         ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);
@@ -164,15 +165,11 @@ int main(void)
         }
 
         total_file_bytes += sent;
+        fflush(stdout);
     }
-        // Wait for the background thread to finish draining the TX buffer before exiting!
-        tcb_t *active_tcb = get_tcb(new_utcp_fd);
-        while(active_tcb->tx_head > 0)
-            usleep(100000);
-        sleep(5); // Wait for final ACKs
 
         fclose(fp);
+        free(snd_buf);
         LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
-
         return 0;
 }

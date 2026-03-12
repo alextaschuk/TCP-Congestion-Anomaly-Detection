@@ -32,16 +32,10 @@ static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
 
     LOG_INFO("[utcp_connect] Creating a new TCB for the application's connection request...");
 
-    //tcb_t *new_tcb = alloc_new_tcb();
     tcb_t *new_tcb = get_tcb(utcp_fd);
 
     pthread_mutex_lock(&new_tcb->lock);
     //LOG_INFO("[utcp_connect] Locked the TCB...");
-    //int utcp_fd = new_tcb->fd;
-
-    //new_tcb->fourtuple.source_port = 49152 + (rand() % 16384); // Ephemeral port
-    //new_tcb->fourtuple.source_port = 49152 + (utcp_fd); // bind a UTCP port to the UTCP fd
-    //new_tcb->fourtuple.source_ip   = ntohl(global->client.sin_addr.s_addr);
     new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
     new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
     
@@ -72,7 +66,6 @@ int main(void) {
 
     api_t *global = api_instance();
 
-    //init_host(global, client);
     bind_udp_sock(0);
     int utcp_fd = init_utcp_sock();
 
@@ -90,15 +83,8 @@ int main(void) {
 
     bind_utcp_sock(utcp_fd, &client);
     utcp_connect(utcp_fd, &server);
-    
-    //if(spawn_threads(global) != 0)
-    //    err_sys("[Client] Error during thread creation");
 
     /* pretend to be a client app */
-    //int app_utcp_fd = utcp_connect(global->udp_fd, &server); // different from the UTCP fd in global
-    //if (app_utcp_fd < 0)
-    //    err_sock(global->udp_fd, "[Client] Failed to connect.");
-            
     FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");
@@ -124,14 +110,8 @@ int main(void) {
         }
     }
 
-    tcb_t *active_tcb = get_tcb(utcp_fd);
-    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
-        usleep(100000);
-    sleep(2);
-
-    fclose(fp);
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
-
+    fclose(fp);
     free(app_rcv_buf);
     return 0;
 }
