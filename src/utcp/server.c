@@ -165,6 +165,11 @@ int main(void)
         fflush(stdout);
     }
 
+    tcb_t *active_tcb = get_tcb(utcp_fd); 
+    while(active_tcb->tx_tail - active_tcb->tx_head > 0)
+        usleep(100000); // let everything in TX be sent out
+    sleep(2);
+
         fclose(fp);
         free(snd_buf);
         LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
