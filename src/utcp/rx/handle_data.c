@@ -75,7 +75,7 @@ void handle_data(
         else
         { // we are in congestion avoidance phase (linear growth)
             tcb->cwnd += (MSS * MSS) / tcb->cwnd;
-            LOG_DEBUG("[handle_data] CONGETSION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
+            LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
         }
 
         LOG_INFO("[handle_data] ACK,%u,%u", tcb->cwnd, tcb->ssthresh);

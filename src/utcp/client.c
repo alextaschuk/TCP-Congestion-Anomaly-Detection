@@ -91,7 +91,7 @@ int main(void) {
     }
     //size_t file_size_bytes = 1000000000; // 1GB
     size_t file_size_bytes = 10000000; // 10mb
-    uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE + 1);
+    uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
     size_t total_received = 0;
 
     while(total_received < file_size_bytes)
@@ -102,13 +102,17 @@ int main(void) {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
-            LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu", bytes_rcvd, total_received);
+            LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
         }
         if (bytes_rcvd < 0) {
             LOG_ERROR("[Client App] Error receiving data.");
             break; 
         }
     }
+    tcb_t *active_tcb = get_tcb(utcp_fd);
+    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
+        usleep(100000);
+    sleep(2);
 
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
     fclose(fp);

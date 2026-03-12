@@ -136,7 +136,7 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     
     const char *old_category = current_thread_cat;
     current_thread_cat = "cc_data";
-    LOG_INFO("INIT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
     current_thread_cat = old_category;
 
     tcb->dupacks = 0;
