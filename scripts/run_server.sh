@@ -1,4 +1,4 @@
-bash utils/cmds/rest_logs.sh
+bash utils/cmds/reset_logs.sh
 cmake ..
 make
 clear
