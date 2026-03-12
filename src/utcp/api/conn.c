@@ -160,8 +160,8 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
     new_tcb->dupacks = 0;
     
-    new_tcb->cwnd = MSS * 10;
-    new_tcb->ssthresh = BUF_SIZE;
+    new_tcb->cwnd = MSS * IW_CALC(MSS);
+    new_tcb->ssthresh = 0xFFFFFFFF;
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     //log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");

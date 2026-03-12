@@ -68,6 +68,7 @@ typedef struct tcb_t tcb_t;
 #define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)
 #define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)
 #define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
+#define IW_CALC(size) ((size) > 2190 ? 2 : ((size) > 1095 ? 3 : 4)) // This IW calcuation comes from RFC 5681
 
 /**
  * If scaling is enabled and it's not a SYN packet, shift the header window
