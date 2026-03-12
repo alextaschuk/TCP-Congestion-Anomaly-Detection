@@ -126,7 +126,6 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     
     log_segment((u_int8_t *)segment, segment_size, 0, "[send_dgram] Segment that was sent:");
 
-    printf("udp fd %d\n", tcb->src_udp_fd);
     ssize_t bytes_sent = sendto(tcb->src_udp_fd, segment, segment_size, 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr));
     if (bytes_sent < 0)
         err_sys("[send_dgram] Error sending packet");

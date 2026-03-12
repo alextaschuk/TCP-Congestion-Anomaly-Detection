@@ -67,7 +67,7 @@ void rcv_syn(
         new_tcb->rcv_nxt = new_tcb->irs + 1;
         new_tcb->rcv_wnd = BUF_SIZE;
 
-        new_tcb->iss = 500; // TODO: replace with randomly generated SEQ num
+        new_tcb->iss = 0;
         new_tcb->snd_una = new_tcb->iss;
         new_tcb->snd_nxt = new_tcb->iss;
         new_tcb->snd_max = new_tcb->iss;

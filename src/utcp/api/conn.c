@@ -227,7 +227,6 @@ void *utcp_listen_thread(void *arg)
     LOG_INFO("[utcp_listen_thread] Listen thread running...");
     
     api_t *global = (api_t *)arg;
-    printf("[utcp_listen_thread]udp fd:%d", htons(global->udp_fd));
     while (1)
     {
         ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);
