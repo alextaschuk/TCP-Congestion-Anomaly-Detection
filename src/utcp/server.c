@@ -147,7 +147,7 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             
-    size_t file_size_bytes = 100000000; // 100mb
+    size_t file_size_bytes = 1000000000; // 1gb
     uint8_t *snd_buf = malloc(APP_BUF_SIZE);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
