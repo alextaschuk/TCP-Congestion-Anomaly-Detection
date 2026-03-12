@@ -13,7 +13,7 @@
 #include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
 
-#define BUF_SIZE 65536
+
 /**
  * @brief A TCP Control Block, or Transmission Control Block (TCB).
  * 
@@ -41,7 +41,12 @@ typedef struct tcb_t
     uint32_t snd_wnd;       /* Total amount of free space in the `tx_buffer`, in bytes. (peer's rcv_wnd) */
     uint32_t irs;           /* Initial receive sequence number. */
     uint32_t rcv_nxt;       /* Next expected sequence number. */
-    uint32_t rcv_wnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept) */
+    uint32_t rcv_wnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept). */
+
+    /* Window scaling */
+    bool ws_enabled;        /* `True` if window scaling is enabled (the peer included the window scale option in their SYN). */
+    uint8_t snd_ws_scale;   /* The peer's window scale. (value from incoming SYN) */
+    uint8_t rcv_ws_scale;   /* The host's window scale. (value in outgoing SYN) */
     
     uint16_t t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
     #define F_ACKNOW 0x0001 /* Send an immediate ACK segment with an empty payload. */

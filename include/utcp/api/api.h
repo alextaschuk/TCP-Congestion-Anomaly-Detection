@@ -17,8 +17,9 @@
 /*Begin function declarations*/
 
 /**
- * @brief Deserialize a UDP datagram's payload
- * into a TCP header and data into host byte order
+ * @brief Deserialize a UDP datagram's payload into a TCP header and data
+ * into host byte order. This does not deserialize any options that may be
+ * included in the segment. 
  * 
  * @param *buf the buffer of received data (TCP header + payload)
  * @param buflen how many bytes make up buf (rcvsize)
@@ -26,7 +27,7 @@
  * @param **out_data deserialized data payload (caller-allocated)
  * @param *out_data_len how many bytes make up the data payload
  * 
- * @note This is a destructive function.
+ * @note THIS IS A DESTRUCTIVE FUNCTION.
  */
 void deserialize_utcp_packet
 (

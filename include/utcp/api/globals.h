@@ -29,10 +29,15 @@ typedef struct tcb_t tcb_t;
  /*Buffer & Data Related*/
 
 /**
- * The number of bytes our `rx` and `tx` buffers can hold
+ * The number of bytes our `rx` and `tx` buffers can hold (1MB).
  * @note See https://en.wikipedia.org/wiki/TCP_tuning#Buffers
  */
 #define BUF_SIZE 1048576
+
+/**
+ * The size of an application's receive & send buffers. (1MB)
+ */
+#define APP_BUF_SIZE 1048576
 
 /**
  * The default Maximum Segment Size value of a TCP segment.
@@ -41,7 +46,7 @@ typedef struct tcb_t tcb_t;
 #define MSS 536
 
 /* Congestion Control Related */
-#define CA_ALGO RENO /* Determine which CA algo we use. */
+#define CA_ALGO RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
 #define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
@@ -63,6 +68,23 @@ typedef struct tcb_t tcb_t;
 #define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)
 #define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)
 #define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
+
+/**
+ * If scaling is enabled and it's not a SYN packet, shift the header window
+ * left by the scale factor. Otherwise, use the raw header window.
+ */
+#define GET_SCALED_WIN(tcb, hdr)                                                                              \
+    (((tcb)->ws_enabled && !((hdr)->th_flags & TH_SYN)) ? ((uint32_t)(hdr)->th_win << (tcb)->snd_ws_scale) \
+                                                           : (uint32_t)(hdr)->th_win)
+
+/**
+ * Prepares the window value for the 16-bit header field.
+ * If scaling is confirmed, shift right.
+ * If not, clamp to 65535 to prevent overflow.
+ */
+#define SET_SCALED_WIN(tcb, flags, free_space)                                                                 \
+    ((tcb)->ws_enabled && !((flags) & TH_SYN) ? (uint16_t)((free_space) >> (tcb)->rcv_ws_scale)             \
+                                                 : (uint16_t)((free_space) > 65535 ? 65535 : (free_space)))
 
 /* End define macros */
 

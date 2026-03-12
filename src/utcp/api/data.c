@@ -32,7 +32,6 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
     size_t sent = 0; // # of bytes sent
 
     pthread_mutex_lock(&snder_tcb->lock);
-    //LOG_DEBUG("[utcp_send] Locked the TCB for UTCP FD %i", snder_tcb->fd);    
 
     while (remaining > 0)
     {

@@ -91,12 +91,12 @@ int main(void) {
     }
     //size_t file_size_bytes = 1000000000; // 1GB
     size_t file_size_bytes = 10000000; // 10mb
-    uint8_t *app_rcv_buf = malloc(BUF_SIZE + 1);
+    uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE + 1);
     size_t total_received = 0;
 
     while(total_received < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
         if (bytes_rcvd > 0)
         {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);

@@ -6,7 +6,7 @@
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
-#include <utcp/rx/find_timestamps.h>
+#include <utcp/rx/handle_tcp_options.h>
 
 
 void handle_data(
@@ -17,36 +17,16 @@ void handle_data(
     ssize_t data_len
 )
 {
-    uint32_t seg_seq = hdr->th_seq;
     uint32_t ack = hdr->th_ack;
 
-    // check for TCP Options section and if timestamps are present
-    uint32_t ts_val = 0; // Timestamp value
-    uint32_t ts_ecr = 0; // Echoed timestamp value
+    process_tcp_options(tcb, hdr, false);
 
-    bool has_ts_opt = find_timestamps(hdr, &ts_val, &ts_ecr);
-
-        // ACK has timestamp in header, so we can update the RTO
-        if (has_ts_opt)
-        {
-            // An ACK may contain a payload of data that is out of order, so
-            // we only want to update the peer's timestamp if it is in order.
-            if (hdr->th_seq <= tcb->rcv_nxt)
-            {
-                tcb->ts_rcv_val = ts_val;
-            }
-
-            calc_rto(tcb, ts_ecr);
-        }
-        else
-        {
-            LOG_WARN("[handle_data] TCP header is missing timestamps. Skipping RTT update"); 
-            return;
-        }
-
-    if (SEQ_GT(ack, tcb->snd_una) && // Ensure packet isn't ACKing bytes that were already ACKed
+    if
+    (
+        SEQ_GT(ack, tcb->snd_una) && // Ensure packet isn't ACKing bytes that were already ACKed
         SEQ_LEQ(ack, tcb->snd_max)   // Ensure packet isn't ACKing unsent butes
-    ) {
+    )
+    {   /* Valid ACK! */
         uint32_t newly_acked_bytes = ack - tcb->snd_una;
         LOG_INFO("[handle_data] VALID ACK: Advancing snd_una from %u to %u (ACKed %u bytes)", tcb->snd_una,
                     ack, newly_acked_bytes);
@@ -54,19 +34,18 @@ void handle_data(
         tcb->snd_una = ack; // update new oldest unACKed byte
 
         // Prevent snd_nxt from falling behind snd_una during recovery
-        if (SEQ_GT(tcb->snd_una, tcb->snd_nxt)) {
+        if (SEQ_GT(tcb->snd_una, tcb->snd_nxt))
             tcb->snd_nxt = tcb->snd_una;
-        }
 
         tcb->dupacks = 0; // clear the duplicate ACK counter
 
         // slide the snd_wnd over
         uint32_t old_tx_head = tcb->tx_head;
         tcb->tx_head = tcb->tx_head + newly_acked_bytes;
-        tcb->snd_wnd = hdr->th_win;
+        tcb->snd_wnd = GET_SCALED_WIN(tcb, hdr);
 
         LOG_DEBUG("[handle_data] SND_WND UPDATE: tx_head %u -> %u, snd_wnd set to %u. Waking any blocking app threads.", old_tx_head, tcb->tx_head, tcb->snd_wnd);
-        pthread_cond_broadcast(&tcb->conn_cond);
+        pthread_cond_broadcast(&tcb->conn_cond); // wake up blocking thread in utcp_send
 
         // handle the retransmission timer (pause or reset)
         if (tcb->snd_una == tcb->snd_max)
@@ -80,9 +59,8 @@ void handle_data(
             reset_timer(tcb, TCPT_REXMT);
         }
 
-        // if using RENO, exit fast recovery if needed
         if(CA_ALGO == RENO && tcb->fast_recovery)
-        {
+        { // if using RENO, exit fast recovery if needed
             tcb->cwnd = tcb->ssthresh; // delate artificially inflated window
             tcb->fast_recovery = false;
             LOG_INFO("[handle_data] RENO exited Fast Recovery. cwnd deflated to %u", tcb->cwnd);
@@ -110,24 +88,27 @@ void handle_data(
     }
     else if (ack == tcb-> snd_una)
     {
-        LOG_DEBUG("[handle_data] Received packet might be a duplicate ACK or a window update");
-        // The packet may be a duplicate ACK, but it could also be a packet 
-        // to inform the receiver of a window update
-        if (hdr->th_win > tcb->snd_wnd)
-        {
-            LOG_DEBUG("[handle_data] SND_WND UPDATE: snd_wnd increased from %u to %u. Waking any blocking app threads.", tcb->snd_wnd, hdr->th_win);
-            tcb->snd_wnd = hdr->th_win;
+        uint32_t current_scaled_win = GET_SCALED_WIN(tcb, hdr);
 
-            pthread_cond_broadcast(&tcb->conn_cond); // wake any app thread that is blocking in utcp_send for window space
+        if (current_scaled_win > tcb->snd_wnd)
+        {
+            LOG_INFO("[handle_data] WINDOW UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
+            tcb->snd_wnd = current_scaled_win;
+
+            pthread_cond_broadcast(&tcb->conn_cond); // notify app thread that is blocking in utcp_send
         }
-        
-        if (
+        else if 
+        (
             data_len == 0 && // payload is empty
-            hdr->th_win == tcb->snd_wnd && // packet didn't update send window
+            current_scaled_win == tcb->snd_wnd && // packet didn't update send window
             tcb->snd_una != tcb->snd_max // there is data in flight
         )
         {
-            tcb->dupacks++;
+            tcb->snd_wnd = current_scaled_win; // Track shrinking window so future comparisons stay accurate
+
+            if(tcb->dupacks < 255)
+                tcb->dupacks++; // prevent pverflow
+
             LOG_WARN("[handle_data] DUPLICATE ACK: recieved a duplicate ACK for seq=%u (Count: %u). snd_max=%u", tcb->snd_una,
                         tcb->dupacks, tcb->snd_max);
 
@@ -196,7 +177,7 @@ void handle_data(
      * that we have already placed in the RX buffer (in order), but it might
      * contain new data too.
      */
-    if (seq_num - tcb->rcv_nxt < 0)
+    if (SEQ_LT(seq_num, tcb->rcv_nxt))
     {
         uint32_t duplicate_bytes = tcb->rcv_nxt - seq_num;
 
@@ -220,7 +201,6 @@ void handle_data(
 
     if(seq_num == tcb->rcv_nxt)
     { // is this the packet we're expecting?
-
         uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
         LOG_DEBUG("[handle_data] Buffer Check: free space=%u, incoming data=%zd", rx_free_space, data_len);
 

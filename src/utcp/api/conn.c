@@ -136,9 +136,6 @@ tcb_t *alloc_new_tcb(void)
 
     //LOG_INFO("[alloc_new_tcb] Locking the new TCB to initialize its variables...", new_tcb->fd);
     //pthread_mutex_lock(&new_tcb->lock);
-    //new_tcb->src_udp_fd = global->udp_fd;
-    //new_tcb->src_udp_port = global->udp_port;
-
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
 
@@ -147,6 +144,14 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->snd_nxt = new_tcb->iss;
     new_tcb->snd_max = new_tcb->iss;
     new_tcb->rcv_wnd = BUF_SIZE;
+
+    uint8_t scale = 0;
+    while (BUF_SIZE >> scale > 65535 && scale < 14)
+        scale++;
+
+    new_tcb->rcv_ws_scale = scale;
+    new_tcb->ws_enabled = false;
+    new_tcb->snd_ws_scale = 0;
 
     // set congestion avoidance & control variables
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
