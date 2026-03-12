@@ -93,7 +93,7 @@ int utcp_accept(api_t *global)
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
 
-    //LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...");
+    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...");
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     established_tcb->src_udp_fd = global->udp_fd;

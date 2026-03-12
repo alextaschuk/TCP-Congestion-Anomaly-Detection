@@ -77,7 +77,7 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
 
                 opts->has_ts = true; // we have timestamps!
                 opts->ts_val = ntohl(raw_val);
-                opts->ts_val = ntohl(raw_ecr);
+                opts->ts_ecr = ntohl(raw_ecr);
                 //LOG_INFO("[find_timestamps] Found timestamps in header. TSval: %u, TSecr: %u", ntohl(raw_val), ntohl(raw_ecr));
                 }
                 break;
