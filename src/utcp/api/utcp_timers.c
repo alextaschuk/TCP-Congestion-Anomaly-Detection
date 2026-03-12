@@ -19,11 +19,10 @@ void* utcp_ticker_thread(void)
 
     struct timespec ts;
     ts.tv_sec = 0; // 0 seconds
-    ts.tv_nsec = 500000000L; // 500 million nanoseconds = 500ms
-
+    ts.tv_nsec = 1000000L; // 1 million nanoseconds (1ms)
     while (1) 
     {
-        nanosleep(&ts, NULL); // sleep for 500ms
+        nanosleep(&ts, NULL); // sleep for 1ms
         utcp_slowtimo(); // wake up and process all TCP timers
     }
     
@@ -45,7 +44,7 @@ void utcp_slowtimo(void)
             continue; 
 
         //LOG_INFO("[utcp_slowtimo] Locking the TCB...");
-        //pthread_mutex_lock(&tcb->lock);
+        pthread_mutex_lock(&tcb->lock);
 
         for (int timer_idx = 0; timer_idx < TCPT_NTIMERS; timer_idx++) 
         {
@@ -62,7 +61,7 @@ void utcp_slowtimo(void)
             }
         }
         //LOG_INFO("[utcp_slowtimo] Unlocking the TCB lock...");
-        //pthread_mutex_unlock(&tcb->lock);
+        pthread_mutex_unlock(&tcb->lock);
     }
 
     //LOG_INFO("[utcp_slowtimo] Unlocking the lookup lock...");
@@ -192,7 +191,8 @@ uint32_t calc_ssthresh(uint32_t flight_size)
 
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
-    int ticks = (tcb->rto + 499) / 500;
+    //int ticks = (tcb->rto + 499) / 500;
+    int ticks = tcb->rto; // 1 tick = 1ms
     LOG_DEBUG("[reset_timer] Resetting the retransmission timer to (rto=%u + 499) ÷ 500 = %d", tcb->rto, ticks);
     tcb->t_timer[timer_idx] = ticks;
     return ticks;
