@@ -27,8 +27,6 @@ static bool is_null(const void *ptr, const char *msg)
         
 }
 
-#include <ctype.h> // needed for isprint()
-
 void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char *msg)
 {
     if (is_null(buf, "TCP Header: (null)"))
@@ -86,7 +84,7 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
         payload_len
     );
 
-    /* 3. Append options to the buffer */
+    /* Append options to the buffer */
     if (opt_len > 0) 
     {
         offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\tOptions\t\t\t :\n");
@@ -112,7 +110,8 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
             }
          
             uint8_t opt_size = opt_ptr[1];
-            if (opt_size < 2 || opt_size > remaining) {
+            if (opt_size < 2 || opt_size > remaining)
+            {
                 offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\t\tMalformed options: missing or invalid length byte.\n");
                 break;
             }
@@ -128,6 +127,18 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
                     }
                     break;
 
+                case(TCPOPT_WINDOW):
+                    if (opt_size == TCPOLEN_WINDOW)
+                    {
+                        uint8_t shift_count = opt_ptr[2];
+                        // RFC 7323 caps the functional shift at 14, but we print the raw wire value
+                        uint8_t calc_shift = (shift_count > 14) ? 14 : shift_count;
+                        uint32_t multiplier = 1 << calc_shift;
+                        
+                        offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\t\t- Window Scale : Shift = %u (Multiplier = %u)\n", shift_count, multiplier);
+                    }
+                    break;
+
                 case(TCPOPT_TIMESTAMP):
                     if (opt_size == TCPOLEN_TIMESTAMP)
                     { 
@@ -140,7 +151,6 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
                     break;
 
                 // (Ignored known options removed for brevity, they fall to default if needed or just break)
-                case(TCPOPT_WINDOW):
                 case(TCPOPT_SACK_PERMITTED):
                 case(TCPOPT_SACK):
                     break;
@@ -157,22 +167,16 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
     if (payload_len > 0 && payload != NULL)
     {
         offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\tPayload Data\t : ");
-        //size_t display_len = (payload_len > 64) ? 64 : payload_len;
         size_t display_len = payload_len;
         
         for (size_t i = 0; i < display_len; i++) 
         {
-            // isprint() ensures we only log safe ASCII characters to the string
-            if (isprint(payload[i])) {
+            if (isprint(payload[i])) // isprint() ensures we only log safe ASCII characters to the string
                 offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "%c", payload[i]);
-            } else {
+            else
                 offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, ".");
-            }
         }
     
-        //if (payload_len > 64) {
-        //    offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, " [... truncated ...]");
-        //}
         offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\n");
     }
 

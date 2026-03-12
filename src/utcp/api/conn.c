@@ -164,7 +164,7 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->ssthresh = BUF_SIZE;
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
-    log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
+    //log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
 
     const char *old_category = current_thread_cat;
     current_thread_cat = "cc_data";
