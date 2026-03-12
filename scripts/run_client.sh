@@ -1,4 +1,5 @@
-bash ../utils/cmds/reset_logs.sh
-cmake ..
-make
+#!/bin/bash
+
+bash ../scripts/reset_logs.sh
+
 time ./client_app
