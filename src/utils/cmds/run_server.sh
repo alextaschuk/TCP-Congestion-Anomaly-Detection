@@ -1,6 +1,6 @@
 # run inside the ./build directory
-bash ../utils/cmds/rest_logs.sh
+bash utils/cmds/rest_logs.sh
 cmake ..
 make
 clear
-./server_app
+time ./server_app
