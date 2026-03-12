@@ -79,8 +79,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     uint32_t current_free_space = BUF_SIZE - bytes_in_buffer - 1;
     //uint32_t current_free_space = MIN(bytes_in_buffer, BUF_SIZE);
 
-    if (flags & TH_SYN)
-        segment->hdr.th_win = htons(SET_SCALED_WIN(tcb, flags, current_free_space));  
+    segment->hdr.th_win = htons(SET_SCALED_WIN(tcb, flags, current_free_space));  
 
     /* Add options */
     uint8_t opt_buf[40]; // max length of options is 40 bytes
