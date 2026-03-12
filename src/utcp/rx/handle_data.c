@@ -74,7 +74,9 @@ void handle_data(
         }
         else
         { // we are in congestion avoidance phase (linear growth)
-            tcb->cwnd += (MSS * MSS) / tcb->cwnd;
+            uint32_t increment = (newly_acked_bytes * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
+            tcb->cwnd += MAX(1, increment);
+            //tcb->cwnd += (MSS * MSS) / tcb->cwnd;
             LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
         }
 
@@ -107,7 +109,7 @@ void handle_data(
             tcb->snd_wnd = current_scaled_win; // Track shrinking window so future comparisons stay accurate
 
             if(tcb->dupacks < 255)
-                tcb->dupacks++; // prevent pverflow
+                tcb->dupacks++; // prevent overflow
 
             LOG_WARN("[handle_data] DUPLICATE ACK: recieved a duplicate ACK for seq=%u (Count: %u). snd_max=%u", tcb->snd_una,
                         tcb->dupacks, tcb->snd_max);
@@ -132,8 +134,8 @@ void handle_data(
                         break;
 
                     case (RENO):
-                        //tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
-                        tcb->cwnd = tcb->ssthresh;
+                        tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
+                        //tcb->cwnd = tcb->ssthresh;
                         tcb->fast_recovery = true;
                         LOG_WARN("RENO Fast Retransmit/Recovery: flight_size=%u, ssthresh=%u, inflated cwnd=%u", flight_size,
                                     tcb->ssthresh, tcb->cwnd);
@@ -143,8 +145,8 @@ void handle_data(
                         LOG_INFO("TRIPLE_ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
                         current_thread_cat = old_category;
                         
-                        tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window
-                        //retransmit_data(tcb, tcb->snd_una);
+                        //tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window
+                        retransmit_data(tcb, tcb->snd_una);
                         send_dgram(tcb);
                         break;
                     
@@ -153,12 +155,12 @@ void handle_data(
                         break;
                 }
             }
-            //else if (tcb->dupacks > 3 && CA_ALGO == RENO && tcb->fast_recovery)
-            //{
-            //    tcb->cwnd += MSS;
-            //    LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);
-            //    send_dgram(tcb); // continue trying to send data
-            //}
+            else if (tcb->dupacks > 3 && CA_ALGO == RENO && tcb->fast_recovery)
+            {
+                tcb->cwnd += MSS;
+                LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);
+                send_dgram(tcb); // continue trying to send data
+            }
         }
     }
 
