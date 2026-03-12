@@ -32,7 +32,7 @@ typedef struct tcb_t tcb_t;
  * The number of bytes our `rx` and `tx` buffers can hold
  * @note See https://en.wikipedia.org/wiki/TCP_tuning#Buffers
  */
-#define BUF_SIZE 65536
+#define BUF_SIZE 1048576
 
 /**
  * The default Maximum Segment Size value of a TCP segment.
