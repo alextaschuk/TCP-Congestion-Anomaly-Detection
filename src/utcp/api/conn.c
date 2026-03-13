@@ -160,18 +160,29 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
     new_tcb->rttvar = 0;
     new_tcb->rto = 1000; // 1000 ms = 1 second
-    new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
+    //new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
 
-    new_tcb->cc = &cc_newreno_ops;
+    switch(CC_ALGO)
+    {
+        case (TAHOE):
+            //new_tcb->cc = &cc_tahoe_ops;
+            break;
+        case (RENO):
+            //new_tcb->cc = &cc_reno_ops;
+            break;
+        case(NEW_RENO):
+            new_tcb->cc = &cc_newreno_ops;
+            break;
+        default:
+            err_sys("[alloc_new_tcb] ERROR: Invalid CC algorithm");
+            break;
+    }
     new_tcb->cc->init(new_tcb);
+    
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     //log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
 
-    const char *old_category = current_thread_cat;
-    current_thread_cat = "cc_data";
-    LOG_INFO("INIT,%u,%u", new_tcb->cwnd, new_tcb->ssthresh);
-    current_thread_cat = old_category;
     
     //LOG_INFO("[alloc_new_tcb] Unlocking the new TCB...");
     //pthread_mutex_unlock(&new_tcb->lock);

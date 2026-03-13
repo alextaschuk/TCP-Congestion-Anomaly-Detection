@@ -226,7 +226,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\tcwnd            : %u\n"
         "\tssthresh        : %u\n"
         "\tdupacks             : %u\n"
-        "\trxtcur              : %u\n"
+        //"\trxtcur              : %u\n"
         "\ttcpt_rexmt          : %u\n"
         "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
         msg,
@@ -257,7 +257,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->cwnd,
         tcb->ssthresh,
         tcb->dupacks,
-        tcb->rxtcur,
+        //tcb->rxtcur,
         tcb->tcpt_rexmt
     );
 }

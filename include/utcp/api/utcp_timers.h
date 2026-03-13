@@ -88,12 +88,6 @@ void utcp_timeout(tcb_t *tcb, short timer);
 
 
 /**
- * When a triple ACK or timeout occurs, the ssthresh needs to
- * be recalculated. It is set to `MAX(50% of bytes in flight, 2 MSS)`
- */
-uint32_t calc_ssthresh(uint32_t flight_size);
-
-/**
  * Reset a timer.
  * 
  * @returns The new number of 500ms ticks until the timer times out. Function assumes that

@@ -6,42 +6,54 @@
 static void newreno_init(tcb_t *tcb) {
     tcb->cwnd = MSS * IW_CALC(MSS);
     tcb->ssthresh = 0xFFFFFFFF;
-    tcb->dupacks = 0;
+    tcb->ca_state = OPEN;
     tcb->recover = tcb->iss;
+
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "cc_data";
+    LOG_INFO("INIT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    current_thread_cat = old_category;
 }
 
 static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
     /* handle Slow Start, CA, and partial ACKs */
     uint32_t old_cwnd = tcb->cwnd;
 
-    if (tcb->fast_recovery)
+    if (tcb->ca_state == RECOVERY)
     {
-        tcb->cwnd = tcb->ssthresh; // deflate artificially inflated window
-        tcb->fast_recovery = false;
-        LOG_INFO("[handle_data] RENO exited Fast Recovery. cwnd deflated to %u", tcb->cwnd);
-    }
-    
-    
-    if (tcb->cwnd < tcb->ssthresh)
-    { /* Slow Start*/
-        tcb->cwnd += newly_acked_bytes;
-        LOG_INFO("[handle_data] SLOW START: cwnd %u -> %u", old_cwnd, tcb->cwnd);
+        if (SEQ_GEQ(tcb->snd_una, tcb->recover))
+        { /* Full ACK. We can exit fast recovery */
+            tcb->cwnd = tcb->ssthresh; // deflate artificially inflated window
+            tcb->ca_state = OPEN;
+            LOG_INFO("[handle_data] NewReno: Full ACK; exited Fast Recovery. cwnd deflated to %u",
+                            tcb->cwnd);
+
+            const char *old_category = current_thread_cat;
+            current_thread_cat = "cc_data";
+            LOG_INFO("ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
+            current_thread_cat = old_category;
+        }
+        else
+        { /* Partial ACK */
+            retransmit_data(tcb, tcb->snd_una);
+
+            tcb->cwnd = (newly_acked_bytes >= tcb->cwnd) ? MSS :tcb->cwnd - newly_acked_bytes;
+            tcb->cwnd += MSS;
+            tcb->dupacks = 0;
+
+            LOG_INFO("[handle_data] NewReno: Partial ACK retransmitting %u. cwnd=%u, recover=%u",
+                          tcb->snd_una, tcb->cwnd, tcb->recover);
+
+            const char *old_category = current_thread_cat;
+            current_thread_cat = "cc_data";
+            LOG_INFO("PARTIAL_ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
+            current_thread_cat = old_category;
+        }
     }
     else
-    { /* Congestion Avoidance (linear growth)*/
-        uint32_t increment = (newly_acked_bytes * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
-        tcb->cwnd += MAX(1, increment);
-        //tcb->cwnd += (MSS * MSS) / tcb->cwnd;
-        LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
+    {
+        cc_aimd(tcb, newly_acked_bytes);
     }
-
-    LOG_INFO("[handle_data] ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-    
-    const char *old_category = current_thread_cat;
-    current_thread_cat = "cc_data";
-    LOG_INFO("ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-    current_thread_cat = old_category;
-
 }
 
 static void newreno_duplicate_ack(tcb_t *tcb) {
@@ -57,12 +69,20 @@ static void newreno_duplicate_ack(tcb_t *tcb) {
         {
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
             tcb->recover = tcb->snd_max;
-            tcb->ssthresh = calc_ssthresh(flight_size);
+            tcb->ssthresh = halve_ssthresh(flight_size);
 
             retransmit_data(tcb, tcb->snd_una);
 
+            tcb->ca_state = RECOVERY;
             tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
-       
+
+            LOG_WARN("[newreno_duplicate_ack] Fast Retransmit: flight=%u, ssthresh=%u, cwnd=%u"
+                        "recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
+            
+            const char *old_category = current_thread_cat;
+            current_thread_cat = "cc_data";
+            LOG_INFO("TRIPLE_ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
+            current_thread_cat = old_category;
         }
         else
         {
@@ -70,23 +90,25 @@ static void newreno_duplicate_ack(tcb_t *tcb) {
                         "Skipping fast retransmit.", tcb->snd_una, tcb->recover);
         } 
     }
-    else if (tcb->dupacks > 3 && tcb->fast_recovery)
+    else if (tcb->dupacks > 3 && tcb->ca_state == RECOVERY)
     {
         tcb->cwnd += MSS;
-        LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);
+        LOG_DEBUG("[handle_data] NewReno: Fast Recovery inflating cwnd to %u", tcb->cwnd);
         send_dgram(tcb);
     }
 }
 
-static void newreno_timeout(tcb_t *tcb) {
-    /* Recalculate ssthresh, then drop cwnd to 1 MSS */
-    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-    tcb->ssthresh = calc_ssthresh(flight_size);
-    tcb->cwnd = MSS;
+static void newreno_timeout(tcb_t *tcb, uint32_t flight_size) {
+    
+    tcb->recover = tcb->snd_max; // allows next triple ACK to trigger fast retransmit quickly.
+    cc_rexmt_timeout(tcb, flight_size);
 
-    tcb->dupacks = 0;
-    tcb->fast_recovery = false;
-    tcb->recover = tcb->snd_una;
+    tcb->ssthresh = halve_ssthresh(flight_size);
+
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "cc_data";
+    LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    current_thread_cat = old_category;
 }   
 
 // Bind the functions to the struct

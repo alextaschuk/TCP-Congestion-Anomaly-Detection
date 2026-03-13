@@ -38,7 +38,7 @@ void handle_data(
         if (SEQ_GT(tcb->snd_una, tcb->snd_nxt))
             tcb->snd_nxt = tcb->snd_una;
 
-        //tcb->dupacks = 0; // clear the duplicate ACK counter
+        tcb->dupacks = 0; // clear the duplicate ACK counter
 
         // slide the snd_wnd over
         uint32_t old_tx_head = tcb->tx_head;
@@ -65,7 +65,7 @@ void handle_data(
             tcb->cc->ack_received(tcb, newly_acked_bytes);
         }
 
-        //if(CA_ALGO == RENO && tcb->fast_recovery)
+        //if(CC_ALGO == RENO && tcb->fast_recovery)
         //{ // if using RENO, exit fast recovery if needed
         //    tcb->cwnd = tcb->ssthresh; // delate artificially inflated window
         //    tcb->fast_recovery = false;
@@ -95,7 +95,7 @@ void handle_data(
 
     }
     else if (ack == tcb-> snd_una)
-    { /* Possible duplicate ACK */
+    { 
         uint32_t current_scaled_win = GET_SCALED_WIN(tcb, hdr);
 
         if (current_scaled_win > tcb->snd_wnd)
@@ -111,7 +111,7 @@ void handle_data(
             current_scaled_win == tcb->snd_wnd && // packet didn't update send window
             tcb->snd_una != tcb->snd_max // there is data in flight
         )
-        {
+        { /* Possible duplicate ACK */
             tcb->snd_wnd = current_scaled_win; // Track shrinking window so future comparisons stay accurate
 
             if(tcb->dupacks < 255)
@@ -129,13 +129,13 @@ void handle_data(
         //        // both Tahoe and RENO use fast retransmit, then set ssthresh to 50% of cwnd.
         //        uint32_t old_ssthresh = tcb->ssthresh;
         //        uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-        //        LOG_WARN("[handle_data] (%d) handling triple ACK. flight_size=%u", CA_ALGO, flight_size);
+        //        LOG_WARN("[handle_data] (%d) handling triple ACK. flight_size=%u", CC_ALGO, flight_size);
         //        
         //        tcb->ssthresh = calc_ssthresh(flight_size);
         //        
         //        LOG_INFO("[handle_data] Fast Retransmit: ssthresh dropped %u -> %u", old_ssthresh, tcb->ssthresh);
         //
-        //        switch (CA_ALGO)
+        //        switch (CC_ALGO)
         //        {
         //            case (TAHOE):
         //                LOG_DEBUG("[handle_data] TAHOE: Treating triple ACK as timeout. flight_size=%u", flight_size);
@@ -179,7 +179,7 @@ void handle_data(
         //                break;
         //        }
         //    }
-        //    else if (tcb->dupacks > 3 && CA_ALGO == RENO && tcb->fast_recovery)
+        //    else if (tcb->dupacks > 3 && CC_ALGO == RENO && tcb->fast_recovery)
         //    {
         //        tcb->cwnd += MSS;
         //        LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);

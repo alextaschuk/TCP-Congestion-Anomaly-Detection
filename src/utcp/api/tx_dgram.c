@@ -23,7 +23,7 @@ uint8_t tcp_outflags[] = {
 
 int retransmit_data(tcb_t *tcb, uint32_t seq)
 {
-    LOG_DEBUG("[retransmit_data] retransmission requested. target sequence number=%u", seq);
+    LOG_DEBUG("[retransmit_data] Retransmission requested. target sequence number=%u", seq);
     if(tcb->fsm_state != ESTABLISHED)
         return 0;
 
@@ -101,7 +101,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
 
     /* window scale option (4 bytes total: 1 NOP + 3 byte WS option) */
     if (flags & TH_SYN)
-    {
+    { // window scale can only be sent in SYN packets!
         opt_buf[opt_idx++] = 1; // NOP (TCPOPT_NOP)   
         opt_buf[opt_idx++] = 3; // Option-Kind = Window Scale (TCPOPT_WINDOW)
         opt_buf[opt_idx++] = 3; // Option-Length (TCPOLEN_WINDOW)
@@ -242,15 +242,15 @@ int send_dgram(tcb_t *tcb)
             bool is_syn_fin = (flags & (TH_SYN | TH_FIN)) != 0; // is the packet a SYN or a FIN request?
             bool sending_new_syn_fin = is_syn_fin && (tcb->snd_nxt == tcb->snd_max); // is the packet a duplicate SYN or FIN?
 
-            LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
+            //LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
 
             if (data_len == 0 && !sending_new_syn_fin && !force_ack)
             { // no payload and it's not a SYN or FIN, so no point in sending the packet
-                LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
+                //LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
                 break;
             }
         
-            LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]. Payload size: %zu bytes",  tcb->fourtuple.dest_port, tcb->dest_udp_port, data_len);
+            //LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]. Payload size: %zu bytes",  tcb->fourtuple.dest_port, tcb->dest_udp_port, data_len);
 
             int bytes_sent = send_segment(tcb, tcb->snd_nxt, data_len, opt_len, flags);
             if (bytes_sent < 0)

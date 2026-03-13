@@ -14,6 +14,24 @@
 #include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
 
+struct cc_ops_t;
+typedef struct cc_opts_t cc_opts_t;
+
+
+/* Indicates the current Congestion Avoidance state */
+enum ca_state{
+    OPEN = 0, /* Slow Start or CA (linear growth)*/
+    RECOVERY, /* Fast Retransmit or Fast Recovery due to triple ACK */
+    LOSS      /* Retransmission timer expired */
+};
+
+/* Indicates the current congestion control algorithm */
+enum cc_algo{ 
+TAHOE = 0,
+RENO,
+NEW_RENO
+};
+
 
 /**
  * @brief A TCP Control Block, or Transmission Control Block (TCB).
@@ -68,12 +86,12 @@ typedef struct tcb_t
     uint32_t cwnd;          /* Congestion window */
     uint32_t ssthresh;      /* Slow start threshold */
     uint8_t dupacks;        /* Counter for the number of consecutive duplicate ACKs received */
-    bool fast_recovery;     /* `true` if `CA_ALGO == RENO or NEW_RENO` AND 3 duplicate ACKs have been detected, `false` otherwise */
+    const struct cc_ops_t *cc;     /* The CC handler. */
+    enum ca_state ca_state; /* The current CA state. */
     uint32_t recover;       /* Sequence number to reach before exiting Fast Recovery. */
-    const cc_ops_t *cc;     /* The active CC algo. */
 
     int rxtcur;             /* Current retransmit timeout, RTO (ticks) */
-    short tcpt_rexmt;       /* Retransmission timer (counter) */
+    short tcpt_rexmt;       /* Retransmission timer (Retransmission eXaimt) */
 
     /**
      * Each entry in this array contains the number of 500ms or 200ms clock ticks until the timer expires, with `0` meaning that the timer is not set.

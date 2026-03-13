@@ -46,7 +46,7 @@ typedef struct tcb_t tcb_t;
 #define MSS 536
 
 /* Congestion Control Related */
-//#define CA_ALGO NEW_RENO /* Determines which CA algo we use. */
+#define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
 #define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */

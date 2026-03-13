@@ -127,27 +127,26 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     tcb->rto = tcb->rto * 2; // wait twice as long before trying again
     TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
 
+    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
+
     if (tcb->cc && tcb->cc->timeout)
     { // delegate to congestion control algo
-        tcb->cc->timeout(tcb);
+        tcb->cc->timeout(tcb, flight_size);
     }
     
+    tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
+
     LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
     
-    const char *old_category = current_thread_cat;
-    current_thread_cat = "cc_data";
-    LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
-    current_thread_cat = old_category;
+    //const char *old_category = current_thread_cat;
+    //current_thread_cat = "cc_data";
+    //LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    //current_thread_cat = old_category;
 
-    /* General TCP retransmission handling */
-    tcb->snd_nxt = tcb->snd_una;
-
-    tcb->dupacks = 0;
-    tcb->fast_recovery = false;
-    tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window (idk if this should be here)
+    //tcb->dupacks = 0;
+    //tcb->fast_recovery = false;
 
     send_dgram(tcb);
-    //retransmit_data(tcb, tcb->snd_una);
 
     reset_timer(tcb, TCPT_REXMT);
 }
@@ -184,13 +183,6 @@ void utcp_timeout(tcb_t *tcb, short timer)
         default:
             err_sys("Invalid timer");
     }
-}
-
-
-uint32_t calc_ssthresh(uint32_t flight_size)
-{
-    uint32_t half_flight = flight_size / 2;
-    return MAX(half_flight, 2 * MSS);
 }
 
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)
