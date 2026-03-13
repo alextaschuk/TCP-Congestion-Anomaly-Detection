@@ -51,11 +51,11 @@ void utcp_slowtimo(void)
             if (tcb->t_timer[timer_idx] > 0) 
             {
                 tcb->t_timer[timer_idx]--;
-                LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
+                //LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
 
                 if (tcb->t_timer[timer_idx] == 0)
                 {
-                    LOG_DEBUG("[utcp_slowtimo] Timer %i timed out.", timer_idx);
+                    LOG_DEBUG("[utcp_slowtimo] Timer %i expired.", timer_idx);
                     utcp_timeout(tcb, timer_idx);
                 }
             }
@@ -123,13 +123,14 @@ static void handle_rexmt_timeout(tcb_t *tcb)
 {
     LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u", tcb->fd);
 
-    /* Exponential backoff */
+    /* Exponential backoff (RFC 6298, rule 5.5) */
     tcb->rto = tcb->rto * 2; // wait twice as long before trying again
     TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
 
-    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-    tcb->ssthresh = calc_ssthresh(flight_size);
-    tcb->cwnd = MSS;
+    if (tcb->cc && tcb->cc->timeout)
+    { // delegate to congestion control algo
+        tcb->cc->timeout(tcb);
+    }
     
     LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
     
@@ -137,6 +138,9 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     current_thread_cat = "cc_data";
     LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
     current_thread_cat = old_category;
+
+    /* General TCP retransmission handling */
+    tcb->snd_nxt = tcb->snd_una;
 
     tcb->dupacks = 0;
     tcb->fast_recovery = false;
@@ -193,7 +197,7 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
     //int ticks = (tcb->rto + 499) / 500;
     int ticks = tcb->rto; // 1 tick = 1ms
-    LOG_DEBUG("[reset_timer] Resetting the retransmission timer to (rto=%u + 499) ÷ 500 = %d", tcb->rto, ticks);
+    LOG_DEBUG("[reset_timer] Resetting the retransmission timer to (rto=%u + 499) ÷ 500 = %dms", tcb->rto, ticks);
     tcb->t_timer[timer_idx] = ticks;
     return ticks;
 }

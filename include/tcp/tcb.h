@@ -8,6 +8,7 @@
 
 #include <pthread.h>
 
+#include <tcp/congestion_control.h>
 #include <tcp/fourtuple.h>
 #include <tcp/tcb_queue.h>
 #include <utcp/api/globals.h>
@@ -49,7 +50,7 @@ typedef struct tcb_t
     uint8_t rcv_ws_scale;   /* The host's window scale. (value in outgoing SYN) */
     
     uint16_t t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
-    #define F_ACKNOW 0x0001 /* Send an immediate ACK segment with an empty payload. */
+    #define F_ACKNOW 0x0001   /* Send an immediate ACK segment with an empty payload. */
 
     /* Congestion Avoidance*/
      /* Round Trip Time (RTT) and Retransmission Timeout (RTO) variables */
@@ -64,10 +65,12 @@ typedef struct tcb_t
 
 
     /* Congestion Control */
-    uint32_t cwnd;      /* Congestion window */
-    uint32_t ssthresh;  /* Slow start threshold */
+    uint32_t cwnd;          /* Congestion window */
+    uint32_t ssthresh;      /* Slow start threshold */
     uint8_t dupacks;        /* Counter for the number of consecutive duplicate ACKs received */
-    bool fast_recovery;     /* `true` if `CA_ALGO == TAHOE` AND 3 duplicate ACKs have been detected, `false` otherwise */
+    bool fast_recovery;     /* `true` if `CA_ALGO == RENO or NEW_RENO` AND 3 duplicate ACKs have been detected, `false` otherwise */
+    uint32_t recover;       /* Sequence number to reach before exiting Fast Recovery. */
+    const cc_ops_t *cc;     /* The active CC algo. */
 
     int rxtcur;             /* Current retransmit timeout, RTO (ticks) */
     short tcpt_rexmt;       /* Retransmission timer (counter) */
@@ -92,7 +95,7 @@ typedef struct tcb_t
     uint32_t tx_tail;           /* Index to write to.  */
 
     /* Receive Buffer*/
-    uint8_t rx_buf[BUF_SIZE];          /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
+    uint8_t rx_buf[BUF_SIZE];   /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
     uint32_t rx_head;           /* Index to read from. */
     uint32_t rx_tail;           /* Index to write to.  */
 

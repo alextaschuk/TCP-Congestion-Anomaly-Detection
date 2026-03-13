@@ -5,6 +5,7 @@
 
 #include <arpa/inet.h>
 
+#include <tcp/congestion_control.h>
 #include <tcp/hndshk_fsm.h>
 #include <utils/err.h>
 #include <utils/printable.h>
@@ -147,7 +148,9 @@ tcb_t *alloc_new_tcb(void)
 
     uint8_t scale = 0;
     while (BUF_SIZE >> scale > 65535 && scale < 14)
+    {
         scale++;
+    }
 
     new_tcb->rcv_ws_scale = scale;
     new_tcb->ws_enabled = false;
@@ -158,10 +161,9 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->rttvar = 0;
     new_tcb->rto = 1000; // 1000 ms = 1 second
     new_tcb->rxtcur = 0; // TODO: calculate and replace w/ current RTO 
-    new_tcb->dupacks = 0;
-    
-    new_tcb->cwnd = MSS * IW_CALC(MSS);
-    new_tcb->ssthresh = 0xFFFFFFFF;
+
+    new_tcb->cc = &cc_newreno_ops;
+    new_tcb->cc->init(new_tcb);
     
     LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     //log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");

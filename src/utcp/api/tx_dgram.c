@@ -34,7 +34,7 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
      * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
      * padding, which is not divisible by 4. 
      */
-    size_t opt_len = 12;
+    size_t opt_len = 12; // THIS IS WRONG LAWD HAVE MERCY CHANGE THIS (maybe? window scale not sent after SYN)
 
 
     /* How much data in the buffer corresponds to this seq number? */
@@ -213,7 +213,7 @@ int send_dgram(tcb_t *tcb)
 
                 /**
                  * Nagle's Algorithm: suppress tiny segments when there is already
-                 * unacknowledged data in flight.  Only send a sub-MSS segment if the
+                 * unacknowledged data in flight. Only send a sub-MSS segment if the
                  * pipe is completely empty (no in-flight data), which means we have
                  * reached the tail of the send buffer.  This prevents the sender-side
                  * silly-window syndrome where every small ACK triggers an equally small
