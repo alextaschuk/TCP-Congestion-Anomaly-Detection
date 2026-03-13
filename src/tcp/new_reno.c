@@ -9,10 +9,13 @@ static void newreno_init(tcb_t *tcb) {
     tcb->ca_state = OPEN;
     tcb->recover = tcb->iss;
 
+    if (tcb->fd != 0)
+    { /* We don't want to print this when the the listen socket's TCB is made. */
     const char *old_category = current_thread_cat;
     current_thread_cat = "cc_data";
     LOG_INFO("INIT,%u,%u", tcb->cwnd, tcb->ssthresh);
     current_thread_cat = old_category;
+    }
 }
 
 static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {

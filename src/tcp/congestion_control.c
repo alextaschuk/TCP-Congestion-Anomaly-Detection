@@ -28,8 +28,8 @@ void cc_aimd(tcb_t *tcb, uint32_t acked)
     }
     else 
     { /* Congestion Avoidance (linear growth) */
-        uint32_t increment = (acked * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
-        tcb->cwnd += MAX(increment, 1);
+        //uint32_t increment = (acked * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
+        tcb->cwnd += MAX(((uint64_t)acked * MSS) / tcb->cwnd, 1);
         LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
     }
 

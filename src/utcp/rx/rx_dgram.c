@@ -159,7 +159,6 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
 
                     //LOG_DEBUG("[rcv_syn_ack] Finished updating the TCB with fd=%i using SYN-ACK segment. Waking up thread blocking in utcp_connect...", target_tcb->fd);
                     pthread_cond_broadcast(&target_tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
-
                 }
                 else
                     LOG_ERROR("[rcv_syn_ack] Missing SYN and/or ACK flag(s) for SYN-ACK");

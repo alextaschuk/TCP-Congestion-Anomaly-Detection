@@ -17,7 +17,7 @@ typedef struct tcb_t tcb_t;
 /* Define Macros */
 
  /*socket-related*/
-#define MAX_CONNECTIONS 1024 /* The maximum number of UTCP socket connections allowed at a time (in the lookup table). */
+#define MAX_CONNECTIONS 6 /* The maximum number of UTCP socket connections allowed at a time (in the lookup table). */
 
 /**
  * The maximum number of allowed TCBs in SYS & accept queues at a time.
@@ -43,23 +43,37 @@ typedef struct tcb_t tcb_t;
  * The default Maximum Segment Size value of a TCP segment.
  * @note See https://www.rfc-editor.org/rfc/rfc9293#name-maximum-segment-size-option
  */
-#define MSS 536
+#define MSS 1400
 
 /* Congestion Control Related */
 #define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
+#define TCP_TICK_MS 10 /* in millisec, how long the slow tick timer is*/
+
+// convert real time into our tick system
+#define MS_TO_TICKS(ms)   ((ms) / TCP_TICK_MS)
+#define SEC_TO_TICKS(sec) (((sec) * 1000) / TCP_TICK_MS)
+
+#define TCPTV_SRTTDFLT MS_TO_TICKS(1000) /* 1 second assumed RTO if no info (RFC 6298) */
+#define TCPTV_REXMTMAX SEC_TO_TICKS(64) /* 64 seconds max RTO */
+#define TCPTV_SRTTDFLT MS_TO_TICKS(1000) /* 1 second assumed RTO if no info (RFC 6298) */
+
 #define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
+#define MAXRXTSHIFT 12 /* max retransmits */
+#define TCP_TICK_MS 10 // length in ms of the slow tick timer
+
+
 
 /* Retransmission Timer Stuff */
 
-#define TCPTV_MIN 2                     /* minimum value of retransmission timer (1 sec)*/
-#define TCPTC_REXMTMAX 128              /* maximum value of retransmission timer (64 sec)*/
+#define TCPTV_MIN MS_TO_TICKS(200)                     /* minimum value of retransmission timer (1 sec)*/
+#define TCPTC_REXMTMAX SEC_TO_TICKS(64)              /* maximum value of retransmission timer (64 sec)*/
 #define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
 
  /* Persist Timer Stuff*/
-#define TCPTV_PERSMIN 10                /* minimum value of persist timer (5 sec)*/
-#define TCPTV_PERSMAX 120               /* maximum value of retransmission timer (60 sec)*/
+#define TCPTV_PERSMIN 5000                /* minimum value of persist timer (5 sec)*/
+#define TCPTV_PERSMAX 64000               /* maximum value of persist timer (64 sec)*/
 
  /* Convinience macros */
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */
