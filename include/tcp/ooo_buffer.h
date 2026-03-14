@@ -16,10 +16,29 @@ typedef struct ooo_segment {
     struct ooo_segment *next;
 } ooo_segment_t;
 
-// Function to add a segment to the out-of-order buffer
-int ooo_buffer_add(tcb_t *tcb, uint32_t seq, uint32_t len, const uint8_t *data);
 
-// Function to process the out-of-order buffer
-void ooo_buffer_process(tcb_t *tcb);
+/**
+ * @brief Insert an out-of-order segment into the TCB's reassembly queue.
+ * 
+ * The queue is kept sorted in ascending sequence-number order. Overlapping
+ * and duplicate bytes are trimmed so the queue never holds redundant data.
+ * `ooo_bytes` counts against the effective receive window to prevent the sender
+ * from overrunning the buffer.
+ *
+ * @note Called with TCB lock held.
+ */
+void insert_ooo_segment(tcb_t *tcb, uint32_t, uint8_t *, uint32_t);
 
-#endif // OOO_BUFFER_H
+/**
+ * @brief Drain consecutive entries from the out-of-order queue into the RX buffer.
+ *
+ * Called after an in-order segment is accepted. If the head of the OOO queue
+ * now begins exactly `rcv_nxt`, that data is contiguous and can be moved into
+ * `rx_buf`.  We repeat until the queue is empty or a gap remains, advancing
+ * `rcv_nxt` cumulatively (i.e. a single cumulative ACK covers all drained data).
+ *
+ * @note Called with TCB lock held.
+ */
+void drain_ooo_queue(tcb_t *tcb);
+
+#endif

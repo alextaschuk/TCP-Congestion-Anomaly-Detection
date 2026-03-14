@@ -115,9 +115,13 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
 
     tcb->rx_head += num_bytes_to_read;
 
-    /* Recalculate the app's rcv_wnd since it has read from the RX buffer (thus freeing up some space) */
+    /**
+     * When the application has read the payload (i.e., the RX buffer), we can free up the receive
+     * window that's advertised to the sender by recalculating the app's rcv_wnd. ooo_bytes are
+     * reserved for out-of-order segments that will drain into the RX buffer.
+     */
     uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
-    tcb->rcv_wnd = BUF_SIZE - bytes_in_buf;
+    tcb->rcv_wnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
 
     // Silly window prevention with Classic Clark's algorithm: only send window update when
     // we can offer at least min(MSS, RECV_BUF_SIZE/2) worth of new space.

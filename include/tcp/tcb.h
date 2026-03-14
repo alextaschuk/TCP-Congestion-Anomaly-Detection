@@ -122,6 +122,7 @@ typedef struct tcb_t
     
     /* Out-of-Order Buffer*/
     ooo_segment_t *ooo_head;    /* Head of the out-of-order buffer. */
+    uint32_t ooo_bytes;         /* Total number of bytes in the OOO buffer. */
 
     /* Server-only buffers for 3WHS management*/
     tcb_queue_t syn_q;          /* Server-only queue for tracking half-open connection requests. */

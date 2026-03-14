@@ -74,10 +74,12 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     segment->hdr.th_off = (sizeof(struct tcphdr) + opt_len) / 4; // convert into 32-bit words
     segment->hdr.th_flags = flags;
 
-    /* calculate available space and clamp to header */
+    /* Window calculations: calculate available space and clamp to header.
+     * Subtract ooo_bytes so the sender cannot fill space that is already
+     * reserved by buffered out-of-order segments waiting to drain.
+     */
     uint32_t bytes_in_buffer = tcb->rx_tail - tcb->rx_head;
-    uint32_t current_free_space = BUF_SIZE - bytes_in_buffer;
-    //uint32_t current_free_space = MIN(bytes_in_buffer, BUF_SIZE);
+    uint32_t current_free_space = BUF_SIZE - bytes_in_buffer - tcb->ooo_bytes;
 
     segment->hdr.th_win = htons(SET_SCALED_WIN(tcb, flags, current_free_space));  
 

@@ -5,6 +5,7 @@
 #include <tcp/congestion_control.h>
 #include <tcp/ooo_buffer.h>
 #include <utils/logger.h>
+#include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
@@ -116,7 +117,7 @@ void handle_data(
      * contain new data too.
      */
     if (SEQ_LT(seq_num, tcb->rcv_nxt))
-    {
+    { // duplicate data
         uint32_t duplicate_bytes = tcb->rcv_nxt - seq_num;
 
         if (duplicate_bytes >= data_len)
@@ -138,29 +139,40 @@ void handle_data(
     }
 
     if(seq_num == tcb->rcv_nxt)
-    { // is this the packet we're expecting?
-        uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
+    { // in-order data (is this the packet we're expecting?)
+
+        // We need to save room in the RX buffer for the OOO bytes that will eventually drain into it.
+        uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head) - tcb->ooo_bytes;
         LOG_DEBUG("[handle_data] Buffer Check: free space=%u, incoming data=%zd", rx_free_space, data_len);
 
         if (data_len <= (ssize_t)rx_free_space)
         { // copy new data from payload into RX byte-by-byte
             uint32_t old_tail = tcb->rx_tail;
 
-            for(ssize_t i = 0; i < data_len; i++)
-            { // TODO: replace with memcpy
-                tcb->rx_buf[(tcb->rx_tail + i) % BUF_SIZE] = data[i];
-            }
+            ring_buf_write(tcb->rx_buf, BUF_SIZE, tcb->rx_tail, data, data_len);
 
             tcb->rx_tail += data_len;
             tcb->rcv_nxt += data_len;
 
             LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: recv_buf_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
-                    old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
+                        old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
 
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
 
-            tcb->t_flags |= F_ACKNOW;
-            ooo_buffer_process(tcb);
+            /* Drain any OOO segments that are now consecutive with rcv_nxt.
+             * This advances rcv_nxt cumulatively — a single ACK will cover
+             * all the data moved out of the reassembly queue.
+             */
+            uint32_t pre_drain_rcv_nxt = tcb->rcv_nxt;
+            drain_ooo_queue(tcb);
+            if (tcb->rcv_nxt != pre_drain_rcv_nxt) {
+                dzlog_info("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
+                pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again sinec more data is available
+            }
+            if (tcb->dupacks > 0)
+            {
+                tcb->t_flags |= F_ACKNOW;
+            }
         }
         else
         {
@@ -169,8 +181,15 @@ void handle_data(
         }
     }
     else
-    {
+    { // out of order data
+        /* seq_num > rcv_nxt: out-of-order segment.
+         * Buffer it in the reassembly queue and send a duplicate ACK of
+         * the last in-order byte (rcv_nxt) so the sender knows what we
+         * are still waiting for.  The application cannot read past the
+         * hole because recv_buf only contains contiguous in-order data.
+         */
         LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
+        insert_ooo_segment(tcb, seq_num, data, (uint32_t)data_len);
         tcb->t_flags |= F_ACKNOW;
         ooo_buffer_add(tcb, seq_num, data_len, data);
     }
