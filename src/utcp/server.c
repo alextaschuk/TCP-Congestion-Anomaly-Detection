@@ -152,7 +152,7 @@ int main(void)
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
-    printf("Server: Starting 1GB file transfer to client...\r\n");
+    printf("Server: Ready to send 1GB file to client...\r\n");
     while((bytes_read = fread(snd_buf, 1, APP_BUF_SIZE, fp)) > 0)
     {
         ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);

@@ -94,7 +94,7 @@ int main(void) {
     uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
     size_t total_received = 0;
 
-    printf("Server: Starting 1GB file transfer to client...\r\n");
+    printf("Client: Ready to receive 1GB file from server...\r\n");
     while(total_received < file_size_bytes)
     {   
         ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
