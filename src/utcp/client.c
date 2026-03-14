@@ -90,11 +90,11 @@ int main(void) {
     if (!fp)
         err_sys("[Client App] Failed to create destination file");
 
-    size_t file_size_bytes = 1000000000;// 1GB
+    size_t file_size_bytes = 5000000000;// 5GB
     uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
     size_t total_received = 0;
 
-    printf("Client: Ready to receive 1GB file from server...\r\n");
+    printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_received < file_size_bytes)
     {   
         ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
@@ -103,8 +103,8 @@ int main(void) {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
-            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r\n", bytes_rcvd, total_received, file_size_bytes);
-            fflush(stdout);
+            //printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_received, file_size_bytes);
+            //fflush(stdout);
         }
         if (bytes_rcvd < 0) {
             LOG_ERROR("[Client App] Error receiving data.");
