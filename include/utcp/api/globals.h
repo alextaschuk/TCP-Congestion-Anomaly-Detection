@@ -17,14 +17,15 @@ typedef struct tcb_t tcb_t;
 /* Define Macros */
 
  /*socket-related*/
-#define MAX_CONNECTIONS 1024 /* The maximum number of UTCP socket connections allowed at a time (in the lookup table). */
+#define MAX_CONNECTIONS 6 /* The maximum number of UTCP socket connections allowed at a time (in the lookup table). */
 
 /**
  * The maximum number of allowed TCBs in SYS & accept queues at a time.
  * @note This is typically determined with `SOMAXCONN` (SOcket MAXimum CONNections), but my system's stores
  * 128 in this value, and I want to use more. See https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
  */
-#define MAX_BACKLOG 4096 
+#define MAX_BACKLOG 128 
+//#define MAX_BACKLOG 4096 
 
  /*Buffer & Data Related*/
 
@@ -43,23 +44,28 @@ typedef struct tcb_t tcb_t;
  * The default Maximum Segment Size value of a TCP segment.
  * @note See https://www.rfc-editor.org/rfc/rfc9293#name-maximum-segment-size-option
  */
-#define MSS 536
+#define MSS 1400
 
 /* Congestion Control Related */
-#define CA_ALGO RENO /* Determines which CA algo we use. */
+#define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
+#define TCP_TICK_MS 10 /* in millisec, how long the slow tick timer is*/
 #define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
 
-/* Retransmission Timer Stuff */
+// convert real time into our tick system
+#define MS_TO_TICKS(ms)   ((ms) / TCP_TICK_MS)
+#define SEC_TO_TICKS(sec) (((sec) * 1000) / TCP_TICK_MS)
 
-#define TCPTV_MIN 2                     /* minimum value of retransmission timer (1 sec)*/
-#define TCPTC_REXMTMAX 128              /* maximum value of retransmission timer (64 sec)*/
-#define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
+/* Retransmission Timer Stuff */
+#define TCPTV_REXMTMAX SEC_TO_TICKS(64)     /* 64 seconds max RTO */
+#define TCPTV_MIN MS_TO_TICKS(200)          /* minimum value of retransmission timer (1 sec)*/
+#define TCPTV_SRTTDFLT MS_TO_TICKS(1000)    /* 1 second assumed RTO if no info (RFC 6298) */
+#define MAXRXTSHIFT 12                      /* maximum number of retransmissions waiting for an ACK */
 
  /* Persist Timer Stuff*/
-#define TCPTV_PERSMIN 10                /* minimum value of persist timer (5 sec)*/
-#define TCPTV_PERSMAX 120               /* maximum value of retransmission timer (60 sec)*/
+#define TCPTV_PERSMIN 5000                /* minimum value of persist timer (5 sec)*/
+#define TCPTV_PERSMAX 64000               /* maximum value of persist timer (64 sec)*/
 
  /* Convinience macros */
 #define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */
@@ -68,7 +74,13 @@ typedef struct tcb_t tcb_t;
 #define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)
 #define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)
 #define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
-#define IW_CALC(size) ((size) > 2190 ? 2 : ((size) > 1095 ? 3 : 4)) // This IW calcuation comes from RFC 5681
+
+/**
+ * Calculate the Initial Window. This is the size of the sender's congestion window
+ * after the three-way handshake is completed.
+ * - See [RFC 5681](https://datatracker.ietf.org/doc/html/rfc5681)
+ */
+#define IW_CALC(size) ((size) > 2190 ? 2 : ((size) > 1095 ? 3 : 4))
 
 /**
  * If scaling is enabled and it's not a SYN packet, shift the header window
@@ -79,9 +91,8 @@ typedef struct tcb_t tcb_t;
                                                            : (uint32_t)(hdr)->th_win)
 
 /**
- * Prepares the window value for the 16-bit header field.
- * If scaling is confirmed, shift right.
- * If not, clamp to 65535 to prevent overflow.
+ * Prepares the Window Scale option value for the 16-bit header field.
+ * If scaling is confirmed, shift right. If not, clamp to 65535 to prevent overflow.
  */
 #define SET_SCALED_WIN(tcb, flags, free_space)                                                                 \
     ((tcb)->ws_enabled && !((flags) & TH_SYN) ? (uint16_t)((free_space) >> (tcb)->rcv_ws_scale)             \
@@ -90,7 +101,12 @@ typedef struct tcb_t tcb_t;
 /* End define macros */
 
 /*Define Structs*/
-typedef struct api_t /* Stores all global vars */
+
+/**
+ * Stores information that may be/is needed globally, such as the client & server's
+ * socket information, and the TCB lookup table.
+ */
+typedef struct api_t
 {
     /* Connection info */
     uint16_t client_udp_port;
@@ -108,20 +124,9 @@ typedef struct api_t /* Stores all global vars */
 
 } api_t;
 
-
-typedef struct socket_fds /* A helpful struct to consolidate our socket FDs for multithreading */
-{
-    int udp_fd;                         /* A UDP file descriptor */
-    int utcp_fd;                        /* A UTCP file descriptor */
-} socket_fds;
 /*End define structs*/
 
 /*Define Enums*/
-enum cc_algos{ /* Congestion control algorithms */
-    TAHOE = 1,
-    RENO = 2
-};
-
 enum timers{
     TCPT_REXMT =   0,  /* index of retransmission timer in `timer_t[]` */
     TCPT_PERSIST = 1,  /* Persist timer (for zero window probes) */

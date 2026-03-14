@@ -11,22 +11,21 @@
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
 
+const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
 void* utcp_ticker_thread(void) 
 {
     current_thread_cat = "ticker_thread";
-    LOG_INFO("[utcp_ticker_thread] UTCP 500ms slow timer started...");
+    LOG_INFO("[utcp_ticker_thread] UTCP 1ms slow timer started...");
 
     struct timespec ts;
     ts.tv_sec = 0; // 0 seconds
-    ts.tv_nsec = 1000000L; // 1 million nanoseconds (1ms)
+    ts.tv_nsec = ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
     while (1) 
     {
         nanosleep(&ts, NULL); // sleep for 1ms
         utcp_slowtimo(); // wake up and process all TCP timers
     }
-    
-    return NULL;
 }
 
 
@@ -51,11 +50,11 @@ void utcp_slowtimo(void)
             if (tcb->t_timer[timer_idx] > 0) 
             {
                 tcb->t_timer[timer_idx]--;
-                LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
+                //LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
 
                 if (tcb->t_timer[timer_idx] == 0)
                 {
-                    LOG_DEBUG("[utcp_slowtimo] Timer %i timed out.", timer_idx);
+                    //LOG_DEBUG("[utcp_slowtimo] Timer %i expired.", timer_idx);
                     utcp_timeout(tcb, timer_idx);
                 }
             }
@@ -93,59 +92,78 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         //LOG_INFO("[calc_rto] Calulated R. srtt = %u, rttvar = %u", tcb->srtt, tcb->rttvar);
     } else
     { // subsequent RTT measurement R'
-        int32_t err = rtt_sample - (tcb->srtt >> 3); // `err` is ((R' - SRTT) / 8)
+        int32_t delta = rtt_sample - (tcb->srtt >> 3); // delta = ((R' - SRTT) / 8)
 
-        tcb->srtt += err; // SRTT_new = SRTT_old + (err / 8)
+        tcb->srtt += delta; // SRTT_new = SRTT_old + (delta / 8)
 
-        if (err < 0) err = -err; // compute |err|
-        tcb->rttvar += err - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|err| - RTTVAR_old) / 4
-        //LOG_INFO("[calc_rto] Calculated R'. err = %u, srtt = %u, rttvar = %u", err, tcb->srtt, tcb->rttvar);
+        if (delta < 0) delta = -delta; // compute |delta|
+        tcb->rttvar += delta - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|delta| - RTTVAR_old) / 4
+        //LOG_INFO("[calc_rto] Calculated R'. delta = %u, srtt = %u, rttvar = %u", delta, tcb->srtt, tcb->rttvar);
     }
 
-    /* Compute the RTO */
+    /* Compute the RTO in milliseconds */
     uint32_t current_srtt = tcb->srtt >> 3;
     uint32_t four_rttvar = tcb->rttvar;
     //LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
 
-    tcb->rto = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
-    //LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rto);
+    uint32_t calculated_rto_ms = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
+
+    tcb->rxtcur = MS_TO_TICKS(calculated_rto_ms); // convert to ticks for bounds checking
+    //LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rxtcur);
 
     /**
-     * Enforce bounds (e.g., Min 200ms, Max 60 seconds)
+     * Enforce bounds (e.g., Min 200ms, Max 64 seconds)
      * @note Strict RFC 6298 says min should be 1000ms, but Linux uses 200ms.
      */
-    TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
-    //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rto);
+    if (tcb->rxtcur < TCPTV_MIN)
+    {
+        LOG_DEBUG("[calc_rto] RTO %u ticks clamped up to TCPTV_MIN=%d ticks.", tcb->rxtcur, TCPTV_MIN);   
+        tcb->rxtcur = TCPTV_MIN;
+    }
+    else if (tcb->rxtcur > TCPTV_REXMTMAX)
+    {
+        LOG_DEBUG("[calc_rto] RTO %u ticks clamped up to TCPTV_MIN=%d ticks.", tcb->rxtcur, TCPTV_REXMTMAX);   
+        tcb->rxtcur = TCPTV_REXMTMAX; // the RTO
+    }
+    //TCPT_RANGESET(tcb->rxtcur, tcb->rxtcur, 200, 64000);
+    //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rxtcur);
 }
 
 
 static void handle_rexmt_timeout(tcb_t *tcb)
 {
     LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u", tcb->fd);
+    tcb->rxtshift++;
 
-    /* Exponential backoff */
-    tcb->rto = tcb->rto * 2; // wait twice as long before trying again
-    TCPT_RANGESET(tcb->rto, tcb->rto, 200, 60000);
+    /* Exponential backoff (RFC 6298, rule 5.5) */
+    //tcb->rxtcur = tcb->rxtcur * 2; // wait twice as long before trying again
+    int backoff_mult = tcp_backoff[tcb->rxtshift];
 
+    int base_rto = tcb->rxtcur > 0 ? tcb->rxtcur : TCPTV_SRTTDFLT;
+    int new_timer = base_rto * backoff_mult;
+
+    //TCPT_RANGESET(tcb->rxtcur, tcb->rxtcur, 200, 64000);
+    if (new_timer > TCPTV_REXMTMAX)
+        new_timer = TCPTV_REXMTMAX;
+    tcb->t_timer[TCPT_REXMT] = new_timer;
+
+    uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-    tcb->ssthresh = calc_ssthresh(flight_size);
-    tcb->cwnd = MSS;
-    
-    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
-    
-    const char *old_category = current_thread_cat;
-    current_thread_cat = "cc_data";
-    LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
-    current_thread_cat = old_category;
+    tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
 
-    tcb->dupacks = 0;
-    tcb->fast_recovery = false;
-    tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window (idk if this should be here)
+    LOG_DEBUG("[handle_rexmt_timeout]: Timeout #%d fired! "
+                "base_rto=%d ticks (%d ms) x backoff=%d -> new_timer=%d ticks (%d ms). "
+                "flight_size=%u bytes. snd_nxt rolled back: %u -> %u (snd_una).",
+                tcb->rxtshift, base_rto, base_rto * TCP_TICK_MS, backoff_mult, new_timer,
+                new_timer * TCP_TICK_MS, flight_size, pre_rollback_snd_nxt, tcb->snd_nxt);
+
+
+    if (tcb->cc && tcb->cc->timeout)
+    { // delegate to congestion control algo
+        tcb->cc->timeout(tcb, flight_size);
+    }
 
     send_dgram(tcb);
-    //retransmit_data(tcb, tcb->snd_una);
-
-    reset_timer(tcb, TCPT_REXMT);
 }
 
 
@@ -182,20 +200,40 @@ void utcp_timeout(tcb_t *tcb, short timer)
     }
 }
 
-
-uint32_t calc_ssthresh(uint32_t flight_size)
-{
-    uint32_t half_flight = flight_size / 2;
-    return MAX(half_flight, 2 * MSS);
-}
-
 int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
-    //int ticks = (tcb->rto + 499) / 500;
-    int ticks = tcb->rto; // 1 tick = 1ms
-    LOG_DEBUG("[reset_timer] Resetting the retransmission timer to (rto=%u + 499) ÷ 500 = %d", tcb->rto, ticks);
-    tcb->t_timer[timer_idx] = ticks;
-    return ticks;
+    if (timer_idx == TCPT_REXMT) 
+    {
+        int rearm_ticks = tcb->rxtcur;
+        int backoff = 1;
+        if (tcb->rxtshift > 0)
+        {
+            backoff = tcp_backoff[MAXRXTSHIFT];
+            rearm_ticks = tcb->rxtcur * backoff;
+            if (rearm_ticks > TCPTV_REXMTMAX)
+                rearm_ticks = TCPTV_REXMTMAX;
+        }
+        tcb->t_timer[TCPT_REXMT] = rearm_ticks;
+        //tcb->rxtshift = 0; // reset backoff shift back to 0 for Karn's algo
+
+        // Calculate the backed-off RTO: base RTO shifted by the number of timeouts (rto * 2^rxtshift)
+        //uint32_t backed_off_rto = tcb->rxtcur << tcb->rxtshift;
+        
+        // Enforce the bounds on the newly calculated timeout (e.g., max 64 seconds)
+        //TCPT_RANGESET(backed_off_rto, backed_off_rto, 200, 64000);
+        
+        //tcb->rxtcur = backed_off_rto;
+        //tcb->t_timer[timer_idx] = tcb->rxtcur;
+        
+        LOG_DEBUG("[reset_timer] REXMT timer reset. base_rto=%u, shift=%u, rxtcur=%u ms", 
+                  tcb->rxtcur, tcb->rxtshift, tcb->rxtcur);
+                  
+        return tcb->rxtcur;
+    }
+    
+    // Fallback for other timers
+    tcb->t_timer[timer_idx] = tcb->rxtcur; 
+    return tcb->rxtcur;
 }
 
 void pause_timer(tcb_t *tcb, uint8_t timer_idx)

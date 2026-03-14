@@ -23,7 +23,7 @@ uint8_t tcp_outflags[] = {
 
 int retransmit_data(tcb_t *tcb, uint32_t seq)
 {
-    LOG_DEBUG("[retransmit_data] retransmission requested. target sequence number=%u", seq);
+    LOG_DEBUG("[retransmit_data] Retransmission requested. target sequence number=%u", seq);
     if(tcb->fsm_state != ESTABLISHED)
         return 0;
 
@@ -34,7 +34,7 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
      * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
      * padding, which is not divisible by 4. 
      */
-    size_t opt_len = 12;
+    size_t opt_len = 12; // THIS IS WRONG LAWD HAVE MERCY CHANGE THIS (maybe? window scale not sent after SYN)
 
 
     /* How much data in the buffer corresponds to this seq number? */
@@ -101,7 +101,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
 
     /* window scale option (4 bytes total: 1 NOP + 3 byte WS option) */
     if (flags & TH_SYN)
-    {
+    { // window scale can only be sent in SYN packets!
         opt_buf[opt_idx++] = 1; // NOP (TCPOPT_NOP)   
         opt_buf[opt_idx++] = 3; // Option-Kind = Window Scale (TCPOPT_WINDOW)
         opt_buf[opt_idx++] = 3; // Option-Length (TCPOLEN_WINDOW)
@@ -213,7 +213,7 @@ int send_dgram(tcb_t *tcb)
 
                 /**
                  * Nagle's Algorithm: suppress tiny segments when there is already
-                 * unacknowledged data in flight.  Only send a sub-MSS segment if the
+                 * unacknowledged data in flight. Only send a sub-MSS segment if the
                  * pipe is completely empty (no in-flight data), which means we have
                  * reached the tail of the send buffer.  This prevents the sender-side
                  * silly-window syndrome where every small ACK triggers an equally small
@@ -229,65 +229,66 @@ int send_dgram(tcb_t *tcb)
                 if (data_len > 0) {
                     //LOG_INFO("Preparing to send %zu bytes of payload.", data_len);
                 }
-
             }
             else
             {
                 data_len = 0;
                 //LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u, cwnd=%u, bytes in flight=%u",
-                //           tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
+                //tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
             }
         }
-
-            bool is_syn_fin = (flags & (TH_SYN | TH_FIN)) != 0; // is the packet a SYN or a FIN request?
-            bool sending_new_syn_fin = is_syn_fin && (tcb->snd_nxt == tcb->snd_max); // is the packet a duplicate SYN or FIN?
-
-            LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
-
-            if (data_len == 0 && !sending_new_syn_fin && !force_ack)
-            { // no payload and it's not a SYN or FIN, so no point in sending the packet
-                LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
-                break;
-            }
         
-            LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]. Payload size: %zu bytes",  tcb->fourtuple.dest_port, tcb->dest_udp_port, data_len);
+        bool is_syn_fin = (flags & (TH_SYN | TH_FIN)) != 0; // is the packet a SYN or a FIN request?
+        //bool sending_new_syn_fin = is_syn_fin && (tcb->snd_nxt == tcb->snd_max); // is the packet a duplicate SYN or FIN?
+        bool sending_syn = (flags & TH_SYN) && (tcb->snd_nxt == tcb->iss); // prevent rollback issue if retransmission expires during SYN-ACK 
 
-            int bytes_sent = send_segment(tcb, tcb->snd_nxt, data_len, opt_len, flags);
-            if (bytes_sent < 0)
-            {
-                LOG_ERROR("[send_dgram] Error occurred in send_segment(). Exiting loop.");
-                break;
+        //LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
+
+        if (data_len == 0 && !sending_syn && !force_ack)
+        { // no payload and it's not a SYN or FIN, so no point in sending the packet
+            //LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
+            break;
+        }
+        
+        //LOG_INFO("[send_dgram] Sending datagram to UTCP port [%u], UDP port [%u]. Payload size: %zu bytes",  tcb->fourtuple.dest_port, tcb->dest_udp_port, data_len);
+
+        int bytes_sent = send_segment(tcb, tcb->snd_nxt, data_len, opt_len, flags);
+        if (bytes_sent < 0)
+        {
+            LOG_ERROR("[send_dgram] Error occurred in send_segment(). Exiting loop.");
+            break;
+        }
+
+        total_bytes_sent += bytes_sent;
+        segments_sent++;
+
+        if (data_len > 0  || sending_syn)
+        { // only increase snd_nxt if payload isn't empty or a SYN/FIN is being sent.
+            uint32_t consumed = data_len + (sending_syn ? 1 : 0);
+            tcb->snd_nxt += consumed;
+
+            if(tcb->t_timer[TCPT_REXMT] == 0)
+            { // start the retransmission timer
+                //int ticks = reset_timer(tcb, TCPT_REXMT);
+                tcb->t_timer[TCPT_REXMT] = tcb->rxtcur;
+                //LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rxtcur);
             }
-
-            total_bytes_sent += bytes_sent;
-            segments_sent++;
-
-            if (data_len > 0 || sending_new_syn_fin)
-            { // only increase snd_nxt if payload isn't empty or a SYN/FIN is being sent.
-                uint32_t consumed = data_len + (sending_new_syn_fin ? 1 : 0);
-                tcb->snd_nxt += consumed;
-
-                if(tcb->t_timer[TCPT_REXMT] == 0)
-                { // start the retransmission timer
-                    int ticks = reset_timer(tcb, TCPT_REXMT);
-                    LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rto);
-                }
     
-                LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
-            }
+            LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
+        }
 
-            if (SEQ_GT(tcb->snd_nxt, tcb->snd_max))
-            {
-                tcb->snd_max = tcb->snd_nxt;
-                LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
-            }
+        if (SEQ_GT(tcb->snd_nxt, tcb->snd_max))
+        {
+            tcb->snd_max = tcb->snd_nxt;
+            LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
+        }
 
-            force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
+        force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
 
-            if (data_len == 0)
-            { // the segment that was sent was either an empty ACK, a SYN, or a FIN, so we can exit the loop.
-                break;
-            }
+        if (data_len == 0)
+        { // the segment that was sent was either an empty ACK, a SYN, or a FIN, so we can exit the loop.
+            break;
+        }
     }
 
     if (segments_sent > 0) 

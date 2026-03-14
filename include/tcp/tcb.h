@@ -8,10 +8,29 @@
 
 #include <pthread.h>
 
+#include <tcp/congestion_control.h>
 #include <tcp/fourtuple.h>
 #include <tcp/tcb_queue.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
+
+struct cc_ops_t;
+typedef struct cc_opts_t cc_opts_t;
+
+
+/* Indicates the current Congestion Avoidance state */
+enum ca_state{
+    OPEN = 0, /* Slow Start or CA (linear growth)*/
+    RECOVERY, /* Fast Retransmit or Fast Recovery due to triple ACK */
+    LOSS      /* Retransmission timer expired */
+};
+
+/* Indicates the current congestion control algorithm */
+enum cc_algo{ 
+TAHOE = 0,
+RENO,
+NEW_RENO
+};
 
 
 /**
@@ -49,28 +68,32 @@ typedef struct tcb_t
     uint8_t rcv_ws_scale;   /* The host's window scale. (value in outgoing SYN) */
     
     uint16_t t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
-    #define F_ACKNOW 0x0001 /* Send an immediate ACK segment with an empty payload. */
+    #define F_ACKNOW 0x0001   /* Send an immediate ACK segment with an empty payload. */
 
     /* Congestion Avoidance*/
-     /* Round Trip Time (RTT) and Retransmission Timeout (RTO) variables */
-     // we use TSval and TSecr, as defined in https://www.rfc-editor.org/rfc/rfc1323#section-3 for calculating a packet's RTT.
+    
+    /**
+     * Round Trip Time (RTT) and Retransmission Timeout (RTO) variables.
+     * - We use TSval and TSecr, as defined in https://www.rfc-editor.org/rfc/rfc1323#section-3 for calculating a packet's RTT.
+     */
     uint32_t ts_rcv_val;    /* Stores the peer's TSval timestamp that is included in a received packet (when you send a packet, this value is used for `TSecr`)*/
-    uint32_t rto;           /* Current Retransmission Timeout value. */
-    uint8_t rxtshift;       /* Number of retransmission timers that have expired. Used to calculate the backoff multiplier when a packet is retransmitted. */
 
     /* RTT Calculation (see RFC 6298, Section 2) */
     uint32_t srtt;          /* Smoothed RTT (avg RTT) -- scaled by 8 */
     uint32_t rttvar;        /* round trip time variation -- scaled by 4 */
+    uint32_t rxtcur;        /* Current retransmit timeout, RTO (ticks) */
+    uint8_t rxtshift;       /* Number of retransmission timers that have expired. Used to calculate the backoff multiplier when a packet is retransmitted. */
 
 
     /* Congestion Control */
-    uint32_t cwnd;      /* Congestion window */
-    uint32_t ssthresh;  /* Slow start threshold */
-    uint8_t dupacks;        /* Counter for the number of consecutive duplicate ACKs received */
-    bool fast_recovery;     /* `true` if `CA_ALGO == TAHOE` AND 3 duplicate ACKs have been detected, `false` otherwise */
+    uint32_t cwnd;                  /* Congestion window */
+    uint32_t ssthresh;              /* Slow start threshold */
+    uint8_t dupacks;                /* Counter for the number of consecutive duplicate ACKs received */
+    const struct cc_ops_t *cc;      /* The CC handler. */
+    enum ca_state ca_state;         /* The current CA state. */
+    uint32_t recover;               /* Sequence number to reach before exiting Fast Recovery. */
 
-    int rxtcur;             /* Current retransmit timeout, RTO (ticks) */
-    short tcpt_rexmt;       /* Retransmission timer (counter) */
+    //short tcpt_rexmt;       /* Retransmission timer (Retransmission eXaimt) */
 
     /**
      * Each entry in this array contains the number of 500ms or 200ms clock ticks until the timer expires, with `0` meaning that the timer is not set.
@@ -92,7 +115,7 @@ typedef struct tcb_t
     uint32_t tx_tail;           /* Index to write to.  */
 
     /* Receive Buffer*/
-    uint8_t rx_buf[BUF_SIZE];          /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
+    uint8_t rx_buf[BUF_SIZE];   /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
     uint32_t rx_head;           /* Index to read from. */
     uint32_t rx_tail;           /* Index to write to.  */
 

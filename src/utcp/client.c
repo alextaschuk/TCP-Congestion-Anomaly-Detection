@@ -47,7 +47,7 @@ static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
     log_tcb(new_tcb, "[utcp_connect] Finished initializing variables for the new TCB:");
 
     LOG_INFO("[utcp_connect] Sending SYN for UTCP FD %i...", utcp_fd);
-    int SYN_dgram = send_dgram(new_tcb);
+    send_dgram(new_tcb);
 
     while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
         pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);

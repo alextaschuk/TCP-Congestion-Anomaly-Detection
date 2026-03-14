@@ -78,14 +78,14 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 if (hdr->th_flags & TH_SYN)
                 {
                     if (data_len > 0)
-                        err_data("[rcv_syn] SYN packet contains non-header data in its payload");
+                        err_data("[rcv_dgram] SYN packet contains non-header data in its payload");
 
                     uint16_t dest_utcp_port = hdr->th_sport;
                     uint32_t dest_ip = ntohl(from.sin_addr.s_addr);
                     uint16_t dest_udp_port = ntohs(from.sin_port);
                     uint16_t src_utcp_port = target_tcb->fourtuple.source_port;
         
-                    LOG_INFO("[rcv_syn] Received a valid SYN. Creating new TCB and placing it in the SYN queue...", dest_ip, hdr->th_sport);
+                    LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...", dest_ip, hdr->th_sport);
                     tcb_t *new_tcb = alloc_new_tcb();
 
                     // would be better to write this check in its own function so that it doesn't remove the existing
@@ -125,18 +125,18 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     pthread_mutex_unlock(&new_tcb->lock);
             }
             else
-                LOG_ERROR("[rcv_syn] Expected SYN flag, but none was found");
+                LOG_ERROR("[rcv_dgram] Expected SYN flag, but none was found");
             break;
 
             case SYN_SENT: // Recevied a SYN-ACK; sends ACK
                 if ((hdr->th_flags & TH_SYN) && (hdr->th_flags & TH_ACK))
                 {
                     if (data_len > 0) // we won't be using TCP Fast Open
-                        err_data("[rcv_syn_ack] ACK contains non-header data");
+                        err_data("[rcv_dgram] ACK contains non-header data");
 
                     if (hdr->th_ack != target_tcb->snd_nxt)
                     {
-                        LOG_ERROR("[rcv_syn_ack] Received ACK is not equal to snd_nxt");
+                        LOG_ERROR("[rcv_dgram] Received ACK=%u is not equal to snd_nxt=%u", hdr->th_ack, target_tcb->snd_nxt);
                         return -1;
                     }
 
@@ -146,23 +146,22 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     target_tcb->rcv_wnd = hdr->th_win;
                     target_tcb->fsm_state = ESTABLISHED;
 
-                    LOG_INFO("[rcv_syn_ack] Client received SYN-ACK. REXMT timer paused.");
-
+                    
                     process_tcp_options(target_tcb, hdr, true);
                     target_tcb->snd_wnd = GET_SCALED_WIN(target_tcb, hdr);
-
+                    
+                    LOG_INFO("[rcv_dgram] Client received SYN-ACK. REXMT timer paused.");
                     pause_timer(target_tcb, TCPT_REXMT);
                     target_tcb->rxtshift = 0;
 
                     target_tcb->t_flags |= F_ACKNOW;
                     send_dgram(target_tcb);
 
-                    //LOG_DEBUG("[rcv_syn_ack] Finished updating the TCB with fd=%i using SYN-ACK segment. Waking up thread blocking in utcp_connect...", target_tcb->fd);
+                    //LOG_DEBUG("[rcv_dgram] Finished updating the TCB with fd=%i using SYN-ACK segment. Waking up thread blocking in utcp_connect...", target_tcb->fd);
                     pthread_cond_broadcast(&target_tcb->conn_cond); // wake up client thread that is blocking in utcp_connect()
-
                 }
                 else
-                    LOG_ERROR("[rcv_syn_ack] Missing SYN and/or ACK flag(s) for SYN-ACK");
+                    LOG_ERROR("[rcv_dgram] Missing SYN and/or ACK flag(s) for SYN-ACK");
                 break;
 
             case SYN_RECEIVED: // Received ACK for SYN-ACK; start sending data
@@ -170,7 +169,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 {
                     if (hdr->th_ack != target_tcb->snd_nxt)
                     {
-                        LOG_ERROR("[rcv_3whs_ack] ACK header's th_ack=%u is not equal to TCB's snd_nxt=%u", hdr->th_ack, target_tcb->snd_nxt);
+                        LOG_ERROR("[rcv_dgram] ACK header's th_ack=%u is not equal to TCB's snd_nxt=%u", hdr->th_ack, target_tcb->snd_nxt);
                         return -1;
                     }
 
@@ -195,10 +194,10 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     pthread_cond_signal(&listen_tcb->accept_q.cond); // Wake up utcp_accept()
                     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
-                    LOG_INFO("[rcv_3whs_ack] Connection established and queued for utcp_accept()");
+                    LOG_INFO("[rcv_dgram] Connection established and queued for utcp_accept()");
                 }
                 else
-                    LOG_ERROR("[rcv_ack] Expected ACK flag, but none was found");
+                    LOG_ERROR("[rcv_dgram] Expected ACK flag, but none was found");
                 break;
 
             case ESTABLISHED: // 3WHS is complete; handle segment accordingly

@@ -6,6 +6,8 @@
 
 #define CLOCK_GRANULARITY 1 /* 1 ms, the value of G for computing RTO (see [RFC 6298, Section 2](https://datatracker.ietf.org/doc/html/rfc6298#section-2)) */
 
+extern const int tcp_backoff[]; /* Exponential backoff multiplier. */
+
 /**
  * @brief Sets a timer to a given value, making certain the value is between the specified
  * min and max. This is used for the retransmission timer and persist timer.
@@ -86,12 +88,6 @@ static void handle_rexmt_timeout(tcb_t *tcb);
  */
 void utcp_timeout(tcb_t *tcb, short timer);
 
-
-/**
- * When a triple ACK or timeout occurs, the ssthresh needs to
- * be recalculated. It is set to `MAX(50% of bytes in flight, 2 MSS)`
- */
-uint32_t calc_ssthresh(uint32_t flight_size);
 
 /**
  * Reset a timer.
