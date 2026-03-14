@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include <tcp/congestion_control.h>
+#include <tcp/ooo_buffer.h>
 #include <utils/logger.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
@@ -96,67 +97,6 @@ void handle_data(
             {
                 tcb->cc->duplicate_ack(tcb);
             }                
-        //if (tcb->dupacks == 3)
-        //      { // handle triple ACK according to current CA algo
-        //        // both Tahoe and RENO use fast retransmit, then set ssthresh to 50% of cwnd.
-        //        uint32_t old_ssthresh = tcb->ssthresh;
-        //        uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-        //        LOG_WARN("[handle_data] (%d) handling triple ACK. flight_size=%u", CC_ALGO, flight_size);
-        //        
-        //        tcb->ssthresh = calc_ssthresh(flight_size);
-        //        
-        //        LOG_INFO("[handle_data] Fast Retransmit: ssthresh dropped %u -> %u", old_ssthresh, tcb->ssthresh);
-        //
-        //        switch (CC_ALGO)
-        //        {
-        //            case (TAHOE):
-        //                LOG_DEBUG("[handle_data] TAHOE: Treating triple ACK as timeout. flight_size=%u", flight_size);
-        //                tcb->cwnd = MSS; // drop to 1 MSS b/c of "timeout"
-        //                retransmit_data(tcb, tcb->snd_una);
-        //                break;
-        //
-        //            case (RENO):
-        //                /**
-        //                 * Only enter Fast Retransmit if snd_una is larger than
-        //                 * the previous recovery point. This ensures that we don't
-        //                 * re-enter recovery for the same window after a partial-ACK.
-        //                 */
-        //                if (SEQ_GT(tcb->snd_una, tcb->recover))
-        //                {
-        //                    tcb->recover = tcb->snd_nxt;
-        //                    retransmit_data(tcb, tcb->snd_una);
-        //
-        //                    tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
-        //                    tcb->fast_recovery = true;
-        //                    LOG_WARN("RENO Fast Retransmit/Recovery: flight_size=%u, ssthresh=%u, inflated cwnd=%u", flight_size,
-        //                                tcb->ssthresh, tcb->cwnd);
-        //
-        //                    const char *old_category = current_thread_cat;
-        //                    current_thread_cat = "cc_data";
-        //                    LOG_INFO("TRIPLE_ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-        //                    current_thread_cat = old_category;
-        //
-        //                    //tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window
-        //                    retransmit_data(tcb, tcb->snd_una);
-        //                    send_dgram(tcb);
-        //                    break;
-        //                }
-        //                else
-        //                {
-        //                    LOG_WARN("[handle_data] 3 duplicate ACKs but snd_una=%u <= recover=%u."
-        //                                "Skipping fast retransmit.", tcb->snd_una, tcb->recover);
-        //                } 
-        //            default:
-        //                LOG_FATAL("[handle_data] HEY! Invalid congestion avoidance algorithm.");
-        //                break;
-        //        }
-        //    }
-        //    else if (tcb->dupacks > 3 && CC_ALGO == RENO && tcb->fast_recovery)
-        //    {
-        //        tcb->cwnd += MSS;
-        //        LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);
-        //        send_dgram(tcb); // continue trying to send data
-        //    }
         }
     }
 
@@ -220,6 +160,7 @@ void handle_data(
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
 
             tcb->t_flags |= F_ACKNOW;
+            ooo_buffer_process(tcb);
         }
         else
         {
@@ -231,6 +172,7 @@ void handle_data(
     {
         LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
         tcb->t_flags |= F_ACKNOW;
+        ooo_buffer_add(tcb, seq_num, data_len, data);
     }
 
     send_dgram(tcb); // ACK the received packet
