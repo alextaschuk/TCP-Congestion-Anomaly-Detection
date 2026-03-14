@@ -3,7 +3,8 @@
 #include <utcp/api/tx_dgram.h>
 #include <utils/logger.h>
 
-static void newreno_init(tcb_t *tcb) {
+static void newreno_init(tcb_t *tcb)
+{
     tcb->cwnd = MSS * IW_CALC(MSS);
     tcb->ssthresh = 0xFFFFFFFF; // should be arbitrarily high, see RFC 5681, Section 3.1
     tcb->ca_state = OPEN;
@@ -18,7 +19,9 @@ static void newreno_init(tcb_t *tcb) {
     }
 }
 
-static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
+
+static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes)
+{
     /* handle Slow Start, CA, and partial ACKs */
     uint32_t old_cwnd = tcb->cwnd;
 
@@ -37,7 +40,7 @@ static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
             current_thread_cat = old_category;
         }
         else
-        { /* Partial ACK */
+        { /* Partial ACK: snd_una advanced but hasn't reached recover. */
             retransmit_data(tcb, tcb->snd_una);
 
             tcb->cwnd = (newly_acked_bytes >= tcb->cwnd) ? MSS :tcb->cwnd - newly_acked_bytes;
@@ -59,7 +62,9 @@ static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
     }
 }
 
-static void newreno_duplicate_ack(tcb_t *tcb) {
+
+static void newreno_duplicate_ack(tcb_t *tcb)
+{
     /* Handle triple ACK Fast Retransmit / Fast Recovery */
     if (tcb->dupacks == 3)
     {
@@ -71,8 +76,8 @@ static void newreno_duplicate_ack(tcb_t *tcb) {
         if (SEQ_GT(tcb->snd_una, tcb->recover))
         {
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-            tcb->recover = tcb->snd_max;
             tcb->ssthresh = halve_ssthresh(flight_size);
+            tcb->recover = tcb->snd_max;
 
             retransmit_data(tcb, tcb->snd_una);
 

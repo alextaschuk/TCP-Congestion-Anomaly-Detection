@@ -90,26 +90,28 @@ void update_fsm(int utcp_fd, enum conn_state state)
 }
 
 
-void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, uint8_t *dst, size_t len)
+void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, uint8_t *dst, size_t data_len, size_t opt_len)
 {
-    if (len == 0)
+    if (data_len == 0)
         return;
 
     uint32_t physical_offset = offset % buf_size;
 
-    if (physical_offset + len <= buf_size)
+    if (physical_offset + data_len <= buf_size)
     {
-        // Contiguous read
-        memcpy(dst, &ring_buf[physical_offset], len);
+        // Contiguous read. Offset pointer by opt_len to skip options
+        memcpy(dst + opt_len, &ring_buf[physical_offset], data_len);
     }
     else
     {
         // Wrap-around read
         size_t part1_len = buf_size - physical_offset;
-        size_t part2_len = len - part1_len;
+        size_t part2_len = data_len - part1_len;
 
-        memcpy(dst, &ring_buf[physical_offset], part1_len);
-        memcpy(dst + part1_len, &ring_buf[0], part2_len);
+        //LOG_DEBUG("[send_segment] Data wraps around ring buffer. Copying %zu bytes from end, %zu bytes from start.", part1_len, part2_len);
+
+        memcpy(dst + opt_len, &ring_buf[physical_offset], part1_len);
+        memcpy(dst + opt_len + part1_len, &ring_buf[0], part2_len);
     }
 }
 

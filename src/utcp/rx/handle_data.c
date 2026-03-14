@@ -152,7 +152,7 @@ void handle_data(
             tcb->rx_tail += data_len;
             tcb->rcv_nxt += data_len;
 
-            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: recv_buf_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
+            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: rx_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
                         old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
 
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv

@@ -1,16 +1,16 @@
 #include <utcp/api/tx_dgram.h>
 
+#include <arpa/inet.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <arpa/inet.h>
 #include <sys/types.h>
 
 #include <tcp/tcp_segment.h>
 #include <utils/printable.h>
 #include <utils/logger.h>
 #include <utils/err.h>
+#include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/globals.h>
 
@@ -34,8 +34,7 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
      * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
      * padding, which is not divisible by 4. 
      */
-    size_t opt_len = 12; // THIS IS WRONG LAWD HAVE MERCY CHANGE THIS (maybe? window scale not sent after SYN)
-
+    size_t opt_len = 12;
 
     /* How much data in the buffer corresponds to this seq number? */
     uint32_t data_bytes_sent = (seq > tcb->iss) ? (seq - tcb->iss - 1) : 0;
@@ -44,7 +43,8 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
     if (tcb->tx_tail > data_bytes_sent)
         buffered_data = tcb->tx_tail - data_bytes_sent;
 
-    size_t send_len = MIN(buffered_data, (size_t)MSS); // Send max 1 MSS of data
+    size_t send_len = MIN(buffered_data, MSS); // Send max 1 MSS of data
+
     LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %u bytes.", data_bytes_sent,
                 buffered_data, send_len);
 
@@ -60,6 +60,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
 {
     /* Allocate for a segment (TCP header + options + payload) */
     size_t segment_size = sizeof(struct tcphdr) + opt_len + data_len;
+    
     tcp_segment_t *segment = malloc(segment_size);
     if (!segment)
     {
@@ -92,10 +93,10 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     int opt_idx = 0;
 
     /* timestamps option (12 bytes total: 2 NOP + 10 byte TS option) */
-    opt_buf[opt_idx++] = 1; // NOP (TCPOPT_NOP)
-    opt_buf[opt_idx++] = 1; // NOP (TCPOPT_NOP)
-    opt_buf[opt_idx++] = 8; // Option-Kind = timestamp & previous timestamp's echo (TCPOPT_TIMESTAMP)
-    opt_buf[opt_idx++] = 10; // Option-Length (TCPOLEN_TIMESTAMP)
+    opt_buf[opt_idx++] = TCPOPT_NOP; // NOP (1)
+    opt_buf[opt_idx++] = TCPOPT_NOP; // NOP (1)
+    opt_buf[opt_idx++] = TCPOPT_TIMESTAMP; // Option-Kind = timestamp & previous timestamp's echo (8)
+    opt_buf[opt_idx++] = TCPOLEN_TIMESTAMP; // Option-Length (10)
 
     uint32_t raw_val = htonl(tcp_now()); // update timestamp
     uint32_t raw_ecr = htonl(tcb->ts_rcv_val); // echo the peer's TSval
@@ -108,9 +109,9 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     /* window scale option (4 bytes total: 1 NOP + 3 byte WS option) */
     if (flags & TH_SYN)
     { // window scale can only be sent in SYN packets!
-        opt_buf[opt_idx++] = 1; // NOP (TCPOPT_NOP)   
-        opt_buf[opt_idx++] = 3; // Option-Kind = Window Scale (TCPOPT_WINDOW)
-        opt_buf[opt_idx++] = 3; // Option-Length (TCPOLEN_WINDOW)
+        opt_buf[opt_idx++] = TCPOPT_NOP; // NOP (1)   
+        opt_buf[opt_idx++] = TCPOPT_WINDOW; // Option-Kind = Window Scale (3)
+        opt_buf[opt_idx++] = TCPOLEN_WINDOW; // Option-Length (3)
 
         // This is the shift count the peer should use when reading the advertised 
         // window. This is set in alloc_tcb (e.g. 4 for a 2^4 = 16x markiplier)
@@ -122,11 +123,15 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
         LOG_WARN("[send_segment] OPTION LENGTH MISMATCH: Wrote %d bytes, expected %zu", opt_idx, opt_len);
     }
 
+    // copy options into payload (will need to offset by opt_len when we copy data in!)
     memcpy(segment->data, opt_buf, opt_len);
 
     /* Add buffer to the payload and send the segment */
     if (data_len > 0)
     {
+        uint32_t buf_offset = seq - tcb->iss - 1; // minus 1 for SYN
+        ring_buf_read(tcb->tx_buf, BUF_SIZE, buf_offset, segment->data, data_len, opt_len);
+        /*
         uint32_t buf_offset = (seq - tcb->iss - 1) % BUF_SIZE;
 
         if (buf_offset + data_len <= BUF_SIZE)
@@ -144,6 +149,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
             memcpy(segment->data + opt_len, &tcb->tx_buf[buf_offset], part1_len);
             memcpy(segment->data + opt_len + part1_len, &tcb->tx_buf[0], part2_len);
         }
+        */
     }
 
     struct sockaddr_in dest_addr;
