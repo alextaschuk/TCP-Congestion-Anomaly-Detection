@@ -67,6 +67,7 @@ static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes)
 static void newreno_duplicate_ack(tcb_t *tcb)
 {
     /* Handle triple ACK Fast Retransmit / Fast Recovery */
+    printf("NEWRENO DUPLICATE ACK CALLED\n");
     if (tcb->dupacks == 3)
     {
         /**
