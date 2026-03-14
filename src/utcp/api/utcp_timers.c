@@ -147,25 +147,23 @@ static void handle_rexmt_timeout(tcb_t *tcb)
         new_timer = TCPTV_REXMTMAX;
     tcb->t_timer[TCPT_REXMT] = new_timer;
 
+    uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
     tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
+
+    LOG_DEBUG("[handle_rexmt_timeout]: Timeout #%d fired! "
+                "base_rto=%d ticks (%d ms) x backoff=%d -> new_timer=%d ticks (%d ms). "
+                "flight_size=%u bytes. snd_nxt rolled back: %u -> %u (snd_una).",
+                tcb->rxtshift, base_rto, base_rto * TCP_TICK_MS, backoff_mult, new_timer,
+                new_timer * TCP_TICK_MS, flight_size, pre_rollback_snd_nxt, tcb->snd_nxt);
+
 
     if (tcb->cc && tcb->cc->timeout)
     { // delegate to congestion control algo
         tcb->cc->timeout(tcb, flight_size);
     }
-    
-    //const char *old_category = current_thread_cat;
-    //current_thread_cat = "cc_data";
-    //LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
-    //current_thread_cat = old_category;
-
-    //tcb->dupacks = 0;
-    //tcb->fast_recovery = false;
 
     send_dgram(tcb);
-
-    //reset_timer(tcb, TCPT_REXMT);
 }
 
 
