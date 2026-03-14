@@ -3,6 +3,11 @@
 *.o
 *.d
 
+out.txt
+test_rcvd.txt
+notes.txt
+
 # CMake build dir
 build/
+
 
