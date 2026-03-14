@@ -102,7 +102,7 @@ int main(void) {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
-            LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
+            //LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
         }
         if (bytes_rcvd < 0) {
             LOG_ERROR("[Client App] Error receiving data.");

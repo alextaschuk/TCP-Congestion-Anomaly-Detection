@@ -53,12 +53,12 @@ void handle_data(
         // handle the retransmission timer (pause or reset)
         if (tcb->snd_una == tcb->snd_max)
         {
-            LOG_DEBUG("[handle_data] All in-flight data has been ACKed. Pausing the REXMT timer.");
+            //LOG_DEBUG("[handle_data] All in-flight data has been ACKed. Pausing the REXMT timer.");
             pause_timer(tcb, TCPT_REXMT); 
         }
         else
         {
-            LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
+            //LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
             reset_timer(tcb, TCPT_REXMT);
         }
 
@@ -74,7 +74,7 @@ void handle_data(
 
         if (current_scaled_win > tcb->snd_wnd)
         {
-            LOG_INFO("[handle_data] WINDOW UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
+            //LOG_INFO("[handle_data] SND_WND UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
             tcb->snd_wnd = current_scaled_win;
 
             pthread_cond_broadcast(&tcb->conn_cond); // notify app thread that is blocking in utcp_send
@@ -109,7 +109,7 @@ void handle_data(
     }
 
     uint32_t seq_num = hdr->th_seq;
-    LOG_DEBUG("[handle_data] Processing Payload: seq_num=%u, length=%zd, expecting rcv_nxt=%u", seq_num, data_len, tcb->rcv_nxt);
+    //LOG_DEBUG("[handle_data] Processing Payload: seq_num=%u, length=%zd, expecting rcv_nxt=%u", seq_num, data_len, tcb->rcv_nxt);
 
     /**
      * Sequence number is past out expectation. The payload contains data
@@ -166,7 +166,7 @@ void handle_data(
             uint32_t pre_drain_rcv_nxt = tcb->rcv_nxt;
             drain_ooo_queue(tcb);
             if (tcb->rcv_nxt != pre_drain_rcv_nxt) {
-                dzlog_info("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
+                LOG_INFO("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
                 pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again sinec more data is available
             }
             if (tcb->dupacks > 0)

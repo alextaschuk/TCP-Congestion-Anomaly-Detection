@@ -86,7 +86,7 @@ void update_fsm(int utcp_fd, enum conn_state state)
 
     tcb->fsm_state = state;
 
-    LOG_DEBUG("[update_fsm] TCB with fd=%i changed from %s to %s", utcp_fd, old_state, fsm_state_to_str(tcb->fsm_state));
+    LOG_DEBUG("[update_fsm] TCB with fd=%i changed: %s -> %s", utcp_fd, old_state, fsm_state_to_str(tcb->fsm_state));
 }
 
 

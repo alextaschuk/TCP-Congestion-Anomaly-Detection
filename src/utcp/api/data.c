@@ -23,7 +23,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
     tcb_t *snder_tcb = get_tcb(utcp_fd);
     if (!snder_tcb)
     {
-        LOG_ERROR("[utcp_recv] Invalid UTCP FD");
+        LOG_ERROR("[utcp_recv] Invalid UTCP fd");
         return -1;
     }
 
@@ -37,7 +37,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
     {
         uint32_t curr_buffered = snder_tcb->tx_tail - snder_tcb->tx_head;
         uint32_t free_space = BUF_SIZE - curr_buffered; // how many bytes can we add to the TX buffer?
-        LOG_INFO("[utcp_send] Num bytes in TX buf: %u, amount of free space in TX: %u", curr_buffered, free_space);
+        //LOG_INFO("[utcp_send] Num bytes in TX buf: %u, amount of free space in TX: %u", curr_buffered, free_space);
 
         if (free_space == 0)
         {
@@ -48,6 +48,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
             if (snder_tcb->fsm_state != ESTABLISHED)
             { // network's connection dropped; unlock and exit.
                 LOG_DEBUG("[utcp_send] Network connection dropped. Unlocking the TCB for UTCP FD %i", snder_tcb->fd);
+                pthread_mutex_unlock(&snder_tcb->lock);
                 break;
             }
             continue;
@@ -83,7 +84,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     tcb_t *tcb = get_tcb(utcp_fd);
     if (!tcb)
     {
-        LOG_ERROR("[utcp_recv] Invalid UTCP FD");
+        LOG_ERROR("[utcp_recv] Invalid UTCP fd");
         return -1;
     }
 
@@ -124,16 +125,16 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     tcb->rcv_wnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
 
     // Silly window prevention with Classic Clark's algorithm: only send window update when
-    // we can offer at least min(MSS, RECV_BUF_SIZE/2) worth of new space.
+    // we can offer at least min(MSS, BUF_SIZE / 2) worth of new space.
     uint32_t sws_threshold = MIN(MSS, BUF_SIZE / 2);
     if (tcb->rcv_wnd >= sws_threshold || (tcb->rcv_wnd < sws_threshold && avail_bytes_to_read == BUF_SIZE))
     {
-        LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
+        //LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
         tcb->t_flags |= F_ACKNOW;
         send_dgram(tcb);
     }
 
-    LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
+    //LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
     pthread_mutex_unlock(&tcb->lock);
 
     return (int)num_bytes_to_read;

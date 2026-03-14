@@ -5,7 +5,7 @@
 
 static void newreno_init(tcb_t *tcb) {
     tcb->cwnd = MSS * IW_CALC(MSS);
-    tcb->ssthresh = 0xFFFFFFFF;
+    tcb->ssthresh = 0xFFFFFFFF; // should be arbitrarily high, see RFC 5681, Section 3.1
     tcb->ca_state = OPEN;
     tcb->recover = tcb->iss;
 

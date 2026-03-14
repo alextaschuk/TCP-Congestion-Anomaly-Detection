@@ -32,14 +32,14 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
         }
 
         if (opt_len < 2)
-            LOG_ERROR("[find_timestamps] Malformed options: cut off before length byte");
+            LOG_WARN("[find_timestamps] Malformed options: cut off before length byte");
 
         /* check for multi-byte options that have length & value bytes*/
         uint8_t opt_size = opt_ptr[1];
         
         if (opt_size < 2 || opt_size > opt_len)
         {
-            LOG_ERROR("[find_timestamps] Malformed options: missing or invalid length byte.");
+            LOG_WARN("[find_timestamps] Malformed options: missing or invalid length byte.");
         }
             
         switch (opt_kind)

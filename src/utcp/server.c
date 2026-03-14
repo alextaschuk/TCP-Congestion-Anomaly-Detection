@@ -118,10 +118,6 @@ int main(void)
     };
     
     bind_utcp_sock(utcp_fd, &server);
-    
-    //bind_udp_sock(1515);
-    //global->utcp_fd = bind_utcp_sock(&global->server);
-    //init_host(global, server);
     log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)

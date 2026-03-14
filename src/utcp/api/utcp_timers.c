@@ -132,7 +132,6 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 
 static void handle_rexmt_timeout(tcb_t *tcb)
 {
-    LOG_INFO("[handle_rexmt_timeout] REXMT timer expired for TCB %u", tcb->fd);
     tcb->rxtshift++;
 
     /* Exponential backoff (RFC 6298, rule 5.5) */
@@ -151,7 +150,7 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
     tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
 
-    LOG_DEBUG("[handle_rexmt_timeout]: Timeout #%d fired! "
+    LOG_DEBUG("[handle_rexmt_timeout] Timeout #%d fired! "
                 "base_rto=%d ticks (%d ms) x backoff=%d -> new_timer=%d ticks (%d ms). "
                 "flight_size=%u bytes. snd_nxt rolled back: %u -> %u (snd_una).",
                 tcb->rxtshift, base_rto, base_rto * TCP_TICK_MS, backoff_mult, new_timer,
@@ -214,18 +213,7 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx)
                 rearm_ticks = TCPTV_REXMTMAX;
         }
         tcb->t_timer[TCPT_REXMT] = rearm_ticks;
-        //tcb->rxtshift = 0; // reset backoff shift back to 0 for Karn's algo
-
-        // Calculate the backed-off RTO: base RTO shifted by the number of timeouts (rto * 2^rxtshift)
-        //uint32_t backed_off_rto = tcb->rxtcur << tcb->rxtshift;
-        
-        // Enforce the bounds on the newly calculated timeout (e.g., max 64 seconds)
-        //TCPT_RANGESET(backed_off_rto, backed_off_rto, 200, 64000);
-        
-        //tcb->rxtcur = backed_off_rto;
-        //tcb->t_timer[timer_idx] = tcb->rxtcur;
-        
-        LOG_DEBUG("[reset_timer] REXMT timer reset. base_rto=%u, shift=%u, rxtcur=%u ms", 
+        LOG_DEBUG("[reset_timer] REXMT RESET: base_rto=%u, shift=%u, rxtcur=%u ms", 
                   tcb->rxtcur, tcb->rxtshift, tcb->rxtcur);
                   
         return tcb->rxtcur;
