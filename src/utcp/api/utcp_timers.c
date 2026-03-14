@@ -20,14 +20,12 @@ void* utcp_ticker_thread(void)
 
     struct timespec ts;
     ts.tv_sec = 0; // 0 seconds
-    ts.tv_nsec = 1000000L; // 1 million nanoseconds (1ms)
+    ts.tv_nsec = ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
     while (1) 
     {
         nanosleep(&ts, NULL); // sleep for 1ms
         utcp_slowtimo(); // wake up and process all TCP timers
     }
-    
-    return NULL;
 }
 
 
@@ -103,12 +101,14 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         //LOG_INFO("[calc_rto] Calculated R'. delta = %u, srtt = %u, rttvar = %u", delta, tcb->srtt, tcb->rttvar);
     }
 
-    /* Compute the RTO */
+    /* Compute the RTO in milliseconds */
     uint32_t current_srtt = tcb->srtt >> 3;
     uint32_t four_rttvar = tcb->rttvar;
     //LOG_INFO("[calc_rto] Calculating the RTO. The current srtt = %u, rttvar = %u", current_srtt, four_rttvar);
 
-    tcb->rxtcur = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
+    uint32_t calculated_rto_ms = current_srtt + MAX(CLOCK_GRANULARITY, four_rttvar);
+
+    tcb->rxtcur = MS_TO_TICKS(calculated_rto_ms); // convert to ticks for bounds checking
     //LOG_INFO("[calc_rto] RTO = srtt + MAX(CLOCK_GRANULARITY, four_rttvar) = %u + %u = %u", current_srtt, MAX(CLOCK_GRANULARITY, four_rttvar), tcb->rxtcur);
 
     /**
