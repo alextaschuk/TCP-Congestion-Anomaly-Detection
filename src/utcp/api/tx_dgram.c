@@ -223,7 +223,10 @@ int send_dgram(tcb_t *tcb)
             if (send_window > unacked_bytes_in_flight)
             {
                 uint32_t can_send = send_window - unacked_bytes_in_flight;
-                data_len = MIN(MIN(buffered_bytes, can_send), MSS); // don't send more bytes than the max segment size
+                
+                data_len = MIN(buffered_bytes, can_send); // don't send more bytes than the max segment size
+                if (data_len > MSS)
+                    data_len = MSS;
 
                 /**
                  * Nagle's Algorithm: suppress tiny segments when there is already
@@ -234,33 +237,32 @@ int send_dgram(tcb_t *tcb)
                  * new data segment.
                  */
                 if (data_len > 0 && data_len < MSS && unacked_bytes_in_flight > 0) {
-                    //LOG_DEBUG("Nagle: suppressing %zu-byte segment (InFlight=%u). "
-                    //            "Waiting for full MSS or pipe drain.",
-                    //            data_len, unacked_bytes_in_flight);
+                    LOG_DEBUG("Nagle: suppressing %zu-byte segment (InFlight=%u). "
+                                "Waiting for full MSS or pipe drain.",
+                                data_len, unacked_bytes_in_flight);
                     data_len = 0;
                 }
 
                 if (data_len > 0) {
-                    //LOG_INFO("Preparing to send %zu bytes of payload.", data_len);
+                    LOG_INFO("Preparing to send %zu bytes of payload.", data_len);
                 }
             }
             else
             {
                 data_len = 0;
-                //LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u, cwnd=%u, bytes in flight=%u",
-                //tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
+                LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u,"
+                            "cwnd=%u, bytes in flight=%u", tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
             }
         }
         
         bool is_syn_fin = (flags & (TH_SYN | TH_FIN)) != 0; // is the packet a SYN or a FIN request?
         bool sending_new_syn_fin = is_syn_fin && (tcb->snd_nxt == tcb->snd_max); // is the packet a duplicate SYN or FIN?
-        //bool sending_syn = (flags & TH_SYN) && (tcb->snd_nxt == tcb->iss); // prevent rollback issue if retransmission expires during SYN-ACK 
 
         //LOG_INFO("[send_dgram] snd_next=%u, snd_max=%u, is_syn_fin:%d sending_new_syn_fin=%d", tcb->snd_nxt, tcb->snd_max, is_syn_fin, sending_new_syn_fin);
 
         if (data_len == 0 && !sending_new_syn_fin && !force_ack)
         { // no payload and it's not a SYN or FIN, so no point in sending the packet
-            //LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
+            LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
             break;
         }
         
@@ -283,18 +285,18 @@ int send_dgram(tcb_t *tcb)
 
             if(tcb->t_timer[TCPT_REXMT] == 0)
             { // start the retransmission timer
-                //int ticks = reset_timer(tcb, TCPT_REXMT);
+                int ticks = reset_timer(tcb, TCPT_REXMT);
                 tcb->t_timer[TCPT_REXMT] = tcb->rxtcur;
-                //LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rxtcur);
+                LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rxtcur);
             }
     
-            //LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
-        }
+            LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);
 
-        if (SEQ_GT(tcb->snd_nxt, tcb->snd_max))
-        {
-            tcb->snd_max = tcb->snd_nxt;
-            //LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
+            if (SEQ_GT(tcb->snd_nxt, tcb->snd_max))
+            {
+                tcb->snd_max = tcb->snd_nxt;
+                LOG_DEBUG("[send_dgram] Advanced snd_max to %u", tcb->snd_max);
+            }
         }
 
         force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it

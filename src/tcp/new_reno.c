@@ -103,7 +103,7 @@ static void newreno_duplicate_ack(tcb_t *tcb)
     else if (tcb->dupacks > 3 && tcb->ca_state == RECOVERY)
     {
         tcb->cwnd += MSS;
-        LOG_DEBUG("[newreno_duplicate_ack] NewReno: Fast Recovery inflating cwnd to %u", tcb->cwnd);
+        LOG_DEBUG("[newreno_duplicate_ack] NewReno: Fast Recovery inflated cwnd to %u", tcb->cwnd);
         send_dgram(tcb);
     }
 }
