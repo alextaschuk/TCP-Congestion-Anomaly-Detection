@@ -103,7 +103,7 @@ int main(void) {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
-            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
+            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r\n", bytes_rcvd, total_received, file_size_bytes);
             fflush(stdout);
         }
         if (bytes_rcvd < 0) {
