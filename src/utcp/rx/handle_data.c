@@ -57,17 +57,7 @@ void handle_data(
         else
         {
             LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
-            //reset_timer(tcb, TCPT_REXMT);
-            int rearm_ticks = tcb->rxtcur;
-            int backoff = 1;
-            if (tcb->rxtshift > 0)
-            {
-                backoff = tcp_backoff[MAXRXTSHIFT];
-                rearm_ticks = tcb->rxtcur * backoff;
-                if (rearm_ticks > TCPTV_REXMTMAX)
-                    rearm_ticks = TCPTV_REXMTMAX;
-            }
-            tcb->t_timer[TCPT_REXMT] = rearm_ticks;
+            reset_timer(tcb, TCPT_REXMT);
         }
 
         if (tcb->cc && tcb->cc->ack_received)

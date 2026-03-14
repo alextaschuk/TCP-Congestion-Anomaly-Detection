@@ -155,9 +155,6 @@ static void handle_rexmt_timeout(tcb_t *tcb)
         tcb->cc->timeout(tcb, flight_size);
     }
     
-
-    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
-    
     //const char *old_category = current_thread_cat;
     //current_thread_cat = "cc_data";
     //LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
@@ -209,7 +206,17 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx)
 {
     if (timer_idx == TCPT_REXMT) 
     {
-        tcb->rxtshift = 0; // reset backoff shift back to 0 for Karn's algo
+        int rearm_ticks = tcb->rxtcur;
+        int backoff = 1;
+        if (tcb->rxtshift > 0)
+        {
+            backoff = tcp_backoff[MAXRXTSHIFT];
+            rearm_ticks = tcb->rxtcur * backoff;
+            if (rearm_ticks > TCPTV_REXMTMAX)
+                rearm_ticks = TCPTV_REXMTMAX;
+        }
+        tcb->t_timer[TCPT_REXMT] = rearm_ticks;
+        //tcb->rxtshift = 0; // reset backoff shift back to 0 for Karn's algo
 
         // Calculate the backed-off RTO: base RTO shifted by the number of timeouts (rto * 2^rxtshift)
         //uint32_t backed_off_rto = tcb->rxtcur << tcb->rxtshift;
@@ -218,7 +225,7 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx)
         //TCPT_RANGESET(backed_off_rto, backed_off_rto, 200, 64000);
         
         //tcb->rxtcur = backed_off_rto;
-        tcb->t_timer[timer_idx] = tcb->rxtcur;
+        //tcb->t_timer[timer_idx] = tcb->rxtcur;
         
         LOG_DEBUG("[reset_timer] REXMT timer reset. base_rto=%u, shift=%u, rxtcur=%u ms", 
                   tcb->rxtcur, tcb->rxtshift, tcb->rxtcur);

@@ -108,6 +108,8 @@ static void newreno_timeout(tcb_t *tcb, uint32_t flight_size) {
 
     tcb->ssthresh = halve_ssthresh(flight_size);
 
+    LOG_INFO("[handle_rexmt_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
+
     const char *old_category = current_thread_cat;
     current_thread_cat = "cc_data";
     LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
