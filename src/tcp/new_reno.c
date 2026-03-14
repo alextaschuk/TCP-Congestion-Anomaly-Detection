@@ -122,7 +122,6 @@ static void newreno_timeout(tcb_t *tcb, uint32_t flight_size)
     current_thread_cat = "cc_data";
     LOG_INFO("TIMEOUT,%u,%u", tcb->cwnd, tcb->ssthresh);
     current_thread_cat = old_category;
-    err_sys("TIMEOUT OCCURED");
 }   
 
 // Bind the functions to the struct
