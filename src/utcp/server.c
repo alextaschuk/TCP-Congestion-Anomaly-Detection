@@ -26,7 +26,7 @@
 #include <utcp/api/utcp_timers.h>
 
 #include <zlog.h>
-//make clean && make && clear && clear && ./server_app
+
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
@@ -147,7 +147,7 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             
-    size_t file_size_bytes = 1000000000; // 1gb
+    size_t file_size_bytes = 5000000000; // 5GB
     uint8_t *snd_buf = malloc(APP_BUF_SIZE);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;

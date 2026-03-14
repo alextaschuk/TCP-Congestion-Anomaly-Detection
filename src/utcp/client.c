@@ -89,7 +89,7 @@ int main(void) {
     if (!fp) {
         err_sys("[Client App] Failed to create destination file");
     }
-    size_t file_size_bytes = 1000000000; // 1GB
+    size_t file_size_bytes = 5000000000; // 5GB
     uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
     
     size_t total_received = 0;
