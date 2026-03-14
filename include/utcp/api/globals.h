@@ -24,7 +24,8 @@ typedef struct tcb_t tcb_t;
  * @note This is typically determined with `SOMAXCONN` (SOcket MAXimum CONNections), but my system's stores
  * 128 in this value, and I want to use more. See https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
  */
-#define MAX_BACKLOG 4096 
+#define MAX_BACKLOG 128 
+//#define MAX_BACKLOG 4096 
 
  /*Buffer & Data Related*/
 
@@ -50,26 +51,17 @@ typedef struct tcb_t tcb_t;
 
 /* Timer Stuff*/
 #define TCP_TICK_MS 10 /* in millisec, how long the slow tick timer is*/
+#define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
 
 // convert real time into our tick system
 #define MS_TO_TICKS(ms)   ((ms) / TCP_TICK_MS)
 #define SEC_TO_TICKS(sec) (((sec) * 1000) / TCP_TICK_MS)
 
-#define TCPTV_SRTTDFLT MS_TO_TICKS(1000) /* 1 second assumed RTO if no info (RFC 6298) */
-#define TCPTV_REXMTMAX SEC_TO_TICKS(64) /* 64 seconds max RTO */
-#define TCPTV_SRTTDFLT MS_TO_TICKS(1000) /* 1 second assumed RTO if no info (RFC 6298) */
-
-#define TCPT_NTIMERS 5  /* number of counters in `t_timer[]` */
-#define MAXRXTSHIFT 12 /* max retransmits */
-#define TCP_TICK_MS 10 // length in ms of the slow tick timer
-
-
-
 /* Retransmission Timer Stuff */
-
-#define TCPTV_MIN MS_TO_TICKS(200)                     /* minimum value of retransmission timer (1 sec)*/
-#define TCPTC_REXMTMAX SEC_TO_TICKS(64)              /* maximum value of retransmission timer (64 sec)*/
-#define MAXRXTSHIFT 12                  /* maximum number of retransmissions waiting for an ACK */
+#define TCPTV_REXMTMAX SEC_TO_TICKS(64)     /* 64 seconds max RTO */
+#define TCPTV_MIN MS_TO_TICKS(200)          /* minimum value of retransmission timer (1 sec)*/
+#define TCPTV_SRTTDFLT MS_TO_TICKS(1000)    /* 1 second assumed RTO if no info (RFC 6298) */
+#define MAXRXTSHIFT 12                      /* maximum number of retransmissions waiting for an ACK */
 
  /* Persist Timer Stuff*/
 #define TCPTV_PERSMIN 5000                /* minimum value of persist timer (5 sec)*/

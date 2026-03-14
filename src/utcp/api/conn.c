@@ -160,7 +160,6 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->rxtcur = TCPTV_SRTTDFLT;
     new_tcb->srtt = 0; // no RTT measurements have been made yet for this connection
     new_tcb->rttvar = 0;
-    //new_tcb->rxtcur = 1000; // 1000 ms = 1 second
 
     switch(CC_ALGO)
     {
