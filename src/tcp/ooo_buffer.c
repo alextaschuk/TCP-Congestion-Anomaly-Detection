@@ -8,7 +8,7 @@
 #include <utils/logger.h>
 
 
-static void insert_ooo_segment(tcb_t *tcb, uint32_t seq, uint8_t *data, uint32_t len)
+void insert_ooo_segment(tcb_t *tcb, uint32_t seq, uint8_t *data, uint32_t len)
 {
     /* Available space: what isn't already used by in-order or OOO bytes */
     uint32_t buf_used = tcb->rx_tail - tcb->rx_head;
@@ -55,7 +55,7 @@ static void insert_ooo_segment(tcb_t *tcb, uint32_t seq, uint8_t *data, uint32_t
     ooo_segment_t *entry = malloc(sizeof(ooo_segment_t));
     if (!entry)
     {
-        LOG_ERROR("[insert_ooo_segment] malloc failed for tcpq_entry");
+        LOG_ERROR("[insert_ooo_segment] malloc failed for ooo_segment_t");
         return;
     }
 
@@ -76,11 +76,11 @@ static void insert_ooo_segment(tcb_t *tcb, uint32_t seq, uint8_t *data, uint32_t
     while (cur != NULL && SEQ_LT(cur->seq, end_seq))
     {
         uint32_t cur_end = cur->seq + cur->len;
-        
+
         if (SEQ_LEQ(cur_end, end_seq))
         {
             /* cur is fully covered — remove it */
-            struct tcpq_entry *next = cur->next;
+            ooo_segment_t *next = cur->next;
             tcb->ooo_bytes -= cur->len;
             free(cur->data);
             free(cur);

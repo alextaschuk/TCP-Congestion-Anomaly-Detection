@@ -191,7 +191,6 @@ void handle_data(
         LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
         insert_ooo_segment(tcb, seq_num, data, (uint32_t)data_len);
         tcb->t_flags |= F_ACKNOW;
-        ooo_buffer_add(tcb, seq_num, data_len, data);
     }
 
     send_dgram(tcb); // ACK the received packet
