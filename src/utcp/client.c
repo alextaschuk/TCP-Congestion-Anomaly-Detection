@@ -1,12 +1,11 @@
 #include <utcp/client.h>
 
+#include <arpa/inet.h>
 #include <errno.h>
+#include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <arpa/inet.h>
-#include <netinet/tcp.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -69,13 +68,15 @@ int main(void) {
     bind_udp_sock(0);
     int utcp_fd = init_utcp_sock();
 
-    struct sockaddr_in client = {
+    struct sockaddr_in client =
+    {
         .sin_family = AF_INET, 
         .sin_port = htons(8292), 
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
 
-    struct sockaddr_in server = {
+    struct sockaddr_in server =
+    {
         .sin_family = AF_INET, 
         .sin_port = htons(332), 
         .sin_addr.s_addr = inet_addr("40.82.162.155")
@@ -86,14 +87,14 @@ int main(void) {
 
     /* pretend to be a client app */
     FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
-    if (!fp) {
+    if (!fp)
         err_sys("[Client App] Failed to create destination file");
-    }
-    size_t file_size_bytes = 5000000000; // 5GB
+
+    size_t file_size_bytes = 1000000000;// 1GB
     uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
-    
     size_t total_received = 0;
 
+    printf("Server: Starting 1GB file transfer to client...\r\n");
     while(total_received < file_size_bytes)
     {   
         ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
@@ -102,7 +103,8 @@ int main(void) {
             fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
-            //LOG_INFO("[Client App] Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
+            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu", bytes_rcvd, total_received, file_size_bytes);
+            fflush(stdout);
         }
         if (bytes_rcvd < 0) {
             LOG_ERROR("[Client App] Error receiving data.");

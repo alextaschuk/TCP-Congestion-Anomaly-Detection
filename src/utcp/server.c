@@ -93,7 +93,7 @@ int utcp_accept(api_t *global)
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
 
-    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...");
+    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     established_tcb->src_udp_fd = global->udp_fd;
@@ -152,6 +152,7 @@ int main(void)
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
+    printf("Server: Starting 1GB file transfer to client...\r\n");
     while((bytes_read = fread(snd_buf, 1, APP_BUF_SIZE, fp)) > 0)
     {
         ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);
@@ -162,7 +163,7 @@ int main(void)
         }
 
         total_file_bytes += sent;
-        printf("Server: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
+        printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
         fflush(stdout);
     }
 
