@@ -76,16 +76,15 @@ void handle_data(
         {
             //LOG_INFO("[handle_data] SND_WND UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
             tcb->snd_wnd = current_scaled_win;
-
             pthread_cond_broadcast(&tcb->conn_cond); // notify app thread that is blocking in utcp_send
         }
         else if 
         (
             data_len == 0 && // payload is empty
-            current_scaled_win == tcb->snd_wnd && // packet didn't update send window
+            current_scaled_win <= tcb->snd_wnd && // packet didn't update send window
             tcb->snd_una != tcb->snd_max // there is data in flight
         )
-        { /* Possible duplicate ACK */
+        {
             tcb->snd_wnd = current_scaled_win; // Track shrinking window so future comparisons stay accurate
 
             if(tcb->dupacks < 255)
