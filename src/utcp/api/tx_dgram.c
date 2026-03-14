@@ -269,8 +269,9 @@ int send_dgram(tcb_t *tcb)
 
             if(tcb->t_timer[TCPT_REXMT] == 0)
             { // start the retransmission timer
-                int ticks = reset_timer(tcb, TCPT_REXMT);
-                LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rxtcur);
+                //int ticks = reset_timer(tcb, TCPT_REXMT);
+                tcb->t_timer[TCPT_REXMT] = tcb->rxtcur;
+                //LOG_DEBUG("[send_dgram] REXMT timer counting down from %d ticks (%u ms)", ticks, tcb->rxtcur);
             }
     
             LOG_DEBUG("[send_dgram] snd_nxt advanced by %u bytes. New snd_nxt=%u", consumed, tcb->snd_nxt);

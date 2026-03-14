@@ -57,42 +57,24 @@ void handle_data(
         else
         {
             LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
-            reset_timer(tcb, TCPT_REXMT);
+            //reset_timer(tcb, TCPT_REXMT);
+            int rearm_ticks = tcb->rxtcur;
+            int backoff = 1;
+            if (tcb->rxtshift > 0)
+            {
+                backoff = tcp_backoff[MAXRXTSHIFT];
+                rearm_ticks = tcb->rxtcur * backoff;
+                if (rearm_ticks > TCPTV_REXMTMAX)
+                    rearm_ticks = TCPTV_REXMTMAX;
+            }
+            tcb->t_timer[TCPT_REXMT] = rearm_ticks;
         }
 
         if (tcb->cc && tcb->cc->ack_received)
         {
             tcb->cc->ack_received(tcb, newly_acked_bytes);
         }
-
-        //if(CC_ALGO == RENO && tcb->fast_recovery)
-        //{ // if using RENO, exit fast recovery if needed
-        //    tcb->cwnd = tcb->ssthresh; // delate artificially inflated window
-        //    tcb->fast_recovery = false;
-        //    LOG_INFO("[handle_data] RENO exited Fast Recovery. cwnd deflated to %u", tcb->cwnd);
-        //}
-
-        //uint32_t old_cwnd = tcb->cwnd;
-        //if (tcb->cwnd < tcb->ssthresh)
-        //{ /* We are in slow start phase */
-        //    tcb->cwnd += newly_acked_bytes;
-        //    LOG_INFO("[handle_data] SLOW START: cwnd %u -> %u", old_cwnd, tcb->cwnd);
-        //}
-        //else
-        //{ /* We are in congestion avoidance phase (linear growth) */
-        //    uint32_t increment = (newly_acked_bytes * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
-        //    tcb->cwnd += MAX(1, increment);
-        //    //tcb->cwnd += (MSS * MSS) / tcb->cwnd;
-        //    LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
-        //}
-
-        LOG_INFO("[handle_data] ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-        
-        const char *old_category = current_thread_cat;
-        current_thread_cat = "cc_data";
-        LOG_INFO("ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-        current_thread_cat = old_category;
-
+        else LOG_ERROR("[handle_data] Missing CC handler and/or valid ACK handler");
     }
     else if (ack == tcb-> snd_una)
     { 
