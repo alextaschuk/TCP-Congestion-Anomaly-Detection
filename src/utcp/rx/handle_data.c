@@ -95,9 +95,7 @@ void handle_data(
                         tcb->dupacks, tcb->snd_max);
             
             if (tcb->cc && tcb->cc->duplicate_ack)
-            {
                 tcb->cc->duplicate_ack(tcb);
-            }                
         }
     }
 

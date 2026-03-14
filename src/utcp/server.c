@@ -1,15 +1,15 @@
 #include <utcp/server.h>
 
+#include <arpa/inet.h>
 #include <errno.h>
+#include <netdb.h>
+#include <pthread.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <pthread.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
@@ -143,7 +143,11 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             
-    size_t file_size_bytes = 5000000000; // 5GB
+    struct stat st;
+    if (stat("../test_rcvd.txt", &st) == -1)
+        err_sys("[Client App] Failed to get filesize");
+    
+    size_t file_size_bytes = (size_t)st.st_size;
     uint8_t *snd_buf = malloc(APP_BUF_SIZE);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
@@ -158,6 +162,7 @@ int main(void)
         }
 
         total_file_bytes += sent;
+        printf("Server: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
         fflush(stdout);
     }
 
