@@ -144,7 +144,7 @@ int main(void)
         err_sys("[Server App] Failed to open text file");
             
     struct stat st;
-    if (stat("../test_rcvd.txt", &st) == -1)
+    if (stat("../test_file.txt", &st) == -1)
         err_sys("[Client App] Failed to get filesize");
     
     size_t file_size_bytes = (size_t)st.st_size;
