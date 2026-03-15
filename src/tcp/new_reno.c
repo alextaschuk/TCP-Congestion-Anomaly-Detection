@@ -75,7 +75,7 @@ static void newreno_duplicate_ack(tcb_t *tcb)
          * the previous recovery point. This ensures that we don't
          * re-enter recovery for the same window after a partial-ACK.
          */
-        if (SEQ_GEQ(tcb->snd_una, tcb->recover))
+        if (SEQ_GT(tcb->snd_una, tcb->recover))
         {
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
             tcb->ssthresh = halve_ssthresh(flight_size);
