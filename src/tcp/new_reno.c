@@ -75,7 +75,7 @@ static void newreno_duplicate_ack(tcb_t *tcb)
          * the previous recovery point. This ensures that we don't
          * re-enter recovery for the same window after a partial-ACK.
          */
-        if (SEQ_GT(tcb->snd_una, tcb->recover))
+        if (SEQ_GEQ(tcb->snd_una, tcb->recover))
         {
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
             tcb->ssthresh = halve_ssthresh(flight_size);
@@ -113,9 +113,6 @@ static void newreno_timeout(tcb_t *tcb, uint32_t flight_size)
     
     tcb->recover = tcb->snd_max; // allows next triple ACK to trigger fast retransmit quickly.
     cc_rexmt_timeout(tcb, flight_size);
-
-    tcb->ssthresh = halve_ssthresh(flight_size);
-
     LOG_INFO("[newreno_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
 
     const char *old_category = current_thread_cat;

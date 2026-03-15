@@ -16,7 +16,7 @@ void cc_aimd(tcb_t *tcb, uint32_t acked)
 {
     if (tcb->ca_state == LOSS)
     {
-        tcb->ca_state == OPEN;
+        tcb->ca_state = OPEN;
     }
 
     uint32_t old_cwnd = tcb->cwnd;
