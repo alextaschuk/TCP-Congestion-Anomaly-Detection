@@ -89,7 +89,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     uint16_t dest_udp_port = ntohs(from.sin_port);
                     uint16_t src_utcp_port = target_tcb->fourtuple.source_port;
         
-                    LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...", dest_ip, hdr->th_sport);
+                    LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...");
                     tcb_t *new_tcb = alloc_new_tcb();
 
                     // would be better to write this check in its own function so that it doesn't remove the existing

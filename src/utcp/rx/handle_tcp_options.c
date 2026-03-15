@@ -106,7 +106,7 @@ void process_tcp_options(tcb_t *tcb, struct tcphdr *hdr, bool is_syn)
          */
         if (hdr->th_seq <= tcb->rcv_nxt)
         {
-            uint32_t old_ts_val = tcb->ts_rcv_val;
+            //uint32_t old_ts_val = tcb->ts_rcv_val;
             tcb->ts_rcv_val = opts.ts_val;
         }
         
