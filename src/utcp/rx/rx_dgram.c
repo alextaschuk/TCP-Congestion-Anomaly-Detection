@@ -208,7 +208,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 break;
 
             case ESTABLISHED: // 3WHS is complete; handle segment accordingly
-                handle_data(target_tcb, udp_fd, hdr, data, data_len);
+                handle_data(target_tcb, hdr, data, data_len);
                 break;
 
             default:

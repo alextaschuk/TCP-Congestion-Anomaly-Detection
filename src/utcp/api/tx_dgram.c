@@ -85,7 +85,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
         opt_buf[opt_idx++] = tcb->rcv_ws_scale; 
     }
 
-    if (opt_idx != opt_len)
+    if ((size_t)opt_idx != opt_len)
     {
         LOG_WARN("[send_segment] OPTION LENGTH MISMATCH: Wrote %d bytes, expected %zu", opt_idx, opt_len);
     }
@@ -160,7 +160,7 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
 
     size_t send_len = MIN(buffered_data, MSS); // Send max 1 MSS of data
 
-    LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %u bytes.", data_bytes_sent,
+    LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %lu bytes.", data_bytes_sent,
                 buffered_data, send_len);
 
     int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);

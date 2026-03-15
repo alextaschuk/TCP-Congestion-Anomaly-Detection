@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include <utils/err.h>
-#include <utils/logger.h>s
+#include <utils/logger.h>
 #include <utils/printable.h>
 #include <utcp/api/globals.h>
 

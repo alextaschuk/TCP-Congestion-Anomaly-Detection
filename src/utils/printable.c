@@ -14,13 +14,19 @@
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 
-
+/**
+ * @brief helper function to determine if the struct to be printed is `NULL` or not.
+ * 
+ * @param *ptr A pointer of any type.
+ * @param *msg A string to print if `*ptr` is indeed `NULL`.
+ * 
+ * @returns `true` if `*ptr` is `NULL`, `false` otherwise.
+ */
 static bool is_null(const void *ptr, const char *msg)
 {
     if (ptr == NULL)
     {
         LOG_INFO("(is_null) %s", msg);
-        //printf("%s\n", msg);
         return true;
     }
     return false;

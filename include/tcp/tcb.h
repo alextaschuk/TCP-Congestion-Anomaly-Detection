@@ -92,7 +92,7 @@ typedef struct tcb_t
     uint8_t dupacks;                /* Counter for the number of consecutive duplicate ACKs received */
     const struct cc_ops_t *cc;      /* The CC handler. */
     enum ca_state ca_state;         /* The current CA state. */
-    uint32_t recover;               /* Sequence number to reach before exiting Fast Recovery. */
+    uint32_t recover;               /* Sequence number to reach before exiting Fast Recovery. This is the highest sequence number that was sent at the moment a packet is lost.*/
 
     //short tcpt_rexmt;       /* Retransmission timer (Retransmission eXaimt) */
 
