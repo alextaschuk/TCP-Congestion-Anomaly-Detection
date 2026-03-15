@@ -18,7 +18,7 @@ and handling packets of data.
 #include <utcp/api/tx_dgram.h>
 
 
-ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
+ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
 {
     tcb_t *snder_tcb = get_tcb(utcp_fd);
     if (!snder_tcb)

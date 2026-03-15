@@ -155,7 +155,7 @@ int main(void)
     printf("Server: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
     while((bytes_read = fread(snd_buf, 1, APP_BUF_SIZE, fp)) > 0)
     {
-        ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);
+        ssize_t sent = utcp_send(new_utcp_fd, snd_buf, bytes_read);
         if (sent < 0)
         {
             LOG_ERROR("[Server App] Connection dropped during file transfer.");
