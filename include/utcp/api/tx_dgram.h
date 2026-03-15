@@ -35,9 +35,4 @@ int send_dgram(tcb_t *tcb);
 int retransmit_data(tcb_t *tcb, uint32_t seq);
 
 
-/**
- * This is a helper function for `send_dgram()`. It constructs a TCP segment and sends it off.
- */
-static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_len, uint8_t flags);
-
 #endif

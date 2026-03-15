@@ -87,7 +87,7 @@ static void newreno_duplicate_ack(tcb_t *tcb)
             tcb->cwnd = tcb->ssthresh + 3 * MSS; // inflate window by 3 MSS for 3 unACKed packets
 
             LOG_WARN("[newreno_duplicate_ack] Fast Retransmit: flight=%u, ssthresh=%u, cwnd=%u"
-                        "recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
+                        " recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
             
             const char *old_category = current_thread_cat;
             current_thread_cat = "cc_data";

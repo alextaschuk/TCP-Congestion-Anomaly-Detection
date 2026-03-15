@@ -130,24 +130,25 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 }
 
 
+/**
+ * Handles the retransmission timer when it expires.
+ * 
+ * @param *tcb The TCB containing the expired timer.
+ */
 static void handle_rexmt_timeout(tcb_t *tcb)
 {
     tcb->rxtshift++;
 
     /* Exponential backoff (RFC 6298, rule 5.5) */
-    //tcb->rxtcur = tcb->rxtcur * 2; // wait twice as long before trying again
     int backoff_mult = tcp_backoff[tcb->rxtshift];
 
     int base_rto = tcb->rxtcur > 0 ? tcb->rxtcur : TCPTV_SRTTDFLT;
     int new_timer = base_rto * backoff_mult;
 
-    //TCPT_RANGESET(tcb->rxtcur, tcb->rxtcur, 200, 64000);
-    if (new_timer > TCPTV_REXMTMAX)
-        new_timer = TCPTV_REXMTMAX;
-    tcb->t_timer[TCPT_REXMT] = new_timer;
+    tcb->t_timer[TCPT_REXMT] = MIN(new_timer, TCPTV_MIN);
 
-    uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
+    uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
     tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
 
     LOG_DEBUG("[handle_rexmt_timeout] Timeout #%d fired! "

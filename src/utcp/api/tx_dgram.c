@@ -20,42 +20,9 @@ uint8_t tcp_outflags[] = {
     TH_FIN | TH_ACK, TH_ACK, TH_ACK,
 };
 
-
-int retransmit_data(tcb_t *tcb, uint32_t seq)
-{
-    //LOG_DEBUG("[retransmit_data] Retransmission requested. target sequence number=%u", seq);
-    if(tcb->fsm_state != ESTABLISHED)
-        return 0;
-
-    uint8_t flags = tcp_outflags[tcb->fsm_state];
-    
-    /**
-     * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding.
-     * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
-     * padding, which is not divisible by 4. 
-     */
-    size_t opt_len = 12;
-
-    /* How much data in the buffer corresponds to this seq number? */
-    uint32_t data_bytes_sent = (seq > tcb->iss) ? (seq - tcb->iss - 1) : 0;
-    uint32_t buffered_data = 0;
-
-    if (tcb->tx_tail > data_bytes_sent)
-        buffered_data = tcb->tx_tail - data_bytes_sent;
-
-    size_t send_len = MIN(buffered_data, MSS); // Send max 1 MSS of data
-
-    LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %u bytes.", data_bytes_sent,
-                buffered_data, send_len);
-
-    int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);
-    //tcb->snd_nxt += send_len;
-    
-    //log_tcb(tcb, "[retransmit_data] retransmit post-send:");
-    return  bytes_sent;
-}
-
-
+/**
+ * This is a helper function for `send_dgram()`. It constructs a TCP segment and sends it off.
+ */
 static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_len, uint8_t flags)
 {
     /* Allocate for a segment (TCP header + options + payload) */
@@ -166,6 +133,41 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
 
     free(segment);
     return bytes_sent;
+}
+
+
+int retransmit_data(tcb_t *tcb, uint32_t seq)
+{
+    //LOG_DEBUG("[retransmit_data] Retransmission requested. target sequence number=%u", seq);
+    if(tcb->fsm_state != ESTABLISHED)
+        return 0;
+
+    uint8_t flags = tcp_outflags[tcb->fsm_state];
+    
+    /**
+     * Option length for timestamps in bytes. 10 bytes for the timestamp & 8 bits bytes for NOP padding.
+     * We need 2 bytes of padding because the total size of the timestamp + header is 30 bytes (w/out)
+     * padding, which is not divisible by 4. 
+     */
+    size_t opt_len = 12;
+
+    /* How much data in the buffer corresponds to this seq number? */
+    uint32_t data_bytes_sent = (seq > tcb->iss) ? (seq - tcb->iss - 1) : 0;
+    uint32_t buffered_data = 0;
+
+    if (tcb->tx_tail > data_bytes_sent)
+        buffered_data = tcb->tx_tail - data_bytes_sent;
+
+    size_t send_len = MIN(buffered_data, MSS); // Send max 1 MSS of data
+
+    LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %u bytes.", data_bytes_sent,
+                buffered_data, send_len);
+
+    int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);
+    //tcb->snd_nxt += send_len;
+    
+    //log_tcb(tcb, "[retransmit_data] retransmit post-send:");
+    return  bytes_sent;
 }
 
 
