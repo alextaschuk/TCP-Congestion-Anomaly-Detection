@@ -5,7 +5,7 @@
 #include <utcp/api/globals.h>
 #include <utils/logger.h>
 
-static void cc_init(tcb_t *tcb)
+void cc_init(tcb_t *tcb)
 {
     tcb->cwnd = MSS * IW_CALC(MSS);
     tcb->ssthresh = 0xFFFFFFFF; // should be arbitrarily high, see RFC 5681, Section 3.1
