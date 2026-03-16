@@ -122,7 +122,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
     }
     else if (tcb->rxtcur > TCPTV_REXMTMAX)
     {
-        LOG_DEBUG("[calc_rto] RTO %u ticks clamped up to TCPTV_MIN=%d ticks.", tcb->rxtcur, TCPTV_REXMTMAX);   
+        LOG_DEBUG("[calc_rto] RTO %u ticks clamped up to TCPTV_REXMTMAX=%d ticks.", tcb->rxtcur, TCPTV_REXMTMAX);   
         tcb->rxtcur = TCPTV_REXMTMAX; // the RTO
     }
     //TCPT_RANGESET(tcb->rxtcur, tcb->rxtcur, 200, 64000);
@@ -145,7 +145,7 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     int base_rto = tcb->rxtcur > 0 ? tcb->rxtcur : TCPTV_SRTTDFLT;
     int new_timer = base_rto * backoff_mult;
 
-    tcb->t_timer[TCPT_REXMT] = MIN(new_timer, TCPTV_MIN);
+    tcb->t_timer[TCPT_REXMT] = MIN(new_timer, TCPTV_REXMTMAX);
 
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
     uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
@@ -208,7 +208,7 @@ int reset_timer(tcb_t *tcb, uint8_t timer_idx)
         int backoff = 1;
         if (tcb->rxtshift > 0)
         {
-            backoff = tcp_backoff[MAXRXTSHIFT];
+            backoff = tcp_backoff[tcb->rxtshift];
             rearm_ticks = tcb->rxtcur * backoff;
             if (rearm_ticks > TCPTV_REXMTMAX)
                 rearm_ticks = TCPTV_REXMTMAX;

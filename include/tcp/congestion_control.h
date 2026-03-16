@@ -30,6 +30,7 @@ typedef struct cc_ops_t {
 } cc_ops_t;
 
 // Expose the available algorithms
+extern const cc_ops_t cc_tahoe_ops;
 extern const cc_ops_t cc_reno_ops;
 extern const cc_ops_t cc_newreno_ops;
 
