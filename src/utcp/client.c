@@ -82,7 +82,7 @@ int main(void) {
         .sin_addr.s_addr = inet_addr("40.82.162.155")
     };
 
-    bind_utcp_sock(utcp_fd, &client);
+    bind_utcp(utcp_fd, &client);
     utcp_connect(utcp_fd, &server);
 
     /* pretend to be a client app */

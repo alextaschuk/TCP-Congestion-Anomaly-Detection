@@ -39,7 +39,7 @@ uint16_t bind_udp_sock(int pts);
  * @return `int fd` on success, the UTCP socket's "file descriptor". I.e.,
  *  the newly created `tcb_t` struct is stored at `tcb_lookup[fd]`.
  */
-int bind_utcp_sock(int utcp_fd, struct sockaddr_in *addr);
+int bind_utcp(int utcp_fd, struct sockaddr_in *addr);
 
 
 int init_utcp_sock(void);
@@ -49,7 +49,7 @@ int init_utcp_sock(void);
 /**
  * @brief Used in `utcp_accept()` function when a client wants to initiate a 3WHS.
  * 
- * This function is identical to `bind_utcp_sock()`, except for 3 things:
+ * This function is identical to `bind_utcp()`, except for 3 things:
  * 
  * 1. It doesn't set the newly-allocated TCB's source UTCP port or source IP. 
  * 

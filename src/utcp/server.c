@@ -117,7 +117,7 @@ int main(void)
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
     
-    bind_utcp_sock(utcp_fd, &server);
+    bind_utcp(utcp_fd, &server);
     log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)

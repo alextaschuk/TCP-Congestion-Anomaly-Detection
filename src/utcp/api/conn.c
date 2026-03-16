@@ -81,13 +81,13 @@ int init_utcp_sock(void)
 }
 
 
-int bind_utcp_sock(int utcp_fd, struct sockaddr_in *addr)
+int bind_utcp(int utcp_fd, struct sockaddr_in *addr)
 {
     api_t *global = api_instance();
 
     tcb_t *tcb = get_tcb(utcp_fd);
     if (!tcb)
-        err_sys("[bind_utcp_sock] TCB not found");
+        err_sys("[bind_utcp] TCB not found");
 
     //pthread_mutex_lock(&tcb->lock);
     tcb->fourtuple.source_port = ntohs(addr->sin_port); // src UTCP port
@@ -97,7 +97,7 @@ int bind_utcp_sock(int utcp_fd, struct sockaddr_in *addr)
     tcb->src_udp_port = global->udp_port;
 
     //pthread_mutex_unlock(&tcb->lock);
-    LOG_INFO("[bind_utcp_sock] Bound UTCP fd=%d to UTCP port=%u", utcp_fd, tcb->fourtuple.source_port);
+    LOG_INFO("[bind_utcp] Bound UTCP fd=%d to UTCP port=%u", utcp_fd, tcb->fourtuple.source_port);
     return tcb->fd;
 }
 
