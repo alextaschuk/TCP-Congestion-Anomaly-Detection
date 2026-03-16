@@ -162,12 +162,15 @@ tcb_t *alloc_new_tcb(void)
     switch(CC_ALGO)
     {
         case (TAHOE):
+            printf("using Tahoe\n");
             new_tcb->cc = &cc_tahoe_ops;
             break;
         case (RENO):
+            printf("using Reno\n");
             new_tcb->cc = &cc_reno_ops;
             break;
         case(NEW_RENO):
+            printf("using NewReno\n");
             new_tcb->cc = &cc_newreno_ops;
             break;
         default:
