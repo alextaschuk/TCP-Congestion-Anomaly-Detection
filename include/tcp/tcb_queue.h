@@ -53,9 +53,9 @@ tcb_t* dequeue_tcb(tcb_queue_t *q);
 /**
  * @brief removes a TCB from a SYN queue using a remote IP & UTCP port
  * 
- * @param *q The SYN queue
- * @param remote_ip the IP address
- * @param remote_port the UTCP port
+ * @param *q The SYN queue.
+ * @param remote_ip An IPv4 address.
+ * @param remote_port A UTCP port.
  */
 tcb_t* remove_from_syn_queue(tcb_queue_t *q, uint32_t remote_ip, uint16_t remote_utcp_port);
 

@@ -18,19 +18,21 @@
  * then calls `tcp_output()` to send the packet. If there is no room in
  * TX, the application thread blocks until space is made available.
  * 
+ * @param utcp_fd An application's UTCP socket file descriptor to send data
+ * out of.
  * @param *buf The payload of data to send.
  * @param payload_len The length of the payload, in bytes.
  * 
  * @return The number of bytes sent (i.e., written to `tx_buf`)
  */
-ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len);
+ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len);
 
 /**
  * @brief An application-side function used to receive data. This is how an app reads from `rx_buf`.
  * 
  * Equivalent to the `recv()` syscall.
  * 
- * @param utcp_fd The receiver's UTCP file descriptor.
+ * @param utcp_fd A application's UTCP file descriptor to receive data in to.
  * @param *buf The application's buffer to receive (read) the data into.
  * @param app_buf_len The max amount of data the application can store.
  * 

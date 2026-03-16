@@ -2,10 +2,12 @@
 #include <tcp/tcb.h>
 #include <utcp/api/tx_dgram.h>
 #include <utils/logger.h>
+#include <utils/err.h>
 
-static void newreno_init(tcb_t *tcb) {
+static void newreno_init(tcb_t *tcb)
+{
     tcb->cwnd = MSS * IW_CALC(MSS);
-    tcb->ssthresh = 0xFFFFFFFF;
+    tcb->ssthresh = 0xFFFFFFFF; // should be arbitrarily high, see RFC 5681, Section 3.1
     tcb->ca_state = OPEN;
     tcb->recover = tcb->iss;
 
@@ -18,7 +20,9 @@ static void newreno_init(tcb_t *tcb) {
     }
 }
 
-static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
+
+static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes)
+{
     /* handle Slow Start, CA, and partial ACKs */
     uint32_t old_cwnd = tcb->cwnd;
 
@@ -37,10 +41,10 @@ static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
             current_thread_cat = old_category;
         }
         else
-        { /* Partial ACK */
+        { /* Partial ACK: snd_una advanced but hasn't reached recover. */
             retransmit_data(tcb, tcb->snd_una);
 
-            tcb->cwnd = (newly_acked_bytes >= tcb->cwnd) ? MSS :tcb->cwnd - newly_acked_bytes;
+            tcb->cwnd = (newly_acked_bytes >= tcb->cwnd) ? MSS : tcb->cwnd - newly_acked_bytes;
             tcb->cwnd += MSS;
             tcb->dupacks = 0;
 
@@ -59,7 +63,9 @@ static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes) {
     }
 }
 
-static void newreno_duplicate_ack(tcb_t *tcb) {
+
+static void newreno_duplicate_ack(tcb_t *tcb)
+{
     /* Handle triple ACK Fast Retransmit / Fast Recovery */
     if (tcb->dupacks == 3)
     {
@@ -71,16 +77,16 @@ static void newreno_duplicate_ack(tcb_t *tcb) {
         if (SEQ_GT(tcb->snd_una, tcb->recover))
         {
             uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-            tcb->recover = tcb->snd_max;
             tcb->ssthresh = halve_ssthresh(flight_size);
+            tcb->recover = tcb->snd_max;
 
             retransmit_data(tcb, tcb->snd_una);
 
             tcb->ca_state = RECOVERY;
-            tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
+            tcb->cwnd = tcb->ssthresh + 3 * MSS; // inflate window by 3 MSS for 3 unACKed packets
 
             LOG_WARN("[newreno_duplicate_ack] Fast Retransmit: flight=%u, ssthresh=%u, cwnd=%u"
-                        "recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
+                        " recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
             
             const char *old_category = current_thread_cat;
             current_thread_cat = "cc_data";
@@ -89,25 +95,23 @@ static void newreno_duplicate_ack(tcb_t *tcb) {
         }
         else
         {
-            LOG_WARN("[handle_data] NewReno: 3 duplicate ACKs but snd_una=%u <= recover=%u."
+            LOG_WARN("[newreno_duplicate_ack] NewReno: 3 duplicate ACKs but snd_una=%u <= recover=%u."
                         "Skipping fast retransmit.", tcb->snd_una, tcb->recover);
         } 
     }
     else if (tcb->dupacks > 3 && tcb->ca_state == RECOVERY)
     {
         tcb->cwnd += MSS;
-        LOG_DEBUG("[handle_data] NewReno: Fast Recovery inflating cwnd to %u", tcb->cwnd);
+        LOG_DEBUG("[newreno_duplicate_ack] NewReno: Fast Recovery inflated cwnd to %u", tcb->cwnd);
         send_dgram(tcb);
     }
 }
 
-static void newreno_timeout(tcb_t *tcb, uint32_t flight_size) {
+static void newreno_timeout(tcb_t *tcb, uint32_t flight_size)
+{
     
     tcb->recover = tcb->snd_max; // allows next triple ACK to trigger fast retransmit quickly.
     cc_rexmt_timeout(tcb, flight_size);
-
-    tcb->ssthresh = halve_ssthresh(flight_size);
-
     LOG_INFO("[newreno_timeout] cwnd dropped to %u, ssthresh set to %u",  tcb->cwnd, tcb->ssthresh);
 
     const char *old_category = current_thread_cat;
@@ -117,7 +121,8 @@ static void newreno_timeout(tcb_t *tcb, uint32_t flight_size) {
 }   
 
 // Bind the functions to the struct
-const cc_ops_t cc_newreno_ops = {
+const cc_ops_t cc_newreno_ops =
+{
     .name = "NewReno",
     .init = newreno_init,
     .ack_received = newreno_ack_received,

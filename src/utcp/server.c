@@ -1,15 +1,15 @@
 #include <utcp/server.h>
 
+#include <arpa/inet.h>
 #include <errno.h>
+#include <netdb.h>
+#include <pthread.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <pthread.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
@@ -26,7 +26,7 @@
 #include <utcp/api/utcp_timers.h>
 
 #include <zlog.h>
-//make clean && make && clear && clear && ./server_app
+
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
@@ -93,7 +93,7 @@ int utcp_accept(api_t *global)
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
 
-    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...");
+    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     established_tcb->src_udp_fd = global->udp_fd;
@@ -118,10 +118,6 @@ int main(void)
     };
     
     bind_utcp_sock(utcp_fd, &server);
-    
-    //bind_udp_sock(1515);
-    //global->utcp_fd = bind_utcp_sock(&global->server);
-    //init_host(global, server);
     log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)
@@ -147,14 +143,19 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to open text file");
             
-    size_t file_size_bytes = 1000000000; // 1gb
+    struct stat st;
+    if (stat("../test_file.txt", &st) == -1)
+        err_sys("[Client App] Failed to get filesize");
+    
+    size_t file_size_bytes = (size_t)st.st_size;
     uint8_t *snd_buf = malloc(APP_BUF_SIZE);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
+    printf("Server: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
     while((bytes_read = fread(snd_buf, 1, APP_BUF_SIZE, fp)) > 0)
     {
-        ssize_t sent = utcp_send(new_utcp_fd, global->udp_fd, snd_buf, bytes_read);
+        ssize_t sent = utcp_send(new_utcp_fd, snd_buf, bytes_read);
         if (sent < 0)
         {
             LOG_ERROR("[Server App] Connection dropped during file transfer.");
@@ -162,7 +163,8 @@ int main(void)
         }
 
         total_file_bytes += sent;
-        fflush(stdout);
+        //printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
+        //fflush(stdout);
     }
 
     tcb_t *active_tcb = get_tcb(utcp_fd); 

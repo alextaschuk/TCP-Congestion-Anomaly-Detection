@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include <utils/err.h>
-#include <utils/logger.h>s
+#include <utils/logger.h>
 #include <utils/printable.h>
 #include <utcp/api/globals.h>
 
@@ -32,14 +32,14 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
         }
 
         if (opt_len < 2)
-            LOG_ERROR("[find_timestamps] Malformed options: cut off before length byte");
+            LOG_WARN("[find_timestamps] Malformed options: cut off before length byte");
 
         /* check for multi-byte options that have length & value bytes*/
         uint8_t opt_size = opt_ptr[1];
         
         if (opt_size < 2 || opt_size > opt_len)
         {
-            LOG_ERROR("[find_timestamps] Malformed options: missing or invalid length byte.");
+            LOG_WARN("[find_timestamps] Malformed options: missing or invalid length byte.");
         }
             
         switch (opt_kind)
@@ -106,7 +106,7 @@ void process_tcp_options(tcb_t *tcb, struct tcphdr *hdr, bool is_syn)
          */
         if (hdr->th_seq <= tcb->rcv_nxt)
         {
-            uint32_t old_ts_val = tcb->ts_rcv_val;
+            //uint32_t old_ts_val = tcb->ts_rcv_val;
             tcb->ts_rcv_val = opts.ts_val;
         }
         

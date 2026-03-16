@@ -13,16 +13,6 @@
 /* Begin function declaration */
 
 /**
- * @brief helper function to determine if the struct to be printed is `NULL` or not.
- * 
- * @param *ptr A pointer of any type.
- * @param *msg A string to print if `*ptr` is indeed `NULL`.
- * 
- * @returns `true` if `*ptr` is `NULL`, `false` otherwise.
- */
-static bool is_null(const void *ptr, const char *msg);
-
-/**
  * @brief Prints a TCP segment's header and payload (if there is one) in a readable format.
  * 
  * @param *buf A TCP segment. This is a buffer of data that is received via `recvfrom` or sent via `sendto`.

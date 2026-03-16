@@ -86,5 +86,55 @@ void update_fsm(int utcp_fd, enum conn_state state)
 
     tcb->fsm_state = state;
 
-    LOG_DEBUG("[update_fsm] TCB with fd=%i changed from %s to %s", utcp_fd, old_state, fsm_state_to_str(tcb->fsm_state));
+    LOG_DEBUG("[update_fsm] TCB with fd=%i changed: %s -> %s", utcp_fd, old_state, fsm_state_to_str(tcb->fsm_state));
+}
+
+
+void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, uint8_t *dst, size_t data_len, size_t opt_len)
+{
+    if (data_len == 0)
+        return;
+
+    uint32_t physical_offset = offset % buf_size;
+
+    if (physical_offset + data_len <= buf_size)
+    {
+        // Contiguous read. Offset pointer by opt_len to skip options
+        memcpy(dst + opt_len, &ring_buf[physical_offset], data_len);
+    }
+    else
+    {
+        // Wrap-around read
+        size_t part1_len = buf_size - physical_offset;
+        size_t part2_len = data_len - part1_len;
+
+        //LOG_DEBUG("[send_segment] Data wraps around ring buffer. Copying %zu bytes from end, %zu bytes from start.", part1_len, part2_len);
+
+        memcpy(dst + opt_len, &ring_buf[physical_offset], part1_len);
+        memcpy(dst + opt_len + part1_len, &ring_buf[0], part2_len);
+    }
+}
+
+
+void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, const uint8_t *src, size_t len)
+{
+    if (len == 0)
+        return;
+
+    uint32_t physical_offset = offset % buf_size;
+
+    if (physical_offset + len <= buf_size)
+    {
+        // Contiguous write
+        memcpy(&ring_buf[physical_offset], src, len);
+    }
+    else
+    {
+        // Wrap-around write
+        size_t part1_len = buf_size - physical_offset;
+        size_t part2_len = len - part1_len;
+
+        memcpy(&ring_buf[physical_offset], src, part1_len);
+        memcpy(&ring_buf[0], src + part1_len, part2_len);
+    }
 }

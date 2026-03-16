@@ -76,9 +76,7 @@ int init_utcp_sock(void)
 {
     bind_udp_sock(1515);
 
-    api_t *global = api_instance();
     tcb_t *tcb = alloc_new_tcb();
-
     return tcb->fd;
 }
 

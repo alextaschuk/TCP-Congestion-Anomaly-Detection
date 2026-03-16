@@ -18,18 +18,17 @@ and handling packets of data.
 #include <utcp/api/tx_dgram.h>
 
 
-ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
+ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
 {
     tcb_t *snder_tcb = get_tcb(utcp_fd);
     if (!snder_tcb)
     {
-        LOG_ERROR("[utcp_recv] Invalid UTCP FD");
+        LOG_ERROR("[utcp_recv] Invalid UTCP fd");
         return -1;
     }
 
     const uint8_t *data_ptr = (const uint8_t *)buf;
     size_t remaining = payload_len;
-    size_t sent = 0; // # of bytes sent
 
     pthread_mutex_lock(&snder_tcb->lock);
 
@@ -37,7 +36,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
     {
         uint32_t curr_buffered = snder_tcb->tx_tail - snder_tcb->tx_head;
         uint32_t free_space = BUF_SIZE - curr_buffered; // how many bytes can we add to the TX buffer?
-        LOG_INFO("[utcp_send] Num bytes in TX buf: %u, amount of free space in TX: %u", curr_buffered, free_space);
+        //LOG_INFO("[utcp_send] Num bytes in TX buf: %u, amount of free space in TX: %u", curr_buffered, free_space);
 
         if (free_space == 0)
         {
@@ -48,6 +47,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
             if (snder_tcb->fsm_state != ESTABLISHED)
             { // network's connection dropped; unlock and exit.
                 LOG_DEBUG("[utcp_send] Network connection dropped. Unlocking the TCB for UTCP FD %i", snder_tcb->fd);
+                pthread_mutex_unlock(&snder_tcb->lock);
                 break;
             }
             continue;
@@ -55,12 +55,12 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
         
         // write as much data as we can fit 
         size_t to_write = MIN(remaining, free_space);
-        //LOG_INFO("[utcp_send] %zu bytes can be sent", to_write);
-
-        for (size_t i = 0; i < to_write; i++)
-        { // write data from buf into TX byte-by-byte
-            snder_tcb->tx_buf[(snder_tcb->tx_tail + i) % BUF_SIZE] = data_ptr[i];
-        }
+        ring_buf_write(snder_tcb->tx_buf, BUF_SIZE, snder_tcb->tx_tail, data_ptr, to_write);
+        
+        //for (size_t i = 0; i < to_write; i++)
+        //{ // write data from buf into TX byte-by-byte
+        //    snder_tcb->tx_buf[(snder_tcb->tx_tail + i) % BUF_SIZE] = data_ptr[i];
+        //}
 
         snder_tcb->tx_tail += to_write; // move the tail forward.
         data_ptr += to_write; // go to the next chunk of data.
@@ -68,7 +68,7 @@ ssize_t utcp_send(int utcp_fd, int udp_fd, const void *buf, size_t payload_len)
 
         LOG_DEBUG("[utcp_send] Added %zu bytes to send buffer on fd %i. %zu bytes remaining.", to_write, snder_tcb->fd, remaining);
 
-        sent += send_dgram(snder_tcb); // try to send the data to the peer
+        send_dgram(snder_tcb); // try to send the data to the peer
     }
 
     //LOG_DEBUG("[utcp_send] Unlocking the TCB for UTCP FD %i", snder_tcb->fd);
@@ -83,7 +83,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     tcb_t *tcb = get_tcb(utcp_fd);
     if (!tcb)
     {
-        LOG_ERROR("[utcp_recv] Invalid UTCP FD");
+        LOG_ERROR("[utcp_recv] Invalid UTCP fd");
         return -1;
     }
 
@@ -107,29 +107,34 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     /* Read either `app_buf_len` bytes from the RX buffer, or the entire buffer; whichever is smaller. */
     uint32_t avail_bytes_to_read = tcb->rx_tail - tcb->rx_head;
     size_t num_bytes_to_read = MIN(app_buf_len, (size_t)avail_bytes_to_read);
+    ring_buf_read(tcb->rx_buf, BUF_SIZE, tcb->rx_head, buf, num_bytes_to_read, 0);
 
-    for (size_t i = 0; i < num_bytes_to_read; i++)
-    {
-        buf[i] = tcb->rx_buf[(tcb->rx_head + i) % BUF_SIZE];
-    }
+    //for (size_t i = 0; i < num_bytes_to_read; i++)
+    //{
+    //    buf[i] = tcb->rx_buf[(tcb->rx_head + i) % BUF_SIZE];
+    //}
 
     tcb->rx_head += num_bytes_to_read;
 
-    /* Recalculate the app's rcv_wnd since it has read from the RX buffer (thus freeing up some space) */
+    /**
+     * When the application has read the payload (i.e., the RX buffer), we can free up the receive
+     * window that's advertised to the sender by recalculating the app's rcv_wnd. ooo_bytes are
+     * reserved for out-of-order segments that will drain into the RX buffer.
+     */
     uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
-    tcb->rcv_wnd = BUF_SIZE - bytes_in_buf;
+    tcb->rcv_wnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
 
     // Silly window prevention with Classic Clark's algorithm: only send window update when
-    // we can offer at least min(MSS, RECV_BUF_SIZE/2) worth of new space.
+    // we can offer at least min(MSS, BUF_SIZE / 2) worth of new space.
     uint32_t sws_threshold = MIN(MSS, BUF_SIZE / 2);
     if (tcb->rcv_wnd >= sws_threshold || (tcb->rcv_wnd < sws_threshold && avail_bytes_to_read == BUF_SIZE))
     {
-        LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
+        //LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
         tcb->t_flags |= F_ACKNOW;
         send_dgram(tcb);
     }
 
-    LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
+    //LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
     pthread_mutex_unlock(&tcb->lock);
 
     return (int)num_bytes_to_read;

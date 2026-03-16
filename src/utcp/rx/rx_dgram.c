@@ -37,7 +37,10 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
 
     buf = malloc((size_t)buflen);
     if (!buf)
-        err_sys("[rcv_dgram] Failed to allocate receive buffer");
+    {
+        free(buf);
+        LOG_ERROR("[rcv_dgram] Failed to allocate receive buffer");
+    }
 
     for(;;)
     { // continuously listen for incoming packets
@@ -46,14 +49,15 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
         if (rcvsize < 0 || rcvsize == 0)
         { // rcvsize == 0 would normally indicate a connection shutdown process
             free(buf);
-            err_sys("[rcv_dgram] Failed to receive datagram");
+            LOG_ERROR("[rcv_dgram] Failed to receive datagram");
+            break;
         }
 
         char ip_str[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &from.sin_addr, ip_str, sizeof(ip_str));
     
-        LOG_INFO("[rcv_dgram] Received a packet from %s:%d", ip_str, ntohs(from.sin_port));
-        log_segment(buf, rcvsize, 1, "[rcv_dgram] Received segment:");
+        //LOG_INFO("[rcv_dgram] Received a packet from %s:%d", ip_str, ntohs(from.sin_port));
+        log_segment(buf, rcvsize, 1, "");
 
         deserialize_utcp_packet(buf, rcvsize, &hdr, &data, &data_len);
 
@@ -64,8 +68,8 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
         tcb_t *target_tcb = demux_tcb(global, local_utcp_port, remote_ip, remote_udp_port);
         if (target_tcb == NULL)
         {
-            LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.", local_utcp_port);
             free(buf);
+            LOG_WARN("[rcv_dgram] No matching TCB found for port %u. Dropping the packet.", local_utcp_port);
             return rcvsize;
         }
 
@@ -78,14 +82,14 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 if (hdr->th_flags & TH_SYN)
                 {
                     if (data_len > 0)
-                        err_data("[rcv_dgram] SYN packet contains non-header data in its payload");
+                        LOG_ERROR("[rcv_dgram] SYN packet contains non-header data in its payload");
 
                     uint16_t dest_utcp_port = hdr->th_sport;
                     uint32_t dest_ip = ntohl(from.sin_addr.s_addr);
                     uint16_t dest_udp_port = ntohs(from.sin_port);
                     uint16_t src_utcp_port = target_tcb->fourtuple.source_port;
         
-                    LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...", dest_ip, hdr->th_sport);
+                    LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...");
                     tcb_t *new_tcb = alloc_new_tcb();
 
                     // would be better to write this check in its own function so that it doesn't remove the existing
@@ -132,7 +136,10 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 if ((hdr->th_flags & TH_SYN) && (hdr->th_flags & TH_ACK))
                 {
                     if (data_len > 0) // we won't be using TCP Fast Open
-                        err_data("[rcv_dgram] ACK contains non-header data");
+                    {
+                        LOG_ERROR("[rcv_dgram] ACK contains non-header data");
+                        return -1;
+                    }
 
                     if (hdr->th_ack != target_tcb->snd_nxt)
                     {
@@ -150,7 +157,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     process_tcp_options(target_tcb, hdr, true);
                     target_tcb->snd_wnd = GET_SCALED_WIN(target_tcb, hdr);
                     
-                    LOG_INFO("[rcv_dgram] Client received SYN-ACK. REXMT timer paused.");
+                    //LOG_INFO("[rcv_dgram] Client received SYN-ACK. REXMT timer paused.");
                     pause_timer(target_tcb, TCPT_REXMT);
                     target_tcb->rxtshift = 0;
 
@@ -201,7 +208,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                 break;
 
             case ESTABLISHED: // 3WHS is complete; handle segment accordingly
-                handle_data(target_tcb, udp_fd, hdr, data, data_len);
+                handle_data(target_tcb, hdr, data, data_len);
                 break;
 
             default:

@@ -75,14 +75,6 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr);
 
 
 /**
- * Handles the retransmission timer when it times out.
- * 
- * @param *tcb The TCB containing the timed-out timer.
- */
-static void handle_rexmt_timeout(tcb_t *tcb);
-
-
-/**
  * This function is called when one of our timers expires and performs necessary checks
  * and changes according to which timer expired.
  */

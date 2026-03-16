@@ -11,6 +11,7 @@
 #include <tcp/congestion_control.h>
 #include <tcp/fourtuple.h>
 #include <tcp/tcb_queue.h>
+#include <tcp/ooo_buffer.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/utcp_timers.h>
 
@@ -91,7 +92,7 @@ typedef struct tcb_t
     uint8_t dupacks;                /* Counter for the number of consecutive duplicate ACKs received */
     const struct cc_ops_t *cc;      /* The CC handler. */
     enum ca_state ca_state;         /* The current CA state. */
-    uint32_t recover;               /* Sequence number to reach before exiting Fast Recovery. */
+    uint32_t recover;               /* Sequence number to reach before exiting Fast Recovery. This is the highest sequence number that was sent at the moment a packet is lost.*/
 
     //short tcpt_rexmt;       /* Retransmission timer (Retransmission eXaimt) */
 
@@ -118,6 +119,10 @@ typedef struct tcb_t
     uint8_t rx_buf[BUF_SIZE];   /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
     uint32_t rx_head;           /* Index to read from. */
     uint32_t rx_tail;           /* Index to write to.  */
+    
+    /* Out-of-Order Buffer*/
+    ooo_segment_t *ooo_head;    /* Head of the out-of-order buffer. */
+    uint32_t ooo_bytes;         /* Total number of bytes in the OOO buffer. */
 
     /* Server-only buffers for 3WHS management*/
     tcb_queue_t syn_q;          /* Server-only queue for tracking half-open connection requests. */

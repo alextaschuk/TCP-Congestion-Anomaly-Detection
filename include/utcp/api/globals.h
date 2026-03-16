@@ -39,6 +39,7 @@ typedef struct tcb_t tcb_t;
  * The size of an application's receive & send buffers. (1MB)
  */
 #define APP_BUF_SIZE 1048576
+//#define APP_BUF_SIZE 64000 // 1KB
 
 /**
  * The default Maximum Segment Size value of a TCP segment.
@@ -76,9 +77,9 @@ typedef struct tcb_t tcb_t;
 #define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
 
 /**
- * Calculate the Initial Window. This is the size of the sender's congestion window
- * after the three-way handshake is completed.
- * - See [RFC 5681](https://datatracker.ietf.org/doc/html/rfc5681)
+ * Calculate the Initial Window (IW), which is the initial value of cwnd.
+ * This is the size of the sender's congestion window after the three-way handshake is completed.
+ * - See [RFC 5681, Section 3.1](https://datatracker.ietf.org/doc/html/rfc5681#section-3.1).
  */
 #define IW_CALC(size) ((size) > 2190 ? 2 : ((size) > 1095 ? 3 : 4))
 

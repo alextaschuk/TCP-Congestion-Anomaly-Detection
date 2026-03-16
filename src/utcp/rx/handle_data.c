@@ -3,7 +3,9 @@
 #include <stdio.h>
 
 #include <tcp/congestion_control.h>
+#include <tcp/ooo_buffer.h>
 #include <utils/logger.h>
+#include <utcp/api/api.h>
 #include <utcp/api/globals.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
@@ -12,7 +14,6 @@
 
 void handle_data(
     tcb_t *tcb,
-    int udp_fd,
     struct tcphdr *hdr,
     uint8_t *data,
     ssize_t data_len
@@ -51,12 +52,12 @@ void handle_data(
         // handle the retransmission timer (pause or reset)
         if (tcb->snd_una == tcb->snd_max)
         {
-            LOG_DEBUG("[handle_data] All in-flight data has been ACKed. Pausing the REXMT timer.");
+            //LOG_DEBUG("[handle_data] All in-flight data has been ACKed. Pausing the REXMT timer.");
             pause_timer(tcb, TCPT_REXMT); 
         }
         else
         {
-            LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
+            //LOG_DEBUG("[handle_data] Data is still in flight. Restarting the timer.");
             reset_timer(tcb, TCPT_REXMT);
         }
 
@@ -72,18 +73,17 @@ void handle_data(
 
         if (current_scaled_win > tcb->snd_wnd)
         {
-            LOG_INFO("[handle_data] WINDOW UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
+            //LOG_INFO("[handle_data] SND_WND UPDATE: snd_wnd increased from %u to %u", tcb->snd_wnd, current_scaled_win);
             tcb->snd_wnd = current_scaled_win;
-
             pthread_cond_broadcast(&tcb->conn_cond); // notify app thread that is blocking in utcp_send
         }
         else if 
         (
             data_len == 0 && // payload is empty
-            current_scaled_win == tcb->snd_wnd && // packet didn't update send window
+            current_scaled_win <= tcb->snd_wnd && // packet didn't update send window
             tcb->snd_una != tcb->snd_max // there is data in flight
         )
-        { /* Possible duplicate ACK */
+        {
             tcb->snd_wnd = current_scaled_win; // Track shrinking window so future comparisons stay accurate
 
             if(tcb->dupacks < 255)
@@ -93,70 +93,7 @@ void handle_data(
                         tcb->dupacks, tcb->snd_max);
             
             if (tcb->cc && tcb->cc->duplicate_ack)
-            {
                 tcb->cc->duplicate_ack(tcb);
-            }                
-        //if (tcb->dupacks == 3)
-        //      { // handle triple ACK according to current CA algo
-        //        // both Tahoe and RENO use fast retransmit, then set ssthresh to 50% of cwnd.
-        //        uint32_t old_ssthresh = tcb->ssthresh;
-        //        uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-        //        LOG_WARN("[handle_data] (%d) handling triple ACK. flight_size=%u", CC_ALGO, flight_size);
-        //        
-        //        tcb->ssthresh = calc_ssthresh(flight_size);
-        //        
-        //        LOG_INFO("[handle_data] Fast Retransmit: ssthresh dropped %u -> %u", old_ssthresh, tcb->ssthresh);
-        //
-        //        switch (CC_ALGO)
-        //        {
-        //            case (TAHOE):
-        //                LOG_DEBUG("[handle_data] TAHOE: Treating triple ACK as timeout. flight_size=%u", flight_size);
-        //                tcb->cwnd = MSS; // drop to 1 MSS b/c of "timeout"
-        //                retransmit_data(tcb, tcb->snd_una);
-        //                break;
-        //
-        //            case (RENO):
-        //                /**
-        //                 * Only enter Fast Retransmit if snd_una is larger than
-        //                 * the previous recovery point. This ensures that we don't
-        //                 * re-enter recovery for the same window after a partial-ACK.
-        //                 */
-        //                if (SEQ_GT(tcb->snd_una, tcb->recover))
-        //                {
-        //                    tcb->recover = tcb->snd_nxt;
-        //                    retransmit_data(tcb, tcb->snd_una);
-        //
-        //                    tcb->cwnd = tcb->ssthresh + (3 * MSS); // inflate window by 3 MSS for 3 unACKed packets
-        //                    tcb->fast_recovery = true;
-        //                    LOG_WARN("RENO Fast Retransmit/Recovery: flight_size=%u, ssthresh=%u, inflated cwnd=%u", flight_size,
-        //                                tcb->ssthresh, tcb->cwnd);
-        //
-        //                    const char *old_category = current_thread_cat;
-        //                    current_thread_cat = "cc_data";
-        //                    LOG_INFO("TRIPLE_ACK,%u,%u", tcb->cwnd, tcb->ssthresh);
-        //                    current_thread_cat = old_category;
-        //
-        //                    //tcb->snd_nxt = tcb->snd_una; // rewind back to the last unacket packet and resend the window
-        //                    retransmit_data(tcb, tcb->snd_una);
-        //                    send_dgram(tcb);
-        //                    break;
-        //                }
-        //                else
-        //                {
-        //                    LOG_WARN("[handle_data] 3 duplicate ACKs but snd_una=%u <= recover=%u."
-        //                                "Skipping fast retransmit.", tcb->snd_una, tcb->recover);
-        //                } 
-        //            default:
-        //                LOG_FATAL("[handle_data] HEY! Invalid congestion avoidance algorithm.");
-        //                break;
-        //        }
-        //    }
-        //    else if (tcb->dupacks > 3 && CC_ALGO == RENO && tcb->fast_recovery)
-        //    {
-        //        tcb->cwnd += MSS;
-        //        LOG_DEBUG("[handle_data] RENO Fast Recovery: inflating cwnd to %u", tcb->cwnd);
-        //        send_dgram(tcb); // continue trying to send data
-        //    }
         }
     }
 
@@ -168,7 +105,7 @@ void handle_data(
     }
 
     uint32_t seq_num = hdr->th_seq;
-    LOG_DEBUG("[handle_data] Processing Payload: seq_num=%u, length=%zd, expecting rcv_nxt=%u", seq_num, data_len, tcb->rcv_nxt);
+    //LOG_DEBUG("[handle_data] Processing Payload: seq_num=%u, length=%zd, expecting rcv_nxt=%u", seq_num, data_len, tcb->rcv_nxt);
 
     /**
      * Sequence number is past out expectation. The payload contains data
@@ -176,7 +113,7 @@ void handle_data(
      * contain new data too.
      */
     if (SEQ_LT(seq_num, tcb->rcv_nxt))
-    {
+    { // duplicate data
         uint32_t duplicate_bytes = tcb->rcv_nxt - seq_num;
 
         if (duplicate_bytes >= data_len)
@@ -198,28 +135,40 @@ void handle_data(
     }
 
     if(seq_num == tcb->rcv_nxt)
-    { // is this the packet we're expecting?
-        uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
+    { // in-order data (is this the packet we're expecting?)
+
+        // We need to save room in the RX buffer for the OOO bytes that will eventually drain into it.
+        uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head) - tcb->ooo_bytes;
         LOG_DEBUG("[handle_data] Buffer Check: free space=%u, incoming data=%zd", rx_free_space, data_len);
 
         if (data_len <= (ssize_t)rx_free_space)
         { // copy new data from payload into RX byte-by-byte
             uint32_t old_tail = tcb->rx_tail;
 
-            for(ssize_t i = 0; i < data_len; i++)
-            { // TODO: replace with memcpy
-                tcb->rx_buf[(tcb->rx_tail + i) % BUF_SIZE] = data[i];
-            }
+            ring_buf_write(tcb->rx_buf, BUF_SIZE, tcb->rx_tail, data, data_len);
 
             tcb->rx_tail += data_len;
             tcb->rcv_nxt += data_len;
 
-            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: recv_buf_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
-                    old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
+            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: rx_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
+                        old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
 
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
 
-            tcb->t_flags |= F_ACKNOW;
+            /* Drain any OOO segments that are now consecutive with rcv_nxt.
+             * This advances rcv_nxt cumulatively — a single ACK will cover
+             * all the data moved out of the reassembly queue.
+             */
+            uint32_t pre_drain_rcv_nxt = tcb->rcv_nxt;
+            drain_ooo_queue(tcb);
+            if (tcb->rcv_nxt != pre_drain_rcv_nxt) {
+                LOG_INFO("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
+                pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again sinec more data is available
+            }
+            if (tcb->dupacks > 0)
+            {
+                tcb->t_flags |= F_ACKNOW;
+            }
         }
         else
         {
@@ -228,8 +177,15 @@ void handle_data(
         }
     }
     else
-    {
+    { // out of order data
+        /* seq_num > rcv_nxt: out-of-order segment.
+         * Buffer it in the reassembly queue and send a duplicate ACK of
+         * the last in-order byte (rcv_nxt) so the sender knows what we
+         * are still waiting for.  The application cannot read past the
+         * hole because recv_buf only contains contiguous in-order data.
+         */
         LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
+        insert_ooo_segment(tcb, seq_num, data, (uint32_t)data_len);
         tcb->t_flags |= F_ACKNOW;
     }
 
