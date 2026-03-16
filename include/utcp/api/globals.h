@@ -38,8 +38,8 @@ typedef struct tcb_t tcb_t;
 /**
  * The size of an application's receive & send buffers. (1MB)
  */
-//#define APP_BUF_SIZE 1048576
-#define APP_BUF_SIZE 64000
+#define APP_BUF_SIZE 1048576
+//#define APP_BUF_SIZE 64000 // 1KB
 
 /**
  * The default Maximum Segment Size value of a TCP segment.
