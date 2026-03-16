@@ -142,7 +142,7 @@ tcb_t *alloc_new_tcb(void)
     new_tcb->snd_una = new_tcb->iss;
     new_tcb->snd_nxt = new_tcb->iss;
     new_tcb->snd_max = new_tcb->iss;
-    new_tcb->rcv_wnd = BUF_SIZE;
+    new_tcb->rwnd = BUF_SIZE;
 
     uint8_t scale = 0;
     while (BUF_SIZE >> scale > 65535 && scale < 14)
@@ -165,7 +165,7 @@ tcb_t *alloc_new_tcb(void)
             //new_tcb->cc = &cc_tahoe_ops;
             break;
         case (RENO):
-            //new_tcb->cc = &cc_reno_ops;
+            new_tcb->cc = &cc_reno_ops;
             break;
         case(NEW_RENO):
             new_tcb->cc = &cc_newreno_ops;

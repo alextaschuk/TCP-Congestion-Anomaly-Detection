@@ -118,18 +118,18 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
 
     /**
      * When the application has read the payload (i.e., the RX buffer), we can free up the receive
-     * window that's advertised to the sender by recalculating the app's rcv_wnd. ooo_bytes are
+     * window that's advertised to the sender by recalculating the app's rwnd. ooo_bytes are
      * reserved for out-of-order segments that will drain into the RX buffer.
      */
     uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
-    tcb->rcv_wnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
+    tcb->rwnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
 
     // Silly window prevention with Classic Clark's algorithm: only send window update when
     // we can offer at least min(MSS, BUF_SIZE / 2) worth of new space.
     uint32_t sws_threshold = MIN(MSS, BUF_SIZE / 2);
-    if (tcb->rcv_wnd >= sws_threshold || (tcb->rcv_wnd < sws_threshold && avail_bytes_to_read == BUF_SIZE))
+    if (tcb->rwnd >= sws_threshold || (tcb->rwnd < sws_threshold && avail_bytes_to_read == BUF_SIZE))
     {
-        //LOG_DEBUG("SWS triggered on fd %d: Sending window update (rcv_wnd=%u)", utcp_fd, tcb->rcv_wnd);
+        //LOG_DEBUG("SWS triggered on fd %d: Sending window update (rwnd=%u)", utcp_fd, tcb->rwnd);
         tcb->t_flags |= F_ACKNOW;
         send_dgram(tcb);
     }

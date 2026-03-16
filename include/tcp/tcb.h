@@ -58,10 +58,10 @@ typedef struct tcb_t
     uint32_t snd_una;       /* Oldest unacked sequence number. */
     uint32_t snd_nxt;       /* Next sequence number to send. */
     uint32_t snd_max;       /* Highest sequence number sent. */
-    uint32_t snd_wnd;       /* Total amount of free space in the `tx_buffer`, in bytes. (peer's rcv_wnd) */
+    uint32_t snd_wnd;       /* Total amount of free space in the `tx_buffer`, in bytes. (peer's rwnd) */
     uint32_t irs;           /* Initial receive sequence number. */
     uint32_t rcv_nxt;       /* Next expected sequence number. */
-    uint32_t rcv_wnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept). */
+    uint32_t rwnd;       /* Amount of free space in the `rx_buffer`, in bytes. (i.e., amt of data receiver will accept). */
 
     /* Window scaling */
     bool ws_enabled;        /* `True` if window scaling is enabled (the peer included the window scale option in their SYN). */

@@ -5,6 +5,21 @@
 #include <utcp/api/globals.h>
 #include <utils/logger.h>
 
+void cc_init(tcb_t *tcb)
+{
+    tcb->cwnd = MSS * IW_CALC(MSS);
+    tcb->ssthresh = 0xFFFFFFFF; // should be arbitrarily high, see RFC 5681, Section 3.1
+    tcb->ca_state = OPEN;
+    tcb->recover = tcb->iss;
+
+    if (tcb->fd != 0)
+    { /* We don't want to print this when the the listen socket's TCB is made. */
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "cc_data";
+    LOG_INFO("INIT,%u,%u", tcb->cwnd, tcb->ssthresh);
+    current_thread_cat = old_category;
+    }
+}
 
 uint32_t halve_ssthresh(uint32_t flight_size)
 {
