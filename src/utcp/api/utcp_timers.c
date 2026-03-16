@@ -178,7 +178,7 @@ void utcp_timeout(tcb_t *tcb, short timer)
         case TCPT_PERSIST: // persist
         /* 
          * There is data to send, but it is being stopped b/c the
-         * receiver's advertised window (tcb->rcv_wnd) is 0.
+         * receiver's advertised window (tcb->rwnd) is 0.
         */
         // TODO: tcp_setpersist calculates the next value for the persist
         // timer and stores it in the TCPT_PERSIST counter. The flag t_force

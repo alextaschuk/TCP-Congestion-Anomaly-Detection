@@ -113,7 +113,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
 
                     new_tcb->irs = hdr->th_seq;
                     new_tcb->rcv_nxt = new_tcb->irs + 1;
-                    new_tcb->rcv_wnd = BUF_SIZE;
+                    new_tcb->rwnd = BUF_SIZE;
 
                     new_tcb->snd_wnd = hdr->th_win;
                     new_tcb->fsm_state = SYN_RECEIVED;
@@ -150,7 +150,7 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     target_tcb->irs = hdr->th_seq;
                     target_tcb->snd_una = hdr->th_ack;
                     target_tcb->rcv_nxt = hdr->th_seq + 1;
-                    target_tcb->rcv_wnd = hdr->th_win;
+                    target_tcb->rwnd = hdr->th_win;
                     target_tcb->fsm_state = ESTABLISHED;
 
                     

@@ -223,7 +223,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\tsnd_wnd             : %u\n"
         "\tirs                 : %u\n"
         "\trcv_nxt             : %u\n"
-        "\trcv_wnd             : %u\n"
+        "\trwnd             : %u\n"
         "\n"
         "\tts_rcv_val          : %u ms\n"
         "\trto                 : %u\n"
@@ -254,7 +254,7 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->snd_wnd,
         tcb->irs,
         tcb->rcv_nxt,
-        tcb->rcv_wnd,
+        tcb->rwnd,
         
         tcb->ts_rcv_val,
         tcb->rxtcur,
