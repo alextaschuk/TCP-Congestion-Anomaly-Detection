@@ -36,6 +36,12 @@ extern const cc_ops_t cc_newreno_ops;
 /*Define functions*/
 
 /**
+ * Initializes the `cwnd` and `ssthresh` for our
+ * congestion control algorithm.
+ */
+static void cc_init(tcb_t *tcb);
+
+/**
  * When a triple ACK or timeout occurs, the ssthresh needs to
  * be recalculated. This sets ssthresh `MAX(50% of bytes in flight, 2 MSS)`
  */
