@@ -42,7 +42,7 @@ uint16_t bind_udp_sock(int pts);
 int bind_utcp(int utcp_fd, struct sockaddr_in *addr);
 
 
-int init_utcp_sock(void);
+int utcp_sock(void);
 
 
 

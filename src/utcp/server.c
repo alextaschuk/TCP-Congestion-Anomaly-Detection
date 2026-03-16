@@ -109,7 +109,7 @@ int main(void)
 
     api_t *global = api_instance();
     global->utcp_fd = 0; // listen socket will always have fd of 0
-    int utcp_fd = init_utcp_sock();
+    int utcp_fd = utcp_sock();
 
     struct sockaddr_in server = {
         .sin_family = AF_INET, 

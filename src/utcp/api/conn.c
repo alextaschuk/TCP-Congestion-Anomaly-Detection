@@ -72,7 +72,7 @@ uint16_t bind_udp_sock(int pts)
 }
 
 
-int init_utcp_sock(void)
+int utcp_sock(void)
 {
     bind_udp_sock(1515);
 
