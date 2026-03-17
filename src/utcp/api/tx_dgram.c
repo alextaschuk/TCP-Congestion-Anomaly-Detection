@@ -238,14 +238,16 @@ int send_dgram(tcb_t *tcb)
                  * silly-window syndrome where every small ACK triggers an equally small
                  * new data segment.
                  */
-                if (data_len > 0 && data_len < MSS && unacked_bytes_in_flight > 0) {
+                if (data_len > 0 && data_len < MSS && unacked_bytes_in_flight > 0)
+                {
                     LOG_DEBUG("Nagle: suppressing %zu-byte segment (InFlight=%u). "
                                 "Waiting for full MSS or pipe drain.",
                                 data_len, unacked_bytes_in_flight);
                     data_len = 0;
                 }
 
-                if (data_len > 0) {
+                if (data_len > 0)
+                {
                     LOG_INFO("Preparing to send %zu bytes of payload.", data_len);
                 }
             }

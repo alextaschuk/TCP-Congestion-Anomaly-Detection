@@ -73,7 +73,6 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
             return rcvsize;
         }
 
-        //LOG_DEBUG("[rcv_dgram] Locking the TCB while the received segment is handled.");
         pthread_mutex_lock(&target_tcb->lock);
 
         switch (target_tcb->fsm_state)

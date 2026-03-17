@@ -161,14 +161,15 @@ void handle_data(
              */
             uint32_t pre_drain_rcv_nxt = tcb->rcv_nxt;
             drain_ooo_queue(tcb);
-            if (tcb->rcv_nxt != pre_drain_rcv_nxt) {
+
+            if (tcb->rcv_nxt != pre_drain_rcv_nxt)
+            {
                 LOG_INFO("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
                 pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again sinec more data is available
             }
+
             if (tcb->dupacks > 0)
-            {
                 tcb->t_flags |= F_ACKNOW;
-            }
         }
         else
         {

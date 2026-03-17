@@ -59,7 +59,8 @@ static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
 }
 
 
-int main(void) {
+int main(void)
+{
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -82,7 +83,7 @@ int main(void) {
         .sin_addr.s_addr = inet_addr("40.82.162.155")
     };
 
-    bind_utcp(utcp_fd, &client);
+    utcp_bind(utcp_fd, &client);
     utcp_connect(utcp_fd, &server);
 
     /* pretend to be a client app */
@@ -106,7 +107,8 @@ int main(void) {
             //printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_received, file_size_bytes);
             //fflush(stdout);
         }
-        if (bytes_rcvd < 0) {
+        if (bytes_rcvd < 0)
+        {
             LOG_ERROR("[Client App] Error receiving data.");
             break; 
         }

@@ -23,7 +23,7 @@ void* utcp_ticker_thread(void)
     ts.tv_nsec = ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
     while (1) 
     {
-        nanosleep(&ts, NULL); // sleep for 1ms
+        nanosleep(&ts, NULL); // sleep for 10ms
         utcp_slowtimo(); // wake up and process all TCP timers
     }
 }
@@ -125,7 +125,6 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         LOG_DEBUG("[calc_rto] RTO %u ticks clamped up to TCPTV_REXMTMAX=%d ticks.", tcb->rxtcur, TCPTV_REXMTMAX);   
         tcb->rxtcur = TCPTV_REXMTMAX; // the RTO
     }
-    //TCPT_RANGESET(tcb->rxtcur, tcb->rxtcur, 200, 64000);
     //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rxtcur);
 }
 

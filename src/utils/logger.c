@@ -6,7 +6,8 @@ int init_zlog(char conf_path[])
     /* initialize zlog w/ zlog.conf */
     int rc = dzlog_init(conf_path, "UTCP");
     
-    if (rc) {
+    if (rc)
+    {
         printf("zlog init failed\n");
         return -1;
     }

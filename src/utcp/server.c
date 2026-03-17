@@ -82,9 +82,8 @@ int utcp_accept(api_t *global)
     }
 
     pthread_mutex_lock(&listen_tcb->accept_q.lock);
-    //LOG_DEBUG("[utcp_accept] Locked the accept queue and blocking until a connection is added.");
     
-    // block until the queue is not empty (TCB added via rx_dgram())
+    /* block until the queue is not empty (TCB added via rx_dgram()) */
     while (listen_tcb->accept_q.count == 0)
     {
         pthread_cond_wait(&listen_tcb->accept_q.cond, &listen_tcb->accept_q.lock);
@@ -93,11 +92,10 @@ int utcp_accept(api_t *global)
     // pop the established connection off the queue
     tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
 
-    LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
+    //LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
     pthread_mutex_unlock(&listen_tcb->accept_q.lock);
 
     established_tcb->src_udp_fd = global->udp_fd;
-
     return established_tcb->fd;
 }
 
@@ -117,7 +115,7 @@ int main(void)
         .sin_addr.s_addr = htonl(INADDR_ANY)
     };
     
-    bind_utcp(utcp_fd, &server);
+    utcp_bind(utcp_fd, &server);
     log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)

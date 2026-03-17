@@ -81,23 +81,20 @@ int utcp_sock(void)
 }
 
 
-int bind_utcp(int utcp_fd, struct sockaddr_in *addr)
+int utcp_bind(int utcp_fd, struct sockaddr_in *addr)
 {
     api_t *global = api_instance();
 
     tcb_t *tcb = get_tcb(utcp_fd);
     if (!tcb)
-        err_sys("[bind_utcp] TCB not found");
+        err_sys("[utcp_bind] TCB not found");
 
-    //pthread_mutex_lock(&tcb->lock);
     tcb->fourtuple.source_port = ntohs(addr->sin_port); // src UTCP port
     tcb->fourtuple.source_ip = ntohl(addr->sin_addr.s_addr);
-
     tcb->src_udp_fd = global->udp_fd;
     tcb->src_udp_port = global->udp_port;
 
-    //pthread_mutex_unlock(&tcb->lock);
-    LOG_INFO("[bind_utcp] Bound UTCP fd=%d to UTCP port=%u", utcp_fd, tcb->fourtuple.source_port);
+    LOG_INFO("[utcp_bind] Bound UTCP fd=%d to UTCP port=%u", utcp_fd, tcb->fourtuple.source_port);
     return tcb->fd;
 }
 
@@ -108,13 +105,14 @@ tcb_t *alloc_new_tcb(void)
     api_t *global = api_instance();
 
     pthread_mutex_lock(&global->lookup_lock);
-    //LOG_INFO("[alloc_new_tcb] Locked the TCB lookup table to search for an avalaible spot");
+
     /* Find the first available spot in the lookup table */
     for (fd = 0; fd < MAX_CONNECTIONS; fd++)
         if (global->tcb_lookup[fd] == NULL)
             break;
 
-    if (fd == MAX_CONNECTIONS) {
+    if (fd == MAX_CONNECTIONS)
+    {
         //LOG_WARN("[alloc_new_tcb] No sockets available in lookup table. Unlocking the lookup table...");
         pthread_mutex_unlock(&global->lookup_lock);
         return NULL; 
@@ -123,18 +121,18 @@ tcb_t *alloc_new_tcb(void)
     /* Create a new TCB and put it in the available spot */
     tcb_t *new_tcb = calloc(1, sizeof(tcb_t));
     if (!new_tcb)
+    {
+        free(new_tcb);
         err_sys("[alloc_new_tcb] Failed to calloc *new_tcb");
+    }
 
     global->tcb_lookup[fd] = new_tcb;
 
-    //LOG_INFO("[alloc_new_tcb] Added the new TCB to the lookup table. Unlocking the lookup table...");
     pthread_mutex_unlock(&global->lookup_lock);
 
     pthread_mutex_init(&new_tcb->lock, NULL);
     pthread_cond_init(&new_tcb->conn_cond, NULL);
 
-    //LOG_INFO("[alloc_new_tcb] Locking the new TCB to initialize its variables...", new_tcb->fd);
-    //pthread_mutex_lock(&new_tcb->lock);
     new_tcb->fd = fd; 
     new_tcb->fsm_state = CLOSED;
 
@@ -162,31 +160,21 @@ tcb_t *alloc_new_tcb(void)
     switch(CC_ALGO)
     {
         case (TAHOE):
-            printf("using Tahoe\n");
             new_tcb->cc = &cc_tahoe_ops;
             break;
         case (RENO):
-            printf("using Reno\n");
             new_tcb->cc = &cc_reno_ops;
             break;
         case(NEW_RENO):
-            printf("using NewReno\n");
             new_tcb->cc = &cc_newreno_ops;
             break;
         default:
             err_sys("[alloc_new_tcb] ERROR: Invalid CC algorithm");
             break;
     }
-    new_tcb->cc->init(new_tcb);
-    
-    
-    LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
-    //log_tcb(new_tcb, "[alloc_new_tcb] New TCB:");
 
-    
-    //LOG_INFO("[alloc_new_tcb] Unlocking the new TCB...");
-    //pthread_mutex_unlock(&new_tcb->lock);
-    
+    new_tcb->cc->init(new_tcb);
+    //LOG_INFO("[alloc_new_tcb] Finished initializing the TBC with fd=%i.", new_tcb->fd);
     return new_tcb;
 }
 
@@ -196,7 +184,6 @@ tcb_t *find_listen_tcb(void)
     api_t *global = api_instance();
 
     pthread_mutex_lock(&global->lookup_lock);
-    //LOG_DEBUG("[find_listen_tcb] Locked the TCB lookup table to search for the listen socket's TCB...");
 
     for (int i = 0; i < MAX_CONNECTIONS; i++)
     {
@@ -212,6 +199,7 @@ tcb_t *find_listen_tcb(void)
             return curr_tcb;
         }
     }
+
     LOG_WARN("[find_listen_tcb] Listen socket's TCB not found in the lookup table. Unlocking the TCB lookup table...");
     return NULL;
 }
@@ -222,19 +210,18 @@ int spawn_threads(api_t *global)
     pthread_t listen_thread;
     pthread_t ticker_thread;
 
-    LOG_INFO("[spawn_threads] Spawning listener thread...");
     if (pthread_create(&listen_thread, NULL, utcp_listen_thread, global) != 0)
     {
         LOG_ERROR("[spawn_threads] Failed to create listener thread");
         return -1;
     }
 
-    LOG_INFO("[spawn_threads] Spawning ticker thread...");
     if (pthread_create(&ticker_thread, NULL, utcp_ticker_thread, NULL) != 0)
     {
         LOG_INFO("[spawn_threads] Failed to create ticker thread");
         return -1;
     }
+
     return 0;
 }
 
@@ -242,7 +229,6 @@ int spawn_threads(api_t *global)
 void *utcp_listen_thread(void *arg)
 {
     current_thread_cat = "listen_thread";
-    LOG_INFO("[utcp_listen_thread] Listen thread running...");
     
     api_t *global = (api_t *)arg;
     while (1)
@@ -251,5 +237,6 @@ void *utcp_listen_thread(void *arg)
         if (rcvsize < 0)
             err_sys("[Server, listen thread] Error receiving packet");
     }
+    
     return 0;
 }

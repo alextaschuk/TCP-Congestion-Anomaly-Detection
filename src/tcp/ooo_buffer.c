@@ -154,12 +154,14 @@ void drain_ooo_queue(tcb_t *tcb)
         }
 
         /* Case 3: Entry starts exactly at rcv_nxt — drain it into recv_buf */
-        if (entry->seq != tcb->rcv_nxt) {
+        if (entry->seq != tcb->rcv_nxt)
+        {
             break; /* Gap still exists; nothing more to drain */
         }
 
         uint32_t free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
-        if (entry->len > free_space) {
+        if (entry->len > free_space)
+        {
             LOG_ERROR("[drain_ooo_queue]: recv_buf full during drain! entry->len=%u free=%u", entry->len, free_space);
             break;
         }

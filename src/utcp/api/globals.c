@@ -28,13 +28,15 @@ api_t *api_instance(void)
         global.utcp_fd = -1; // listen utcp socket's fd
         global.udp_port = 0; // global udp port
         
-        global.client = (struct sockaddr_in) {
+        global.client = (struct sockaddr_in)
+        {
             .sin_family = AF_INET,
             .sin_port = htons(8292), // UTCP port
             .sin_addr.s_addr = htonl(INADDR_ANY)
         };
         
-        global.server = (struct sockaddr_in){
+        global.server = (struct sockaddr_in)
+        {
             .sin_family = AF_INET,
             .sin_port = htons(332), // UTCP port
             .sin_addr.s_addr = htonl(INADDR_ANY)

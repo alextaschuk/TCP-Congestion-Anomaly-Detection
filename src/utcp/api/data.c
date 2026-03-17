@@ -35,12 +35,10 @@ ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
     while (remaining > 0)
     {
         uint32_t curr_buffered = snder_tcb->tx_tail - snder_tcb->tx_head;
+        
         uint32_t free_space = BUF_SIZE - curr_buffered; // how many bytes can we add to the TX buffer?
-        //LOG_INFO("[utcp_send] Num bytes in TX buf: %u, amount of free space in TX: %u", curr_buffered, free_space);
-
         if (free_space == 0)
         {
-            //LOG_DEBUG("[utcp_send] TX buffer is full for tcb %i. App thread will block until there is room to send...", snder_tcb->fd);
             pthread_cond_wait(&snder_tcb->conn_cond, &snder_tcb->lock);
             //LOG_DEBUG("[utcp_send] App thread was woken up because TX buffer has room for tcb %i.", snder_tcb->fd);
 
@@ -56,11 +54,6 @@ ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
         // write as much data as we can fit 
         size_t to_write = MIN(remaining, free_space);
         ring_buf_write(snder_tcb->tx_buf, BUF_SIZE, snder_tcb->tx_tail, data_ptr, to_write);
-        
-        //for (size_t i = 0; i < to_write; i++)
-        //{ // write data from buf into TX byte-by-byte
-        //    snder_tcb->tx_buf[(snder_tcb->tx_tail + i) % BUF_SIZE] = data_ptr[i];
-        //}
 
         snder_tcb->tx_tail += to_write; // move the tail forward.
         data_ptr += to_write; // go to the next chunk of data.
@@ -71,9 +64,7 @@ ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
         send_dgram(snder_tcb); // try to send the data to the peer
     }
 
-    //LOG_DEBUG("[utcp_send] Unlocking the TCB for UTCP FD %i", snder_tcb->fd);
-    pthread_mutex_unlock(&snder_tcb->lock);
-    
+    pthread_mutex_unlock(&snder_tcb->lock);    
     return (ssize_t)payload_len;
 }
 
@@ -88,7 +79,6 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     }
 
     pthread_mutex_lock(&tcb->lock);
-    //LOG_DEBUG("[utcp_recv] Locked the TCB for fd=%i...", tcb->fd);
 
     while (tcb->rx_head == tcb->rx_tail)
     { // nothing to read
@@ -99,20 +89,13 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
             return 0;
         }
 
-        //LOG_DEBUG("[utcp_recv] RX buffer is empty for UTCP FD %i. App thread will block until there is room to send...", tcb->fd);
         pthread_cond_wait(&tcb->conn_cond, &tcb->lock);
-        //LOG_DEBUG("[utcp_recv] App thread unblock because data was added to the RX buffer. Attempting to read from it...", tcb->fd);
     }
 
     /* Read either `app_buf_len` bytes from the RX buffer, or the entire buffer; whichever is smaller. */
     uint32_t avail_bytes_to_read = tcb->rx_tail - tcb->rx_head;
     size_t num_bytes_to_read = MIN(app_buf_len, (size_t)avail_bytes_to_read);
     ring_buf_read(tcb->rx_buf, BUF_SIZE, tcb->rx_head, buf, num_bytes_to_read, 0);
-
-    //for (size_t i = 0; i < num_bytes_to_read; i++)
-    //{
-    //    buf[i] = tcb->rx_buf[(tcb->rx_head + i) % BUF_SIZE];
-    //}
 
     tcb->rx_head += num_bytes_to_read;
 
@@ -134,8 +117,6 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
         send_dgram(tcb);
     }
 
-    //LOG_DEBUG("[utcp_recv] Unlocking the TCB for fd=%i...", tcb->fd);
     pthread_mutex_unlock(&tcb->lock);
-
     return (int)num_bytes_to_read;
 }
