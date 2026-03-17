@@ -48,8 +48,8 @@ typedef struct tcb_t tcb_t;
 #define MSS 1400
 
 /* Congestion Control Related */
-//#define CC_ALGO TAHOE /* Determines which CA algo we use. */
-#define CC_ALGO RENO /* Determines which CA algo we use. */
+#define CC_ALGO TAHOE /* Determines which CA algo we use. */
+//#define CC_ALGO RENO /* Determines which CA algo we use. */
 //#define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
