@@ -21,7 +21,7 @@ static void tahoe_duplicate_ack(tcb_t *tcb)
         tcb->ssthresh = halve_ssthresh(flight_size);
         tcb->cwnd = MSS;
 
-        retransmit_data(tcb, tcb->snd_una); // fast retransmit
+        retransmit_data(tcb, tcb->snd_una);
 
         LOG_WARN("[tahoe_duplicate_ack] Fast Retransmit: flight=%u, ssthresh=%u, cwnd=%u"
             " recover=%u", flight_size, tcb->ssthresh, tcb->cwnd, tcb->recover);
