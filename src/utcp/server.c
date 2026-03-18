@@ -161,8 +161,8 @@ int main(void)
         }
 
         total_file_bytes += sent;
-        //printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
-        //fflush(stdout);
+        printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
+        fflush(stdout);
     }
 
     tcb_t *active_tcb = get_tcb(utcp_fd); 

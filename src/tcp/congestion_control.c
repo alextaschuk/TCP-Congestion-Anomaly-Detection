@@ -34,6 +34,13 @@ void cc_aimd(tcb_t *tcb, uint32_t acked)
         tcb->ca_state = OPEN;
     }
 
+    // Only grow cwnd if we are fully utilizing it (Congestion Window Validation)
+    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
+    if (flight_size < tcb->cwnd)
+    {
+        return;
+    }
+
     uint32_t old_cwnd = tcb->cwnd;
     
     if (tcb->cwnd < tcb->ssthresh)
@@ -43,7 +50,6 @@ void cc_aimd(tcb_t *tcb, uint32_t acked)
     }
     else 
     { /* Congestion Avoidance (linear growth) */
-        //uint32_t increment = (acked * MSS) / tcb->cwnd; // Calculate proportional growth based on how much data was ACKed
         tcb->cwnd += MAX(((uint64_t)acked * MSS) / tcb->cwnd, 1);
         LOG_DEBUG("[handle_data] CONGESTION AVOIDANCE (linear growth): cwnd %u -> %u", old_cwnd, tcb->cwnd);
     }
