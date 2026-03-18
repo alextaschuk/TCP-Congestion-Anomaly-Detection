@@ -34,13 +34,6 @@ void cc_aimd(tcb_t *tcb, uint32_t acked)
         tcb->ca_state = OPEN;
     }
 
-    // Only grow cwnd if we are fully utilizing it (Congestion Window Validation)
-    uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
-    if (flight_size < tcb->cwnd)
-    {
-        return;
-    }
-
     uint32_t old_cwnd = tcb->cwnd;
     
     if (tcb->cwnd < tcb->ssthresh)
