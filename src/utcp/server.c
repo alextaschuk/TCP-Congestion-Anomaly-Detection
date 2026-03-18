@@ -146,7 +146,8 @@ int main(void)
         err_sys("[Client App] Failed to get filesize");
     
     size_t file_size_bytes = (size_t)st.st_size;
-    uint8_t *snd_buf = malloc(APP_BUF_SIZE);
+    //uint8_t *snd_buf = malloc(APP_BUF_SIZE);
+    uint8_t *snd_buf = malloc(64000);
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 

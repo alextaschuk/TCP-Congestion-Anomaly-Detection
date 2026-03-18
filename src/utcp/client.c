@@ -92,7 +92,8 @@ int main(void)
         err_sys("[Client App] Failed to create destination file");
 
     size_t file_size_bytes = 1000000000;// 1GB
-    uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
+    //uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
+    uint8_t *app_rcv_buf = malloc(65536);
     size_t total_received = 0;
 
     printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
