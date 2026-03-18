@@ -176,7 +176,7 @@ int send_dgram(tcb_t *tcb)
     uint8_t flags = tcp_outflags[tcb->fsm_state];
     bool force_ack = false;
 
-    LOG_DEBUG("[send_dgram] Initial state: %s, Base Flags: 0x%02X", fsm_state_to_str(tcb->fsm_state), flags);
+    //LOG_DEBUG("[send_dgram] Initial state: %s, Base Flags: 0x%02X", fsm_state_to_str(tcb->fsm_state), flags);
 
     /**
      * Base option length for timestamps in bytes. 10 bytes for the timestamp & 2 bytes for NOP padding
@@ -254,8 +254,8 @@ int send_dgram(tcb_t *tcb)
             else
             {
                 data_len = 0;
-                LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u,"
-                            "cwnd=%u, bytes in flight=%u", tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
+                //LOG_DEBUG("[send_dgram] The send window is full or is being blocked by the cwnd. snd_wnd=%u,"
+                //            "cwnd=%u, bytes in flight=%u", tcb->snd_wnd, tcb->cwnd, unacked_bytes_in_flight);
             }
         }
         
@@ -266,7 +266,7 @@ int send_dgram(tcb_t *tcb)
 
         if (data_len == 0 && !sending_new_syn_fin && !force_ack)
         { // no payload and it's not a SYN or FIN, so no point in sending the packet
-            LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
+            //LOG_WARN("[send_dgram] Segment has empty payload and isn't a SYN or FIN. Ignoring request and exiting loop. data_len=%zu is_syn_fin=%i", data_len, is_syn_fin);
             break;
         }
         

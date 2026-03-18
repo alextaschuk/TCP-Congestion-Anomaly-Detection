@@ -89,8 +89,8 @@ void handle_data(
             if(tcb->dupacks < 255)
                 tcb->dupacks++; // prevent overflow
 
-            LOG_WARN("[handle_data] DUPLICATE ACK: recieved a duplicate ACK for seq=%u (Count: %u). snd_max=%u", tcb->snd_una,
-                        tcb->dupacks, tcb->snd_max);
+            //LOG_WARN("[handle_data] DUPLICATE ACK: recieved a duplicate ACK for seq=%u (Count: %u). snd_max=%u", tcb->snd_una,
+            //            tcb->dupacks, tcb->snd_max);
             
             if (tcb->cc && tcb->cc->duplicate_ack)
                 tcb->cc->duplicate_ack(tcb);

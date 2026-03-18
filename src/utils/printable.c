@@ -170,21 +170,21 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
     }
 
     /* print payload characters */
-    if (payload_len > 0 && payload != NULL)
-    {
-        offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\tPayload Data\t : ");
-        size_t display_len = payload_len;
-        
-        for (size_t i = 0; i < display_len; i++) 
-        {
-            if (isprint(payload[i])) // isprint() ensures we only log safe ASCII characters to the string
-                offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "%c", payload[i]);
-            else
-                offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, ".");
-        }
-    
-        offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\n");
-    }
+    //if (payload_len > 0 && payload != NULL)
+    //{
+    //    offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\tPayload Data\t : ");
+    //    size_t display_len = payload_len;
+    //    
+    //    for (size_t i = 0; i < display_len; i++) 
+    //    {
+    //        if (isprint(payload[i])) // isprint() ensures we only log safe ASCII characters to the string
+    //            offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "%c", payload[i]);
+    //        else
+    //            offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, ".");
+    //    }
+    //
+    //    offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "\n");
+    //}
 
     offset += snprintf(log_buf + offset, sizeof(log_buf) - offset, "--------------------------------------------\n");
 
