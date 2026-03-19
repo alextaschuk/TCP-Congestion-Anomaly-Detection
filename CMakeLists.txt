@@ -15,8 +15,11 @@ file(GLOB_RECURSE COMMON_SRCS
     "src/utils/*.c"
 )
 
-# 1. Bring in the zlog source
 add_subdirectory(vendor/zlog EXCLUDE_FROM_ALL)
+
+if(TARGET zlog)
+    target_compile_options(zlog PRIVATE "-w") # supress zlog compiler warnings
+endif()
 
 # logger setup
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/log/client)
@@ -29,11 +32,12 @@ configure_file(zlog_server.conf ${CMAKE_CURRENT_BINARY_DIR}/zlog_server.conf COP
 add_executable(client_app src/utcp/client.c ${COMMON_SRCS})
 add_executable(server_app src/utcp/server.c ${COMMON_SRCS})
 #add_executable(server_app src/app/server_application.c ${COMMON_SRCS})
+#add_executable(server_app src/app/client_application.c ${COMMON_SRCS})
 
 # link zlog so that the compiler knows where it is
 target_link_libraries(client_app PRIVATE zlog)
 target_link_libraries(server_app PRIVATE zlog)
 
 # make sure the code can find zlog's headers
-target_include_directories(client_app PRIVATE vendor/zlog/src)
-target_include_directories(server_app PRIVATE vendor/zlog/src)
+target_include_directories(client_app SYSTEM PRIVATE vendor/zlog/src) # "SYSTEM" = ignore warnings in zlog header files
+target_include_directories(server_app SYSTEM PRIVATE vendor/zlog/src)
