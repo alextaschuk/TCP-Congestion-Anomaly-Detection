@@ -20,7 +20,7 @@ void* utcp_ticker_thread(void)
 
     struct timespec ts;
     ts.tv_sec = 0; // 0 seconds
-    ts.tv_nsec = ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
+    ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
     while (1) 
     {
         nanosleep(&ts, NULL); // sleep for 10ms
