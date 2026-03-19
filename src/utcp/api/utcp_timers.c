@@ -13,82 +13,69 @@
 
 const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
-void* utcp_ticker_thread(void)
+
+
+static uint64_t utcp_ticker(void)
 {
-    current_thread_cat = "ticker_thread";
-    LOG_INFO("[utcp_ticker_thread] UTCP 1ms slow timer started...");
+    struct timespec ts;
+    
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+        err_sys("Can not get current time");
 
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-
-    // Absolute deadline for the next tick in nanoseconds.
-    uint64_t next_tick_ns = (uint64_t)now.tv_sec * 1000000000ULL + (uint64_t)now.tv_nsec
-                            + (uint64_t)TCP_TICK_MS * 1000000ULL;
-
-    while (1)
-    {
-        // Sleep only for the time remaining until the next scheduled tick.
-        // This way, processing time inside utcp_slowtimo() does not accumulate as drift.
-        clock_gettime(CLOCK_MONOTONIC, &now);
-        uint64_t now_ns = (uint64_t)now.tv_sec * 1000000000ULL + (uint64_t)now.tv_nsec;
-
-        if (now_ns < next_tick_ns)
-        {
-            uint64_t sleep_ns = next_tick_ns - now_ns;
-            struct timespec sleep_ts = {
-                .tv_sec  = (time_t)(sleep_ns / 1000000000ULL),
-                .tv_nsec = (long)  (sleep_ns % 1000000000ULL),
-            };
-            nanosleep(&sleep_ts, NULL);
-        }
-        else
-        {
-            LOG_WARN("[utcp_ticker_thread] Missed a tick by %llu ms.", (unsigned long long)((now_ns - next_tick_ns) / 1000000ULL));
-        }
-
-        utcp_slowtimo();
-
-        next_tick_ns += (uint64_t)TCP_TICK_MS * 1000000ULL;
-    }
+    // Convert seconds to ms, and nanoseconds to ms, then combine
+    uint64_t time_ms = (uint64_t)(ts.tv_sec * 1000) + (uint64_t)(ts.tv_nsec / 1000000);
+    return time_ms;
 }
 
 
-void utcp_slowtimo(void) 
+void *utcp_slowtimo_thread(void) 
 {
     api_t *global = api_instance();
+    
+    //current_thread_cat = "ticker_thread";
+    //LOG_INFO("[utcp_ticker_thread] slow timer woke up. Tick interval: %dms", TCP_TICK_MS);
+    
+    uint64_t next_tick_time = utcp_ticker() + TCP_TICK_MS;
 
-    //LOG_INFO("[utcp_slowtimo] Locking the lookup lock...");
-    pthread_mutex_lock(&global->lookup_lock);
-
-    for (int i = 0; i < MAX_CONNECTIONS; i++) 
+    while(1)
     {
-        tcb_t *tcb = global->tcb_lookup[i];
-        if (!tcb)
-            continue; 
-
-        //LOG_INFO("[utcp_slowtimo] Locking the TCB...");
-        pthread_mutex_lock(&tcb->lock);
-
-        for (int timer_idx = 0; timer_idx < TCPT_NTIMERS; timer_idx++) 
+        pthread_mutex_lock(&global->lookup_lock);
+        
+        for (int i = 0; i < MAX_CONNECTIONS; i++) 
         {
-            if (tcb->t_timer[timer_idx] > 0) 
-            {
-                tcb->t_timer[timer_idx]--;
-                //LOG_DEBUG("[utcp_slowtimo] Updated timer %i. New value is %hu", timer_idx, tcb->t_timer[timer_idx]);
+            tcb_t *tcb = global->tcb_lookup[i];
+            if (!tcb)
+                continue; 
 
-                if (tcb->t_timer[timer_idx] == 0)
+            pthread_mutex_lock(&tcb->lock);
+
+            for (int timer_idx = 0; timer_idx < TCPT_NTIMERS; timer_idx++) 
+            {
+                if (tcb->t_timer[timer_idx] > 0) 
                 {
-                    //LOG_DEBUG("[utcp_slowtimo] Timer %i expired.", timer_idx);
-                    utcp_timeout(tcb, timer_idx);
+                    tcb->t_timer[timer_idx]--;
+
+                    if (tcb->t_timer[timer_idx] == 0)
+                        utcp_timeout(tcb, timer_idx);
                 }
             }
-        }
-        //LOG_INFO("[utcp_slowtimo] Unlocking the TCB lock...");
-        pthread_mutex_unlock(&tcb->lock);
-    }
 
-    //LOG_INFO("[utcp_slowtimo] Unlocking the lookup lock...");
-    pthread_mutex_unlock(&global->lookup_lock);
+        pthread_mutex_unlock(&tcb->lock);
+        }
+    
+        pthread_mutex_unlock(&global->lookup_lock);
+
+        uint64_t now = get_current_time_ms(); 
+        
+        // Ticker may have drifted due to computation time. Sleep only for the remaining time until the next absolute tick.
+        if (now < next_tick_time)
+        {
+            uint64_t sleep_time_ms = next_tick_time - now;
+            usleep(sleep_time_ms * 1000);
+        }
+        next_tick_time += TCP_TICK_MS;
+    }
+    return NULL;
 }
 
 

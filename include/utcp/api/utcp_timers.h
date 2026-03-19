@@ -33,17 +33,7 @@ extern const int tcp_backoff[];
 
 /* Define functions */
 
-/**
- * The ticker thread that wakes up every 500ms and calls `utcp_slowtimo()`
- * to update all active TCBs' timers.
- */
-void *utcp_ticker_thread();
-
-/**
- * Called by the ticker thread every 500ms. It loops through all active TCBs, and decrements their timers by 1.
- */
-void utcp_slowtimo(void);
-
+void* utcp_slowtimo_thread(void);
 
 /**
  * @brief Gets the current time, in milliseconds, for the user.

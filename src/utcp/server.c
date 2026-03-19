@@ -52,7 +52,7 @@ int main(void)
     };
     
     utcp_bind(utcp_fd, &server);
-    log_tcb(get_tcb(utcp_fd), "Post init TCB:");
+    //log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[main] Error in utcp_listen");
