@@ -10,4 +10,4 @@ bash ../scripts/compile.sh
 
 time ./server_app
 
-sha384sum ../test_file.txt
+sha384sum ../test_rcvd.txt
