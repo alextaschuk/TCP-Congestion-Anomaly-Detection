@@ -19,7 +19,7 @@ else.
  * 
  * @return The FD of the newly-created TCB.
  */
-static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr);
+int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr);
 
 /**
  * @brief An application-side function to bind a UDP socket.

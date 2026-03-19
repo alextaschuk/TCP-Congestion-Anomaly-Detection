@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 #include <arpa/inet.h>
 
 #include <tcp/congestion_control.h>
@@ -12,6 +12,7 @@
 #include <utils/logger.h>
 #include <utcp/api/api.h>
 #include <utcp/api/globals.h>
+#include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
 #include <utcp/rx/rx_dgram.h>
 
