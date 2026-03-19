@@ -7,7 +7,6 @@
 #echo "Regenerated 1GB test file"
 
 bash ../scripts/reset_logs.sh
-echo "Reset logs"
 
 time ./server_app
 

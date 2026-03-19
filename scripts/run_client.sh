@@ -5,7 +5,6 @@
 rm ../test_rcvd.txt && touch ../test_rcvd.txt
 
 bash ../scripts/reset_logs.sh
-echo "Reset logs"
 
 time ./client_app
 

@@ -22,8 +22,7 @@ if(TARGET zlog)
 endif()
 
 # logger setup
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/log/client)
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/log/server)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/log)
 
 # copy config files into /build dir
 configure_file(zlog_client.conf ${CMAKE_CURRENT_BINARY_DIR}/zlog_client.conf COPYONLY)
