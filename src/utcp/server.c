@@ -56,8 +56,8 @@ int main(void)
     if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[main] Error in utcp_listen");
 
-    if(spawn_threads(global) != 0)
-        err_sys("[main] Error during thread creation");
+    //if(spawn_threads(global) != 0)
+    //    err_sys("[main] Error during thread creation");
     
     tcb_t *listen_tcb = get_tcb(utcp_fd);
 
