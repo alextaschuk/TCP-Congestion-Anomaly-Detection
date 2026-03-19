@@ -36,6 +36,66 @@ _Thread_local const char* current_thread_cat = "main_thread";
 
 int main(void)
 {
+        if (init_zlog("zlog_client.conf") != 0) // initialize logger
+        err_sys("Error initializing zlog");
+
+    bind_udp_sock(0);
+    int utcp_fd = utcp_sock();
+
+    struct sockaddr_in client =
+    {
+        .sin_family = AF_INET, 
+        .sin_port = htons(8292), 
+        .sin_addr.s_addr = htonl(INADDR_ANY)
+    };
+
+    struct sockaddr_in server =
+    {
+        .sin_family = AF_INET, 
+        .sin_port = htons(332), 
+        .sin_addr.s_addr = inet_addr("40.82.162.155")
+    };
+
+    utcp_bind(utcp_fd, &client);
+    utcp_connect(utcp_fd, &server);
+
+    FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+    if (!fp)
+        err_sys("[Client App] Failed to create destination file");
+
+    size_t file_size_bytes = 1000000000;// 1GB
+    //uint8_t *app_rcv_buf = malloc(APP_BUF_SIZE);
+    uint8_t *app_rcv_buf = malloc(65536);
+    size_t total_received = 0;
+
+    printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
+    while(total_received < file_size_bytes)
+    {   
+        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
+        if (bytes_rcvd > 0)
+        {
+            fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
+            fflush(fp); // forces the OS to write to the txt file immediately
+            total_received += (size_t)bytes_rcvd;
+            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_received, file_size_bytes);
+            fflush(stdout);
+        }
+        if (bytes_rcvd < 0)
+        {
+            LOG_ERROR("[Client App] Error receiving data.");
+            break; 
+        }
+    }
+    tcb_t *active_tcb = get_tcb(utcp_fd);
+    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
+        usleep(100000); // let everything in RX go to the client
+    sleep(2);
+
+    LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
+    fclose(fp);
+    free(app_rcv_buf);
+    return 0;
+    /*
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -109,4 +169,5 @@ int main(void)
         free(snd_buf);
         LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
         return 0;
+    */
 }
