@@ -6,7 +6,7 @@
 #rm ../test_file.txt && cat /dev/urandom | base64 | head -c 1000000000 > ../test_file.txt
 #echo "Regenerated 1GB test file"
 
-bash ../scripts/reset_logs.sh
+bash ../scripts/compile.sh
 
 time ./server_app
 

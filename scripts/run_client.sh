@@ -4,7 +4,7 @@
 
 rm ../test_rcvd.txt
 
-bash ../scripts/reset_logs.sh
+bash ../scripts/compile.sh
 
 time ./client_app
 
