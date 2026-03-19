@@ -89,10 +89,7 @@ int main(void)
         if (bytes_rcvd > 0)
         {
             fwrite(app_recv_buf, 1, bytes_rcvd, fp);
-            fflush(fp); // forces the OS to write to the txt file immediately
             total_recvd += (size_t)bytes_rcvd;
-            printf("Server Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_recvd, file_size_bytes);
-            fflush(stdout);
         }
         if (bytes_rcvd < 0)
         {
