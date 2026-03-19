@@ -1,7 +1,6 @@
-#include <utcp/client.h>
-
 #include <arpa/inet.h>
 #include <errno.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,12 +9,14 @@
 #include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
+#include <tcp/tcb.h>
 #include <utils/err.h>
 #include <utils/logger.h>
 #include <utils/printable.h>
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
+#include <utcp/api/globals.h>
 #include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 
@@ -23,40 +24,6 @@
 
 
 _Thread_local const char* current_thread_cat = "main_thread";
-
-
-static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
-{
-    api_t *global = api_instance();
-
-    LOG_INFO("[utcp_connect] Creating a new TCB for the application's connection request...");
-
-    tcb_t *new_tcb = get_tcb(utcp_fd);
-
-    pthread_mutex_lock(&new_tcb->lock);
-    //LOG_INFO("[utcp_connect] Locked the TCB...");
-    new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
-    new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
-    
-    new_tcb->dest_udp_port         = global->server_udp_port;
-    new_tcb->src_udp_port          = global->udp_port; // assigned by the OS
-
-    update_fsm(utcp_fd, SYN_SENT);
-
-    log_tcb(new_tcb, "[utcp_connect] Finished initializing variables for the new TCB:");
-
-    LOG_INFO("[utcp_connect] Sending SYN for UTCP FD %i...", utcp_fd);
-    send_dgram(new_tcb);
-
-    while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
-        pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);
-
-    //LOG_INFO("[utcp_connect] Unlocking the TCB...");
-    pthread_mutex_unlock(&new_tcb->lock);
-
-    LOG_INFO("[utcp_connect] 3WHS is complete.");
-    return utcp_fd;
-}
 
 
 int main(void)

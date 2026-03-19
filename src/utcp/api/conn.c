@@ -19,6 +19,40 @@
 int udp_sock_open = 0; // changes to 1 when UDP socket is bound to a port.
 
 
+int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr)
+{
+    api_t *global = api_instance();
+
+    LOG_INFO("[utcp_connect] Creating a new TCB for the application's connection request...");
+
+    tcb_t *new_tcb = get_tcb(utcp_fd);
+
+    pthread_mutex_lock(&new_tcb->lock);
+    //LOG_INFO("[utcp_connect] Locked the TCB...");
+    new_tcb->fourtuple.dest_ip     = ntohl(dest_addr->sin_addr.s_addr);
+    new_tcb->fourtuple.dest_port   = ntohs(dest_addr->sin_port);
+    
+    new_tcb->dest_udp_port         = global->server_udp_port;
+    new_tcb->src_udp_port          = global->udp_port; // assigned by the OS
+
+    update_fsm(utcp_fd, SYN_SENT);
+
+    log_tcb(new_tcb, "[utcp_connect] Finished initializing variables for the new TCB:");
+
+    LOG_INFO("[utcp_connect] Sending SYN for UTCP FD %i...", utcp_fd);
+    send_dgram(new_tcb);
+
+    while (new_tcb->fsm_state != ESTABLISHED) // block and wait for SYN-ACK
+        pthread_cond_wait(&new_tcb->conn_cond, &new_tcb->lock);
+
+    //LOG_INFO("[utcp_connect] Unlocking the TCB...");
+    pthread_mutex_unlock(&new_tcb->lock);
+
+    LOG_INFO("[utcp_connect] 3WHS is complete.");
+    return utcp_fd;
+}
+
+
 uint16_t bind_udp_sock(int pts)
 {
     api_t *global = api_instance();
@@ -239,4 +273,73 @@ void *utcp_listen_thread(void *arg)
     }
     
     return 0;
+}
+
+
+int utcp_listen(api_t *global, int backlog)
+{
+    tcb_t *tcb = get_tcb(global->utcp_fd);
+    if (!tcb)
+        return -1;
+
+    if (backlog <= 0)
+        backlog = 1;
+    else
+        backlog = MIN(backlog, MAX_BACKLOG);
+
+    /* initialize SYN queue */
+    memset(&tcb->syn_q, 0, sizeof(tcb_queue_t));
+    tcb->syn_q.tcbs = calloc(backlog, sizeof(tcb_t*));
+
+    if (!tcb->syn_q.tcbs)
+        err_sys("[utcp_listen] Failed to allocate the SYN queue");
+
+    pthread_mutex_init(&tcb->syn_q.lock, NULL);
+    tcb->syn_q.backlog = backlog;
+
+    /* initialize accept queue */
+    memset(&tcb->accept_q, 0, sizeof(tcb_queue_t));
+    tcb->accept_q.tcbs = calloc(backlog, sizeof(tcb_t*));
+
+    if (!tcb->accept_q.tcbs)
+    {
+        free(tcb->syn_q.tcbs);
+        err_sys("[utcp_listen] Failed to allocate the accept queue");
+    }
+    
+    pthread_mutex_init(&tcb->accept_q.lock, NULL);
+    pthread_cond_init(&tcb->accept_q.cond, NULL);
+
+    tcb->accept_q.backlog = backlog;
+
+    update_fsm(global->utcp_fd, LISTEN);
+    return 0;   
+}
+
+
+int utcp_accept(api_t *global)
+{
+    tcb_t *listen_tcb = get_tcb(global->utcp_fd);
+    if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
+    {
+        err_sock(listen_tcb->src_udp_fd, "[utcp_accept] Invalid listen socket");
+        return -1;
+    }
+
+    pthread_mutex_lock(&listen_tcb->accept_q.lock);
+    
+    /* block until the queue is not empty (TCB added via rx_dgram()) */
+    while (listen_tcb->accept_q.count == 0)
+    {
+        pthread_cond_wait(&listen_tcb->accept_q.cond, &listen_tcb->accept_q.lock);
+    }
+
+    // pop the established connection off the queue
+    tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
+
+    //LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
+    pthread_mutex_unlock(&listen_tcb->accept_q.lock);
+
+    established_tcb->src_udp_fd = global->udp_fd;
+    return established_tcb->fd;
 }

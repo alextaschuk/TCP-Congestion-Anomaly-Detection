@@ -1,11 +1,12 @@
-#include <utcp/server.h>
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <pthread.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -21,6 +22,7 @@
 #include <utcp/api/api.h>
 #include <utcp/api/conn.h>
 #include <utcp/api/data.h>
+#include <utcp/api/globals.h>
 #include <utcp/rx/rx_dgram.h>
 #include <utcp/api/tx_dgram.h>
 #include <utcp/api/utcp_timers.h>
@@ -30,74 +32,6 @@
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
-
-int utcp_listen(api_t *global, int backlog)
-{
-    tcb_t *tcb = get_tcb(global->utcp_fd);
-    if (!tcb)
-        return -1;
-
-    if (backlog <= 0)
-        backlog = 1;
-    else
-        backlog = MIN(backlog, MAX_BACKLOG);
-
-    /* initialize SYN queue */
-    memset(&tcb->syn_q, 0, sizeof(tcb_queue_t));
-    tcb->syn_q.tcbs = calloc(backlog, sizeof(tcb_t*));
-
-    if (!tcb->syn_q.tcbs)
-        err_sys("[utcp_listen] Failed to allocate the SYN queue");
-
-    pthread_mutex_init(&tcb->syn_q.lock, NULL);
-    tcb->syn_q.backlog = backlog;
-
-    /* initialize accept queue */
-    memset(&tcb->accept_q, 0, sizeof(tcb_queue_t));
-    tcb->accept_q.tcbs = calloc(backlog, sizeof(tcb_t*));
-
-    if (!tcb->accept_q.tcbs)
-    {
-        free(tcb->syn_q.tcbs);
-        err_sys("[utcp_listen] Failed to allocate the accept queue");
-    }
-    
-    pthread_mutex_init(&tcb->accept_q.lock, NULL);
-    pthread_cond_init(&tcb->accept_q.cond, NULL);
-
-    tcb->accept_q.backlog = backlog;
-
-    update_fsm(global->utcp_fd, LISTEN);
-    return 0;   
-}
-
-
-int utcp_accept(api_t *global)
-{
-    tcb_t *listen_tcb = get_tcb(global->utcp_fd);
-    if (!listen_tcb || listen_tcb->fsm_state != LISTEN)
-    {
-        err_sock(listen_tcb->src_udp_fd, "[utcp_accept] Invalid listen socket");
-        return -1;
-    }
-
-    pthread_mutex_lock(&listen_tcb->accept_q.lock);
-    
-    /* block until the queue is not empty (TCB added via rx_dgram()) */
-    while (listen_tcb->accept_q.count == 0)
-    {
-        pthread_cond_wait(&listen_tcb->accept_q.cond, &listen_tcb->accept_q.lock);
-    }
-
-    // pop the established connection off the queue
-    tcb_t *established_tcb = dequeue_tcb(&listen_tcb->accept_q);
-
-    //LOG_DEBUG("[utcp_accept] An established connection with fd=%i has been added. Unlocking the accept queue...", established_tcb->fd);
-    pthread_mutex_unlock(&listen_tcb->accept_q.lock);
-
-    established_tcb->src_udp_fd = global->udp_fd;
-    return established_tcb->fd;
-}
 
 
 int main(void)

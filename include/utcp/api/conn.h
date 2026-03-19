@@ -12,6 +12,14 @@ else.
 
 #include <tcp/tcb.h>
 
+/** 
+ * @brief A application-side function that is used to establish a UTCP connection.
+ * 
+ * This function creates a new TCB for the client and initializes its necessary values.
+ * 
+ * @return The FD of the newly-created TCB.
+ */
+static int utcp_connect(int utcp_fd, const struct sockaddr_in *dest_addr);
 
 /**
  * @brief An application-side function to bind a UDP socket.
@@ -69,6 +77,27 @@ tcb_t *find_listen_tcb(void);
 
 
 void *utcp_listen_thread(void *arg);
+
+
+/**
+ * @brief An application-side function to tell us (pretending we're the OS)
+ * that the app is ready to receive connection requests.
+ * 
+ * The SYN and accept queues are initialized and the listen socket's state is
+ * set to `LISTEN`.
+ * @param utcp_fd The listen socket's TCB FD
+ * @param backlog The maximum number of TCBs that each queue can store at a time
+ */
+int utcp_listen(api_t *global, int backlog);
+
+
+/**
+ * @brief An application-side function that is called when the app wants to accept
+ * a connection request that is sitting in the accept queue.
+ * 
+ * @returns `-1` for invalid socket, or `int fd`, a UTCP fd, on success.
+ */
+int utcp_accept(api_t *global);
 
 
 /**
