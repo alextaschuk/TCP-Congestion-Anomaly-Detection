@@ -148,7 +148,7 @@ int main(void)
     tcb_t *active_tcb = get_tcb(utcp_fd);
     while(active_tcb->rx_tail - active_tcb->rx_head > 0)
         usleep(100000); // let everything in RX go to the client
-    sleep(2);
+    sleep(10);
 
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
     fclose(fp);
