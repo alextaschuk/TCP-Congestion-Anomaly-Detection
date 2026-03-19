@@ -64,9 +64,6 @@ uint16_t bind_udp_sock(int pts)
         return global->udp_fd;
     }
 
-    if (udp_sock_open == 1)
-        err_sock(-1, "[bind_udp_sock] socket already bound");
-
     struct sockaddr_in addr = 
     {
         .sin_family = AF_INET,
@@ -156,10 +153,7 @@ tcb_t *alloc_new_tcb(void)
     /* Create a new TCB and put it in the available spot */
     tcb_t *new_tcb = calloc(1, sizeof(tcb_t));
     if (!new_tcb)
-    {
-        free(new_tcb);
         err_sys("[alloc_new_tcb] Failed to calloc *new_tcb");
-    }
 
     global->tcb_lookup[fd] = new_tcb;
 

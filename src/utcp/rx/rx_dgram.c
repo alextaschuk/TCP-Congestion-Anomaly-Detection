@@ -31,7 +31,6 @@ ssize_t rcv_dgram(int udp_fd)
     buf = malloc((size_t)BUF_SIZE);
     if (!buf)
     {
-        free(buf);
         LOG_ERROR("[rcv_dgram] Failed to allocate receive buffer");
         return -1;
     }
@@ -86,8 +85,8 @@ ssize_t rcv_dgram(int udp_fd)
                 }
 
                 uint16_t dest_utcp_port = hdr->th_sport;
-                uint32_t dest_ip = ntohl(from.sin_addr.s_addr);
-                uint16_t dest_udp_port = ntohs(from.sin_port);
+                uint32_t dest_ip = remote_ip;
+                uint16_t dest_udp_port = remote_udp_port;
                 uint16_t src_utcp_port = target_tcb->fourtuple.source_port;
     
                 LOG_INFO("[rcv_dgram] Received a valid SYN. Creating new TCB and placing it in the SYN queue...");
@@ -139,12 +138,12 @@ ssize_t rcv_dgram(int udp_fd)
                 if (data_len > 0) // we won't be using TCP Fast Open
                 {
                     LOG_ERROR("[rcv_dgram] ACK contains non-header data");
-                    return -1;
+                    break;
                 }
                 if (hdr->th_ack != target_tcb->snd_nxt)
                 {
                     LOG_ERROR("[rcv_dgram] Received ACK=%u is not equal to snd_nxt=%u", hdr->th_ack, target_tcb->snd_nxt);
-                    return -1;
+                    break;
                 }
 
                 target_tcb->irs = hdr->th_seq;

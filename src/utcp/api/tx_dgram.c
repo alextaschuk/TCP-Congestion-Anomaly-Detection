@@ -25,15 +25,16 @@ uint8_t tcp_outflags[] = {
  */
 static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_len, uint8_t flags)
 {
-    /* Allocate for a segment (TCP header + options + payload) */
+    /* Stack-allocate the segment (TCP header + options + payload).
+     * Max size: 20-byte header + 40-byte options + MSS payload. */
     size_t segment_size = sizeof(struct tcphdr) + opt_len + data_len;
-    
-    tcp_segment_t *segment = malloc(segment_size);
-    if (!segment)
+    uint8_t seg_buf[sizeof(struct tcphdr) + 40 + MSS];
+    if (segment_size > sizeof(seg_buf))
     {
-        free(segment);
-        LOG_ERROR("[send_dgram] error allocating segment");
+        LOG_ERROR("[send_segment] segment_size=%zu exceeds stack buffer (%zu)", segment_size, sizeof(seg_buf));
+        return -1;
     }
+    tcp_segment_t *segment = (tcp_segment_t *)seg_buf;
         
 
     /* Initialize the segment's base header */
@@ -131,7 +132,6 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     if (bytes_sent < 0)
         err_sys("[send_dgram] Error sending packet");
 
-    free(segment);
     return bytes_sent;
 }
 
@@ -277,6 +277,14 @@ int send_dgram(tcb_t *tcb)
         {
             LOG_ERROR("[send_dgram] Error occurred in send_segment(). Exiting loop.");
             break;
+        }
+
+        /* Every outgoing segment carries the current rcv_nxt as its ACK field,
+         * so any deferred ACK is now satisfied.  Cancel the delayed ACK timer. */
+        if (tcb->t_flags & F_DELACK)
+        {
+            tcb->t_flags &= ~F_DELACK;
+            pause_timer(tcb, TCPT_DELACK);
         }
 
         total_bytes_sent += bytes_sent;

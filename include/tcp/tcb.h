@@ -70,6 +70,7 @@ typedef struct tcb_t
     
     uint16_t t_flags;         /* Internal TCB control flags necessary for forcing certain things. */
     #define F_ACKNOW 0x0001   /* Send an immediate ACK segment with an empty payload. */
+    #define F_DELACK 0x0002   /* Delayed ACK pending; TCPT_DELACK timer is running. */
 
     /* Congestion Avoidance*/
     

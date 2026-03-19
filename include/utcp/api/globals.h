@@ -64,6 +64,7 @@ typedef struct tcb_t tcb_t;
 #define TCPTV_REXMTMAX SEC_TO_TICKS(64)     /* 64 seconds max RTO */
 #define TCPTV_MIN MS_TO_TICKS(200)          /* minimum value of retransmission timer (1 sec)*/
 #define TCPTV_SRTTDFLT MS_TO_TICKS(1000)    /* 1 second assumed RTO if no info (RFC 6298) */
+#define TCPTV_DELACK   MS_TO_TICKS(200)     /* max delayed ACK delay: 200ms (RFC 1122 §4.2.3.2) */
 #define MAXRXTSHIFT 12                      /* maximum number of retransmissions waiting for an ACK */
 
  /* Persist Timer Stuff*/

@@ -39,7 +39,8 @@ void handle_data(
         if (SEQ_GT(tcb->snd_una, tcb->snd_nxt))
             tcb->snd_nxt = tcb->snd_una;
 
-        tcb->dupacks = 0; // clear the duplicate ACK counter
+        tcb->dupacks = 0;   // clear the duplicate ACK counter
+        tcb->rxtshift = 0;  // reset exponential backoff after a successful ACK (RFC 6298 §5.4)
 
         // slide the snd_wnd over
         uint32_t old_tx_head = tcb->tx_head;
@@ -170,6 +171,38 @@ void handle_data(
 
             if (tcb->dupacks > 0)
                 tcb->t_flags |= F_ACKNOW;
+
+            /*
+             * Delayed ACK (RFC 1122 §4.2.3.2):
+             * Defer the ACK by up to TCPTV_DELACK ms to allow a reply
+             * segment to carry a piggybacked ACK, or to batch two
+             * consecutive segments into one ACK.
+             *
+             * Rules:
+             *  - If an immediate ACK is already required (F_ACKNOW), skip.
+             *  - If F_DELACK is already set, a previous segment is waiting
+             *    on this same timer.  Send the ACK now to honour the
+             *    "at most every other segment" requirement, then clear the flag.
+             *  - Otherwise, arm the timer and set F_DELACK.
+             */
+            if (!(tcb->t_flags & F_ACKNOW))
+            {
+                if (tcb->t_flags & F_DELACK)
+                {
+                    /* Second consecutive in-order segment — cancel timer, ACK now. */
+                    LOG_DEBUG("[handle_data] DELACK: consecutive segment, sending immediate ACK (rcv_nxt=%u).", tcb->rcv_nxt);
+                    tcb->t_flags &= ~F_DELACK;
+                    pause_timer(tcb, TCPT_DELACK);
+                    tcb->t_flags |= F_ACKNOW;
+                }
+                else
+                {
+                    /* First segment — arm the delayed ACK timer. */
+                    LOG_DEBUG("[handle_data] DELACK: arming %d-tick delayed ACK timer (rcv_nxt=%u).", TCPTV_DELACK, tcb->rcv_nxt);
+                    tcb->t_flags |= F_DELACK;
+                    tcb->t_timer[TCPT_DELACK] = TCPTV_DELACK;
+                }
+            }
         }
         else
         {

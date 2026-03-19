@@ -166,6 +166,24 @@ static void handle_rexmt_timeout(tcb_t *tcb)
 }
 
 
+/**
+ * Handles the delayed ACK timer when it expires.
+ *
+ * Called by the ticker thread when TCPT_DELACK reaches zero.  Sends a pure
+ * ACK for all in-order data received since the timer was last armed, then
+ * clears the F_DELACK flag so the next data segment re-arms a fresh timer.
+ *
+ * @param *tcb The TCB whose delayed ACK timer just expired.
+ */
+static void handle_delack_timeout(tcb_t *tcb)
+{
+    LOG_DEBUG("[handle_delack_timeout] Delayed ACK timer expired. Sending deferred ACK (rcv_nxt=%u).", tcb->rcv_nxt);
+    tcb->t_flags &= ~F_DELACK;
+    tcb->t_flags |= F_ACKNOW;
+    send_dgram(tcb);
+}
+
+
 void utcp_timeout(tcb_t *tcb, short timer)
 {
     switch(timer)
@@ -175,7 +193,7 @@ void utcp_timeout(tcb_t *tcb, short timer)
             break;
 
         case TCPT_PERSIST: // persist
-        /* 
+        /*
          * There is data to send, but it is being stopped b/c the
          * receiver's advertised window (tcb->rwnd) is 0.
         */
@@ -192,6 +210,7 @@ void utcp_timeout(tcb_t *tcb, short timer)
             break;
 
         case TCPT_DELACK: // delayed ACK
+            handle_delack_timeout(tcb);
             break;
             
         default:

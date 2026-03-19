@@ -32,14 +32,18 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
         }
 
         if (opt_len < 2)
-            LOG_WARN("[find_timestamps] Malformed options: cut off before length byte");
+        {
+            LOG_WARN("[find_timestamps] Malformed options: truncated before length byte");
+            break;
+        }
 
         /* check for multi-byte options that have length & value bytes*/
         uint8_t opt_size = opt_ptr[1];
-        
+
         if (opt_size < 2 || opt_size > opt_len)
         {
-            LOG_WARN("[find_timestamps] Malformed options: missing or invalid length byte.");
+            LOG_WARN("[find_timestamps] Malformed options: invalid length byte (%u), stopping parse.", opt_size);
+            break;
         }
             
         switch (opt_kind)
@@ -89,7 +93,7 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
         opt_ptr += opt_size;
         opt_len -= opt_size;
     }
-    return false;
+    return opts->has_ts;
 }
 
 
@@ -104,7 +108,7 @@ void process_tcp_options(tcb_t *tcb, struct tcphdr *hdr, bool is_syn)
          * PAWS (See RFC 1323, Section 4): An ACK may contain a payload of data that is
          * out of order, so we only want to update the peer's timestamp if it is in order.
          */
-        if (hdr->th_seq <= tcb->rcv_nxt)
+        if (SEQ_LEQ(hdr->th_seq, tcb->rcv_nxt))
         {
             //uint32_t old_ts_val = tcb->ts_rcv_val;
             tcb->ts_rcv_val = opts.ts_val;
