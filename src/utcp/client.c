@@ -29,6 +29,8 @@ _Thread_local const char* current_thread_cat = "main_thread";
 
 int main(void)
 {
+    /*
+    // use this for sending data to client
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -90,7 +92,9 @@ int main(void)
         free(snd_buf);
         LOG_INFO("[Client App] File queued successfully. Total bytes: %zu", total_file_bytes);
         return 0;
-    /*
+    */
+   
+    // use this for receiving data from server
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -126,10 +130,10 @@ int main(void)
     printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_received < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_rcv_buf, APP_BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_recv_buf, APP_BUF_SIZE);
         if (bytes_rcvd > 0)
         {
-            fwrite(app_rcv_buf, 1, bytes_rcvd, fp);
+            fwrite(app_recv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_received += (size_t)bytes_rcvd;
             printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_received, file_size_bytes);
@@ -148,7 +152,6 @@ int main(void)
 
     LOG_INFO("[Client App] Finished. Received %zu bytes total", total_received);
     fclose(fp);
-    free(app_rcv_buf);
+    free(app_recv_buf);
     return 0;
-    */
 }
