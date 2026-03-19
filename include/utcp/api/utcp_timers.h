@@ -33,7 +33,7 @@ extern const int tcp_backoff[];
 
 /* Define functions */
 
-void* utcp_slowtimo_thread(void);
+void *utcp_slowtimo_thread(void *arg);
 
 /**
  * @brief Gets the current time, in milliseconds, for the user.
