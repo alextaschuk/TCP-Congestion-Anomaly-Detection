@@ -71,43 +71,39 @@ int main(void)
     new_tcb->src_udp_fd = global->udp_fd;
     pthread_mutex_unlock(&new_tcb->lock);
 
-    FILE *fp = fopen("../test_file.txt", "rb"); // rb to prevent OS from changing newline characters
+    FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
     if (!fp)
-        err_sys("[Server App] Failed to open text file");
-            
-    struct stat st;
-    if (stat("../test_file.txt", &st) == -1)
-        err_sys("[Client App] Failed to get filesize");
+        err_sys("[Server App] Failed to create destination file");
     
     size_t file_size_bytes = 1000000000;// 1GB
     //uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
     uint8_t *app_recv_buf = malloc(65536);
     size_t total_recvd = 0;
 
-    printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
+    printf("Server: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_recvd < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_recv_buf, APP_BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, APP_BUF_SIZE);
         if (bytes_rcvd > 0)
         {
             fwrite(app_recv_buf, 1, bytes_rcvd, fp);
             fflush(fp); // forces the OS to write to the txt file immediately
             total_recvd += (size_t)bytes_rcvd;
-            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_recvd, file_size_bytes);
+            printf("Server Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_recvd, file_size_bytes);
             fflush(stdout);
         }
         if (bytes_rcvd < 0)
         {
-            LOG_ERROR("[Client App] Error receiving data.");
+            LOG_ERROR("[Server App] Error receiving data.");
             break; 
         }
     }
-    tcb_t *active_tcb = get_tcb(utcp_fd);
-    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
+    
+    while(new_tcb->rx_tail - new_tcb->rx_head > 0)
         usleep(100000); // let everything in RX go to the client
     sleep(2);
 
-    LOG_INFO("[Client App] Finished. Received %zu bytes total", total_recvd);
+    LOG_INFO("[Server App] Finished. Received %zu bytes total", total_recvd);
     fclose(fp);
     free(app_recv_buf);
     return 0;

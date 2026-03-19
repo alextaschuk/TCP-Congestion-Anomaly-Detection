@@ -54,7 +54,7 @@ int main(void)
 
     FILE *fp = fopen("../test_file.txt", "rb"); // rb to prevent OS from changing newline characters
     if (!fp)
-        err_sys("[Server App] Failed to open text file");
+        err_sys("[Client App] Failed to open text file");
             
     struct stat st;
     if (stat("../test_file.txt", &st) == -1)
@@ -66,18 +66,18 @@ int main(void)
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
-    printf("Server: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
+    printf("Client: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
     while((bytes_read = fread(snd_buf, 1, 64000, fp)) > 0)
     {
         ssize_t sent = utcp_send(utcp_fd, snd_buf, bytes_read);
         if (sent < 0)
         {
-            LOG_ERROR("[Server App] Connection dropped during file transfer.");
+            LOG_ERROR("[Client App] Connection dropped during file transfer.");
             break;
         }
 
         total_file_bytes += sent;
-        printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
+        printf("Client Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
         fflush(stdout);
     }
 
@@ -88,7 +88,7 @@ int main(void)
 
         fclose(fp);
         free(snd_buf);
-        LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
+        LOG_INFO("[Client App] File queued successfully. Total bytes: %zu", total_file_bytes);
         return 0;
     /*
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
