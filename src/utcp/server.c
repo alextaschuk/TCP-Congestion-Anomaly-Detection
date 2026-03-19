@@ -36,8 +36,8 @@ _Thread_local const char* current_thread_cat = "main_thread";
 
 int main(void)
 {
-    /*
-    // Use this for receiving data from client
+    ///*
+    // Use this for receiving data from the client
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -52,7 +52,6 @@ int main(void)
     };
     
     utcp_bind(utcp_fd, &server);
-    //log_tcb(get_tcb(utcp_fd), "Post init TCB:");
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[main] Error in utcp_listen");
@@ -106,8 +105,9 @@ int main(void)
     fclose(fp);
     free(app_recv_buf);
     return 0;
-    */
-    ///*
+    //*/
+
+    /*
     // Use this for sending data to client
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
@@ -182,5 +182,5 @@ int main(void)
         free(snd_buf);
         LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
         return 0;
-    //*/
+    */
 }

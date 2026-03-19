@@ -29,8 +29,8 @@ _Thread_local const char* current_thread_cat = "main_thread";
 
 int main(void)
 {
-     /*
-    // use this for sending data to client
+    ///*
+    // Use this for sending data to the server
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
@@ -92,8 +92,9 @@ int main(void)
         free(snd_buf);
         LOG_INFO("[Client App] File queued successfully. Total bytes: %zu", total_file_bytes);
         return 0;
-     */
-    ///*
+    //*/
+
+    /*
     // use this for receiving data from server
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
