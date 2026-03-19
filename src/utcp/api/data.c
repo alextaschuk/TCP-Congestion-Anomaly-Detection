@@ -59,7 +59,7 @@ ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
         data_ptr += to_write; // go to the next chunk of data.
         remaining -= to_write;
 
-        LOG_DEBUG("[utcp_send] Added %zu bytes to send buffer on fd %i. %zu bytes remaining.", to_write, snder_tcb->fd, remaining);
+        //LOG_DEBUG("[utcp_send] Added %zu bytes to send buffer on fd %i. %zu bytes remaining.", to_write, snder_tcb->fd, remaining);
 
         send_dgram(snder_tcb); // try to send the data to the peer
     }

@@ -14,7 +14,6 @@
 const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
 
-
 static uint64_t utcp_ticker(void)
 {
     struct timespec ts;

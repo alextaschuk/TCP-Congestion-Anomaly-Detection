@@ -218,8 +218,8 @@ int send_dgram(tcb_t *tcb)
             if (tcb->tx_tail > data_bytes_sent)
                 buffered_bytes = tcb->tx_tail - data_bytes_sent;
 
-            LOG_DEBUG("[send_dgram] Window Calculation: Used snd_wnd=%u, cwnd=%u, to calculate effective wnd=%u, bytes in flight=%u, bytes buffered=%u",
-                        tcb->snd_wnd, tcb->cwnd, send_window, unacked_bytes_in_flight, buffered_bytes);
+            //LOG_DEBUG("[send_dgram] Window Calculation: Used snd_wnd=%u, cwnd=%u, to calculate effective wnd=%u, bytes in flight=%u, bytes buffered=%u",
+            //            tcb->snd_wnd, tcb->cwnd, send_window, unacked_bytes_in_flight, buffered_bytes);
 
             /* How many bytes can we fit into the current segment? */
             if (send_window > unacked_bytes_in_flight)
