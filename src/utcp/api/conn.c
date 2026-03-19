@@ -245,7 +245,7 @@ int spawn_threads(api_t *global)
         return -1;
     }
 
-    if (pthread_create(&ticker_thread, NULL, utcp_slowtimo_thread, NULL) != 0)
+    if (pthread_create(&ticker_thread, NULL, (void *(*)(void *))utcp_slowtimo_thread, NULL) != 0)
     {
         LOG_INFO("[spawn_threads] Failed to create ticker thread");
         return -1;

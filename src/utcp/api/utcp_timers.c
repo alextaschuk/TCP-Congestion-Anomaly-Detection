@@ -1,9 +1,9 @@
 #include <utcp/api/utcp_timers.h>
 
+#include <pthread.h>
 #include <stdio.h>
 #include <time.h>
-
-#include <pthread.h>
+#include <unistd.h>
 
 #include <tcp/hndshk_fsm.h>
 #include <utils/err.h>
@@ -28,8 +28,9 @@ static uint64_t utcp_ticker(void)
 }
 
 
-void *utcp_slowtimo_thread(void) 
+void *utcp_slowtimo_thread(void *arg) 
 {
+    (void)arg;
     api_t *global = api_instance();
     
     //current_thread_cat = "ticker_thread";
