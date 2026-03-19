@@ -264,14 +264,11 @@ int spawn_threads(api_t *global)
 void *utcp_listen_thread(void *arg)
 {
     current_thread_cat = "listen_thread";
-    
-    api_t *global = (api_t *)arg;
-    while (1)
-    {
-        ssize_t rcvsize = rcv_dgram(global->udp_fd, BUF_SIZE);
-        if (rcvsize < 0)
-            err_sys("[Server, listen thread] Error receiving packet");
-    }
+    api_t *global      = (api_t *)arg;
+    ssize_t rcvsize    = rcv_dgram(global->udp_fd);
+
+    if (rcvsize < 0)
+        err_sys("[Server, listen thread]: rcv_dgram exited unexpectedly");
     
     return 0;
 }

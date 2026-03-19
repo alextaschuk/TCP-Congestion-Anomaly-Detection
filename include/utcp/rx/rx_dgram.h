@@ -16,9 +16,8 @@
  * decide what to do with it.
  * 
  * @param udp_fd The receiving UDP socket's FD.
- * @param buflen The max number of bytes the receiver is willing to get.
  * 
  */
-ssize_t rcv_dgram(int udp_fd, ssize_t buflen);
+ssize_t rcv_dgram(int udp_fd);
  
 #endif
