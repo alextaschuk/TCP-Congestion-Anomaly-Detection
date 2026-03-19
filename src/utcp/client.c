@@ -52,42 +52,44 @@ int main(void)
     utcp_bind(utcp_fd, &client);
     utcp_connect(utcp_fd, &server);
 
-    FILE *fp = fopen("../test_rcvd.txt", "wb"); // wb to ensure it's an exact copy
+    FILE *fp = fopen("../test_file.txt", "rb"); // rb to prevent OS from changing newline characters
     if (!fp)
-        err_sys("[Client App] Failed to create destination file");
+        err_sys("[Server App] Failed to open text file");
+            
+    struct stat st;
+    if (stat("../test_file.txt", &st) == -1)
+        err_sys("[Client App] Failed to get filesize");
+    
+    size_t file_size_bytes = (size_t)st.st_size;
+    //uint8_t *snd_buf = malloc(APP_BUF_SIZE);
+    uint8_t *snd_buf = malloc(64000);
+    size_t bytes_read = 0;
+    size_t total_file_bytes = 0;
 
-    size_t file_size_bytes = 1000000000;// 1GB
-    //uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
-    uint8_t *app_recv_buf = malloc(65536);
-    size_t total_recvd = 0;
+    printf("Server: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
+    while((bytes_read = fread(snd_buf, 1, 64000, fp)) > 0)
+    {
+        ssize_t sent = utcp_send(utcp_fd, snd_buf, bytes_read);
+        if (sent < 0)
+        {
+            LOG_ERROR("[Server App] Connection dropped during file transfer.");
+            break;
+        }
 
-    printf("Client: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
-    while(total_recvd < file_size_bytes)
-    {   
-        ssize_t bytes_rcvd = utcp_recv(utcp_fd, app_recv_buf, APP_BUF_SIZE);
-        if (bytes_rcvd > 0)
-        {
-            fwrite(app_recv_buf, 1, bytes_rcvd, fp);
-            fflush(fp); // forces the OS to write to the txt file immediately
-            total_recvd += (size_t)bytes_rcvd;
-            printf("Client Application: Wrote %zd bytes to disk. Total: %zu/%zu\r", bytes_rcvd, total_recvd, file_size_bytes);
-            fflush(stdout);
-        }
-        if (bytes_rcvd < 0)
-        {
-            LOG_ERROR("[Client App] Error receiving data.");
-            break; 
-        }
+        total_file_bytes += sent;
+        printf("Server Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
+        fflush(stdout);
     }
-    tcb_t *active_tcb = get_tcb(utcp_fd);
-    while(active_tcb->rx_tail - active_tcb->rx_head > 0)
-        usleep(100000); // let everything in RX go to the client
+
+    tcb_t *active_tcb = get_tcb(utcp_fd); 
+    while(active_tcb->tx_tail - active_tcb->tx_head > 0)
+        usleep(100000); // let everything in TX be sent out
     sleep(2);
 
-    LOG_INFO("[Client App] Finished. Received %zu bytes total", total_recvd);
-    fclose(fp);
-    free(app_recv_buf);
-    return 0;
+        fclose(fp);
+        free(snd_buf);
+        LOG_INFO("[Server App] File queued successfully. Total bytes: %zu", total_file_bytes);
+        return 0;
     /*
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
