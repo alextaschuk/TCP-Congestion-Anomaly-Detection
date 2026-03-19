@@ -13,18 +13,42 @@
 
 const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
-void* utcp_ticker_thread(void) 
+void* utcp_ticker_thread(void)
 {
     current_thread_cat = "ticker_thread";
     LOG_INFO("[utcp_ticker_thread] UTCP 1ms slow timer started...");
 
-    struct timespec ts;
-    ts.tv_sec = 0; // 0 seconds
-    ts.tv_nsec = TCP_TICK_MS * 1000000L; // 1000000L = 1,000,000 nanoseconds
-    while (1) 
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+
+    // Absolute deadline for the next tick in nanoseconds.
+    uint64_t next_tick_ns = (uint64_t)now.tv_sec * 1000000000ULL + (uint64_t)now.tv_nsec
+                            + (uint64_t)TCP_TICK_MS * 1000000ULL;
+
+    while (1)
     {
-        nanosleep(&ts, NULL); // sleep for 10ms
-        utcp_slowtimo(); // wake up and process all TCP timers
+        // Sleep only for the time remaining until the next scheduled tick.
+        // This way, processing time inside utcp_slowtimo() does not accumulate as drift.
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        uint64_t now_ns = (uint64_t)now.tv_sec * 1000000000ULL + (uint64_t)now.tv_nsec;
+
+        if (now_ns < next_tick_ns)
+        {
+            uint64_t sleep_ns = next_tick_ns - now_ns;
+            struct timespec sleep_ts = {
+                .tv_sec  = (time_t)(sleep_ns / 1000000000ULL),
+                .tv_nsec = (long)  (sleep_ns % 1000000000ULL),
+            };
+            nanosleep(&sleep_ts, NULL);
+        }
+        else
+        {
+            LOG_WARN("[utcp_ticker_thread] Missed a tick by %llu ms.", (unsigned long long)((now_ns - next_tick_ns) / 1000000ULL));
+        }
+
+        utcp_slowtimo();
+
+        next_tick_ns += (uint64_t)TCP_TICK_MS * 1000000ULL;
     }
 }
 

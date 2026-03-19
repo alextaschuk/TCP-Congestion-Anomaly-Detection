@@ -85,7 +85,7 @@ int main(void)
     printf("Server: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_recvd < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, APP_BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, 65536);
         if (bytes_rcvd > 0)
         {
             fwrite(app_recv_buf, 1, bytes_rcvd, fp);
