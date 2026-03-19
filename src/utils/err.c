@@ -15,7 +15,7 @@ void err_sys(const char* x)
     const char *backup = "(null) error occurred somewhere";
     const char *msg = x ? x : backup;
     
-    LOG_FATAL(msg);
+    LOG_FATAL("%s", msg);
     perror(msg);
     exit(EXIT_FAILURE);
 }

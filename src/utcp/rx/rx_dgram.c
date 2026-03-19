@@ -180,8 +180,6 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
                     }
 
                     tcb_t *listen_tcb = find_listen_tcb();
-                    uint32_t remote_ip = ntohl(from.sin_addr.s_addr);
-                    uint16_t remote_utcp_port = hdr->th_sport;
 
                     pause_timer(target_tcb, TCPT_REXMT);
                     target_tcb->rxtshift = 0;
@@ -212,8 +210,9 @@ ssize_t rcv_dgram(int udp_fd, ssize_t buflen)
 
             default:
                 LOG_ERROR("[rcv_dgram] TCB's FSM is not in a valid state to receive data");
+                break;
             }
-            //LOG_DEBUG("[rcv_dgram] Unlocking the TCB.");
+
             pthread_mutex_unlock(&target_tcb->lock);
     }
     free(buf);

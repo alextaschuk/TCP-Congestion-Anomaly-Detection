@@ -8,8 +8,6 @@
 static void newreno_ack_received(tcb_t *tcb, uint32_t newly_acked_bytes)
 {
     /* handle Slow Start, CA, and partial ACKs */
-    uint32_t old_cwnd = tcb->cwnd;
-
     if (tcb->ca_state == RECOVERY)
     {
         if (SEQ_GEQ(tcb->snd_una, tcb->recover))

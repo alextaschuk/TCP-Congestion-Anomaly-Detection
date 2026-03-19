@@ -82,7 +82,7 @@ void update_fsm(int utcp_fd, enum conn_state state)
     if (tcb == NULL)
         LOG_ERROR("[update_fsm] TCB with fd=%i is invalid.", utcp_fd);
     
-    char *old_state = fsm_state_to_str(tcb->fsm_state);
+    const char *old_state = fsm_state_to_str(tcb->fsm_state);
 
     tcb->fsm_state = state;
 

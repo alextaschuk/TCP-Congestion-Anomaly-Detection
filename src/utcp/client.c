@@ -31,8 +31,6 @@ int main(void)
     if (init_zlog("zlog_client.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
 
-    api_t *global = api_instance();
-
     bind_udp_sock(0);
     int utcp_fd = utcp_sock();
 

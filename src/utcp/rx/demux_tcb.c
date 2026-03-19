@@ -57,7 +57,7 @@ tcb_t* demux_tcb(
         {
             int idx = (listen_tcb->syn_q.head + i) % MAX_BACKLOG;
 
-            tcb_t *syn_tcb = &listen_tcb->syn_q.tcbs[idx];
+            tcb_t *syn_tcb = listen_tcb->syn_q.tcbs[idx];
             if (syn_tcb == NULL)
                 continue;
             
