@@ -110,7 +110,7 @@ int main(void)
     free(app_recv_buf);
     return 0;
 
-    */
+    /*
     // Use this for sending data to client
     if (init_zlog("zlog_server.conf") != 0) // initialize logger
         err_sys("Error initializing zlog");
