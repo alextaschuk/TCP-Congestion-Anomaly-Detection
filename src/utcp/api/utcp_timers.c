@@ -65,7 +65,7 @@ void *utcp_slowtimo_thread(void)
     
         pthread_mutex_unlock(&global->lookup_lock);
 
-        uint64_t now = get_current_time_ms(); 
+        uint64_t now = utcp_ticker(); 
         
         // Ticker may have drifted due to computation time. Sleep only for the remaining time until the next absolute tick.
         if (now < next_tick_time)
