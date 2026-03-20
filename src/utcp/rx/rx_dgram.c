@@ -28,8 +28,7 @@ ssize_t rcv_dgram(int udp_fd)
     ssize_t rcvsize; // number of bytes rcv'd
     
     uint8_t *buf = NULL;
-    //buf = malloc((size_t)BUF_SIZE);
-    buf = malloc(1500);
+    buf = malloc(1460); // This is bounded in send_segment() by seg_buf
     if (!buf)
     {
         LOG_ERROR("[rcv_dgram] Failed to allocate receive buffer");
@@ -43,7 +42,7 @@ ssize_t rcv_dgram(int udp_fd)
     for(;;)
     { // continuously listen for incoming packets
         //rcvsize = recvfrom(udp_fd, buf, (size_t)BUF_SIZE, 0, (struct sockaddr *)&from, &fromlen);
-        rcvsize = recvfrom(udp_fd, buf, 1500, 0, (struct sockaddr *)&from, &fromlen);
+        rcvsize = recvfrom(udp_fd, buf, 1460, 0, (struct sockaddr *)&from, &fromlen);
 
         if (rcvsize < 0 || rcvsize == 0)
         { // rcvsize == 0 would normally indicate a connection shutdown process
