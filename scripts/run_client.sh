@@ -2,7 +2,8 @@
 
 # script should be run from /build directory via `bash ../scripts/run_client.sh`
 
-#rm ../test_rcvd.txt
+rm log/events.csv
+rm log/client.log
 
 bash ../scripts/compile.sh
 
