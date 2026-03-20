@@ -71,7 +71,7 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to create destination file");
     
-    size_t file_size_bytes = 2000000000;// 5GB
+    size_t file_size_bytes = 5000000000;// 5GB
     //uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
     uint8_t *app_recv_buf = malloc(65536);
     size_t total_recvd = 0;
