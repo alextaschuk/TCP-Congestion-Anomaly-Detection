@@ -32,14 +32,13 @@ void deserialize_utcp_packet
     *out_hdr = (struct tcphdr *)buf;
 
     /* Convert header fields from NETWORK byte order to HOST byte order */
-
     (*out_hdr)->th_sport = ntohs((*out_hdr)->th_sport); // src port
     (*out_hdr)->th_dport = ntohs((*out_hdr)->th_dport); // dest port
-    (*out_hdr)->th_seq = ntohl((*out_hdr)->th_seq); // seq #
-    (*out_hdr)->th_ack = ntohl((*out_hdr)->th_ack); // ack #
-    (*out_hdr)->th_win = ntohs((*out_hdr)->th_win); // rcv window size
-    (*out_hdr)->th_sum = ntohs((*out_hdr)->th_sum); // checksum
-    (*out_hdr)->th_urp = ntohs((*out_hdr)->th_urp); // urgent pointer
+    (*out_hdr)->th_seq = ntohl((*out_hdr)->th_seq);     // seq #
+    (*out_hdr)->th_ack = ntohl((*out_hdr)->th_ack);     // ack #
+    (*out_hdr)->th_win = ntohs((*out_hdr)->th_win);     // rcv window size
+    (*out_hdr)->th_sum = ntohs((*out_hdr)->th_sum);     // checksum
+    (*out_hdr)->th_urp = ntohs((*out_hdr)->th_urp);     // urgent pointer
 
     size_t hdrlen = (*out_hdr)->th_off * 4; // how many 32-bit words the header + options consume
 
@@ -65,13 +64,12 @@ struct tcb_t *get_tcb(int utcp_fd)
     tcb_t *tcb = global->tcb_lookup[utcp_fd];
     pthread_mutex_unlock(&global->lookup_lock);
 
-    if (tcb == NULL)
+    if (!tcb)
     {
         LOG_WARN("[get_tcb] TCB with fd=%u was not found", utcp_fd);
         return NULL;
     }
 
-    //LOG_INFO("[get_tcb] Found the TCB you're looking for at FD %u", utcp_fd);
     return tcb;
 }
 
@@ -79,7 +77,7 @@ struct tcb_t *get_tcb(int utcp_fd)
 void update_fsm(int utcp_fd, enum conn_state state)
 { 
     tcb_t *tcb = get_tcb(utcp_fd);
-    if (tcb == NULL)
+    if (!tcb)
         LOG_ERROR("[update_fsm] TCB with fd=%i is invalid.", utcp_fd);
     
     const char *old_state = fsm_state_to_str(tcb->fsm_state);
@@ -98,18 +96,13 @@ void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, 
     uint32_t physical_offset = offset % buf_size;
 
     if (physical_offset + data_len <= buf_size)
-    {
-        // Contiguous read. Offset pointer by opt_len to skip options
-        memcpy(dst + opt_len, &ring_buf[physical_offset], data_len);
-    }
+        memcpy(dst + opt_len, &ring_buf[physical_offset], data_len); // Contiguous read. Offset pointer by opt_len to skip options
     else
-    {
-        // Wrap-around read
+    { // Wrap-around read
         size_t part1_len = buf_size - physical_offset;
         size_t part2_len = data_len - part1_len;
 
         //LOG_DEBUG("[send_segment] Data wraps around ring buffer. Copying %zu bytes from end, %zu bytes from start.", part1_len, part2_len);
-
         memcpy(dst + opt_len, &ring_buf[physical_offset], part1_len);
         memcpy(dst + opt_len + part1_len, &ring_buf[0], part2_len);
     }
@@ -124,13 +117,9 @@ void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, const
     uint32_t physical_offset = offset % buf_size;
 
     if (physical_offset + len <= buf_size)
-    {
-        // Contiguous write
-        memcpy(&ring_buf[physical_offset], src, len);
-    }
+        memcpy(&ring_buf[physical_offset], src, len); // Contiguous write
     else
-    {
-        // Wrap-around write
+    { // Wrap-around write
         size_t part1_len = buf_size - physical_offset;
         size_t part2_len = len - part1_len;
 

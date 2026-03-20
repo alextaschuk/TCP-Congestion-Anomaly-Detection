@@ -14,6 +14,11 @@
 const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
 
+/**
+ * Returns the system's monotonic time in milliseconds.
+ * 
+ * @note This value represents how much time has passed since some starting point, not the actual time.
+ */
 static uint64_t utcp_ticker(void)
 {
     struct timespec ts;
@@ -27,6 +32,12 @@ static uint64_t utcp_ticker(void)
 }
 
 
+uint32_t tcp_now(void)
+{
+    return (uint32_t)utcp_ticker();
+}
+
+
 void *utcp_slowtimo_thread(void *arg) 
 {
     (void)arg;
@@ -36,7 +47,6 @@ void *utcp_slowtimo_thread(void *arg)
     //LOG_INFO("[utcp_ticker_thread] slow timer woke up. Tick interval: %dms", TCP_TICK_MS);
     
     uint64_t next_tick_time = utcp_ticker() + TCP_TICK_MS;
-
     while(1)
     {
         pthread_mutex_lock(&global->lookup_lock);
@@ -54,7 +64,6 @@ void *utcp_slowtimo_thread(void *arg)
                 if (tcb->t_timer[timer_idx] > 0) 
                 {
                     tcb->t_timer[timer_idx]--;
-
                     if (tcb->t_timer[timer_idx] == 0)
                         utcp_timeout(tcb, timer_idx);
                 }
@@ -65,9 +74,9 @@ void *utcp_slowtimo_thread(void *arg)
     
         pthread_mutex_unlock(&global->lookup_lock);
 
+        // Ticker may have drifted due to computation time. Sleep only for the remaining time
+        // until the next absolute tick.
         uint64_t now = utcp_ticker(); 
-        
-        // Ticker may have drifted due to computation time. Sleep only for the remaining time until the next absolute tick.
         if (now < next_tick_time)
         {
             uint64_t sleep_time_ms = next_tick_time - now;
@@ -76,16 +85,6 @@ void *utcp_slowtimo_thread(void *arg)
         next_tick_time += TCP_TICK_MS;
     }
     return NULL;
-}
-
-
-uint32_t tcp_now(void)
-{
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) !=0)
-        err_sys("[tcp_now] Error getting the time");
-
-    return (uint32_t)((ts.tv_sec * 1000) + (ts.tv_nsec / 1000000));
 }
 
 
@@ -104,10 +103,11 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
     } else
     { // subsequent RTT measurement R'
         int32_t delta = rtt_sample - (tcb->srtt >> 3); // delta = ((R' - SRTT) / 8)
-
         tcb->srtt += delta; // SRTT_new = SRTT_old + (delta / 8)
 
-        if (delta < 0) delta = -delta; // compute |delta|
+        if (delta < 0)
+            delta = -delta; // compute |delta|
+
         tcb->rttvar += delta - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|delta| - RTTVAR_old) / 4
         //LOG_INFO("[calc_rto] Calculated R'. delta = %u, srtt = %u, rttvar = %u", delta, tcb->srtt, tcb->rttvar);
     }
@@ -204,14 +204,12 @@ void utcp_timeout(tcb_t *tcb, short timer)
             break;
 
         case TCPT_PERSIST: // persist
-        /*
-         * There is data to send, but it is being stopped b/c the
-         * receiver's advertised window (tcb->rwnd) is 0.
-        */
-        // TODO: tcp_setpersist calculates the next value for the persist
-        // timer and stores it in the TCPT_PERSIST counter. The flag t_force
-        // is set to 1, forcing tcp_output to send 1 byte, even though the window
-        //advertised by the other end is 0.
+        /*  There is data to send, but it is being stopped b/c the
+            receiver's advertised window (tcb->rwnd) is 0. */
+            // TODO: tcp_setpersist calculates the next value for the persist
+            // timer and stores it in the TCPT_PERSIST counter. The flag t_force
+            // is set to 1, forcing tcp_output to send 1 byte, even though the window
+            //advertised by the other end is 0.
             break;
 
         case TCPT_KEEP: // keepalive

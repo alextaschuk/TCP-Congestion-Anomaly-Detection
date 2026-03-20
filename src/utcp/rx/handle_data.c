@@ -30,8 +30,8 @@ void handle_data(
     )
     {   /* Valid ACK! */
         uint32_t newly_acked_bytes = ack - tcb->snd_una;
-        LOG_INFO("[handle_data] VALID ACK: Advancing snd_una from %u to %u (ACKed %u bytes)", tcb->snd_una,
-                    ack, newly_acked_bytes);
+        LOG_INFO("[handle_data] VALID ACK: Advancing snd_una from %u to %u (ACKed %u bytes)",
+                    tcb->snd_una,ack, newly_acked_bytes);
 
         tcb->snd_una = ack; // update new oldest unACKed byte
 
@@ -63,10 +63,9 @@ void handle_data(
         }
 
         if (tcb->cc && tcb->cc->ack_received)
-        {
             tcb->cc->ack_received(tcb, newly_acked_bytes);
-        }
-        else LOG_ERROR("[handle_data] Missing CC handler and/or valid ACK handler");
+        else
+            LOG_ERROR("[handle_data] Missing CC handler and/or valid ACK handler");
     }
     else if (ack == tcb-> snd_una)
     { 
@@ -118,7 +117,7 @@ void handle_data(
         uint32_t duplicate_bytes = tcb->rcv_nxt - seq_num;
 
         if (duplicate_bytes >= data_len)
-        { // the entire payload is already in the RX buffer (it's duplicate data)
+        { // The entire payload is already in the RX buffer
             LOG_WARN("[handle_data] DROPPING DUPLICATE PAYLOAD: seq=%u, (len=%zd) is strictly before rcv_nxt=%u. Forcing ACK", seq_num,
                         data_len, tcb->rcv_nxt);
             
@@ -136,14 +135,14 @@ void handle_data(
     }
 
     if(seq_num == tcb->rcv_nxt)
-    { // in-order data (is this the packet we're expecting?)
+    { // In-order data (is this the packet we're expecting?)
 
         // We need to save room in the RX buffer for the OOO bytes that will eventually drain into it.
         uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head) - tcb->ooo_bytes;
         LOG_DEBUG("[handle_data] Buffer Check: free space=%u, incoming data=%zd", rx_free_space, data_len);
 
         if (data_len <= (ssize_t)rx_free_space)
-        { // copy new data from payload into RX byte-by-byte
+        { // Write new data from payload into RX
             uint32_t old_tail = tcb->rx_tail;
 
             ring_buf_write(tcb->rx_buf, BUF_SIZE, tcb->rx_tail, data, data_len);
@@ -156,9 +155,8 @@ void handle_data(
 
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv
 
-            /* Drain any OOO segments that are now consecutive with rcv_nxt.
-             * This advances rcv_nxt cumulatively — a single ACK will cover
-             * all the data moved out of the reassembly queue.
+            /* Drain any OOO segments that are now consecutive with rcv_nxt. This advances rcv_nxt
+             * cumulatively, so a single ACK will cover all the data moved out of the reassembly queue.
              */
             uint32_t pre_drain_rcv_nxt = tcb->rcv_nxt;
             drain_ooo_queue(tcb);
@@ -166,30 +164,27 @@ void handle_data(
             if (tcb->rcv_nxt != pre_drain_rcv_nxt)
             {
                 LOG_INFO("[handle_data]: rcv_nxt advanced %u -> %u after hole filled.", pre_drain_rcv_nxt, tcb->rcv_nxt);
-                pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again sinec more data is available
+                pthread_cond_broadcast(&tcb->conn_cond); // wake app thread again since more data is available
             }
 
             if (tcb->dupacks > 0)
                 tcb->t_flags |= F_ACKNOW;
 
             /*
-             * Delayed ACK (RFC 1122 §4.2.3.2):
-             * Defer the ACK by up to TCPTV_DELACK ms to allow a reply
-             * segment to carry a piggybacked ACK, or to batch two
-             * consecutive segments into one ACK.
+             * Defer the ACK by up to TCPTV_DELACK ms to allow a reply segment to carry a piggybacked
+             * ACK, or to batch two consecutive segments into one ACK.
              *
              * Rules:
              *  - If an immediate ACK is already required (F_ACKNOW), skip.
-             *  - If F_DELACK is already set, a previous segment is waiting
-             *    on this same timer.  Send the ACK now to honour the
-             *    "at most every other segment" requirement, then clear the flag.
+             *  - If F_DELACK is already set, a previous segment is waiting on this same timer. Send the
+             *    ACK now to honor the "at most every other segment" requirement, then clear the flag.
              *  - Otherwise, arm the timer and set F_DELACK.
              */
             if (!(tcb->t_flags & F_ACKNOW))
             {
                 if (tcb->t_flags & F_DELACK)
                 {
-                    /* Second consecutive in-order segment — cancel timer, ACK now. */
+                    // Second consecutive in-order segment. Cancel the delayed ACK timer, and send an ACK now.
                     LOG_DEBUG("[handle_data] DELACK: consecutive segment, sending immediate ACK (rcv_nxt=%u).", tcb->rcv_nxt);
                     tcb->t_flags &= ~F_DELACK;
                     pause_timer(tcb, TCPT_DELACK);
@@ -197,7 +192,7 @@ void handle_data(
                 }
                 else
                 {
-                    /* First segment — arm the delayed ACK timer. */
+                    // First segment. Arm the delayed ACK timer.
                     LOG_DEBUG("[handle_data] DELACK: arming %d-tick delayed ACK timer (rcv_nxt=%u).", TCPTV_DELACK, tcb->rcv_nxt);
                     tcb->t_flags |= F_DELACK;
                     tcb->t_timer[TCPT_DELACK] = TCPTV_DELACK;
@@ -213,10 +208,9 @@ void handle_data(
     else
     { // out of order data
         /* seq_num > rcv_nxt: out-of-order segment.
-         * Buffer it in the reassembly queue and send a duplicate ACK of
-         * the last in-order byte (rcv_nxt) so the sender knows what we
-         * are still waiting for.  The application cannot read past the
-         * hole because recv_buf only contains contiguous in-order data.
+         * Buffer the OOO data in the reassembly queue and send a duplicate ACK of the last in-order byte
+         * so the sender knows what we are still waiting for. The application cannot read past the hole
+         * because recv_buf only contains contiguous in-order data.
          */
         LOG_WARN("[handle_data] DATA OUT OF ORDER: Expected %u, got %u. Dropping packet and forcing ACK.", tcb->rcv_nxt, hdr->th_seq);
         insert_ooo_segment(tcb, seq_num, data, (uint32_t)data_len);

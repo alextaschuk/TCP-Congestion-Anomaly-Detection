@@ -33,20 +33,24 @@ extern const int tcp_backoff[];
 
 /* Define functions */
 
+/**
+ * The ticker thread. Every 10ms, this thread is woken up. It loops through all of the active TCBs,
+ * and within each TCB, it loops through the active timers and decrements each timer by one
+ * tick. If a timer reaches 0 (expires), it is handled via a call to `utcp_timeout`.
+ */
 void *utcp_slowtimo_thread(void *arg);
 
+
 /**
- * @brief Gets the current time, in milliseconds, for the user.
+ * A wrapper function for `utcp_ticker`. Since the Timestamps Option stores 32-bit
+ * values, it's easier to use a wrapper rather than call `(uint32_t)utcp_ticker()`
+ * everywhere that we need it for setting timestamps.
  * 
  * This function is called in two places:
  * 
  * 1. `send_dgram()` To apply the sender's timestamp to the packet
  * 
  * 2. `calc_rto()` To get the sender's current time for calculating a packet's RTT.
- * 
- * @returns The current time, in milliseconds (ms).
- * 
- * @note This value represents how much time has passed since some starting point, not the actual time.
  */
 uint32_t tcp_now(void);
 
@@ -74,10 +78,10 @@ void utcp_timeout(tcb_t *tcb, short timer);
 /**
  * Reset a timer.
  * 
- * @returns The new number of 500ms ticks until the timer times out. Function assumes that
+ * @returns The new number of 10ms ticks until the timer times out. Function assumes that
  * it has been called  for a TCB with a lock already on it.
  * 
- * @note This currently only works for slow timers (which are decremented every 500ms).
+ * @note This currently only works for slow timers (which are decremented every 10ms).
  * In the future, when fast timers (decremented every 200ms) are implemented, the logic in
  * this function will need to be rewritten to handle both possibilities.
  * 

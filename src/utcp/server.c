@@ -32,8 +32,6 @@
 
 _Thread_local const char* current_thread_cat = "main_thread";
 
-
-
 int main(void)
 {
     ///*
@@ -55,9 +53,6 @@ int main(void)
 
     if (utcp_listen(global, MAX_BACKLOG) != 0)
         err_sys("[main] Error in utcp_listen");
-
-    //if(spawn_threads(global) != 0)
-    //    err_sys("[main] Error during thread creation");
     
     tcb_t *listen_tcb = get_tcb(utcp_fd);
 
@@ -98,7 +93,7 @@ int main(void)
     }
     
     while(new_tcb->rx_tail - new_tcb->rx_head > 0)
-        usleep(100000); // let everything in RX go to the client
+        usleep(100000); // let everything in RX go to the application
     sleep(2);
 
     LOG_INFO("[Server App] Finished. Received %zu bytes total", total_recvd);

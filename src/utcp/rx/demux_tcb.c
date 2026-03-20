@@ -36,10 +36,10 @@ tcb_t* demux_tcb(
             return tcb;
         }
 
-        // we will return listener TCB to server if state isn't ESTABLISHED or SYN-RECEIVED
+        // Listener TCB is returned if state isn't ESTABLISHED or SYN-RECEIVED
         if (local_utcp_port == dest_utcp_port && tcb->fsm_state == LISTEN)
         {
-            //LOG_INFO("[demux_tcb] found listen TCB\n");
+            //LOG_INFO("[demux_tcb] Found listen TCB");
             listen_tcb = tcb;
             continue;
         }
@@ -50,7 +50,6 @@ tcb_t* demux_tcb(
     if (listen_tcb != NULL)
     {
         //LOG_INFO("[demux_tcb] Searching for TCB in SYN queue");
-
         pthread_mutex_lock(&listen_tcb->syn_q.lock);
 
         for (int i = 0; i < listen_tcb->syn_q.count; i++)

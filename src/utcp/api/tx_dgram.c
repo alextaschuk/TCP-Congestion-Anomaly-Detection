@@ -95,25 +95,6 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     {
         uint32_t buf_offset = seq - tcb->iss - 1; // minus 1 for SYN
         ring_buf_read(tcb->tx_buf, BUF_SIZE, buf_offset, segment->data, data_len, opt_len);
-        /*
-        uint32_t buf_offset = (seq - tcb->iss - 1) % BUF_SIZE;
-
-        if (buf_offset + data_len <= BUF_SIZE)
-        {   // offset pointer by opt_len so that timestamps arent overwritten
-            memcpy(segment->data + opt_len, &tcb->tx_buf[buf_offset], data_len); 
-        }
-        else 
-        {
-            // buffer wraps around, so it needs to be split into 2 parts
-            size_t part1_len = BUF_SIZE - buf_offset;
-            size_t part2_len = data_len - part1_len;
-            
-            LOG_DEBUG("[send_segment] Data wraps around ring buffer. Copying %zu bytes from end, %zu bytes from start.", part1_len, part2_len);
-            
-            memcpy(segment->data + opt_len, &tcb->tx_buf[buf_offset], part1_len);
-            memcpy(segment->data + opt_len + part1_len, &tcb->tx_buf[0], part2_len);
-        }
-        */
     }
 
     struct sockaddr_in dest_addr;
@@ -160,7 +141,6 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
                 buffered_data, send_len);
 
     int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);
-    //tcb->snd_nxt += send_len;
     
     //log_tcb(tcb, "[retransmit_data] retransmit post-send:");
     return  bytes_sent;
@@ -171,8 +151,6 @@ int send_dgram(tcb_t *tcb)
 {
     uint8_t flags = tcp_outflags[tcb->fsm_state];
     bool force_ack = false;
-
-    //LOG_DEBUG("[send_dgram] Initial state: %s, Base Flags: 0x%02X", fsm_state_to_str(tcb->fsm_state), flags);
 
     /**
      * Base option length for timestamps in bytes. 10 bytes for the timestamp & 2 bytes for NOP padding
@@ -276,7 +254,7 @@ int send_dgram(tcb_t *tcb)
         }
 
         /* Every outgoing segment carries the current rcv_nxt as its ACK field,
-         * so any deferred ACK is now satisfied.  Cancel the delayed ACK timer. */
+         * so any deferred ACK is now satisfied. Cancel the delayed ACK timer. */
         if (tcb->t_flags & F_DELACK)
         {
             tcb->t_flags &= ~F_DELACK;
@@ -310,9 +288,7 @@ int send_dgram(tcb_t *tcb)
         force_ack = false; // We fulfilled the force_send requirement on the first pass, don't loop it
 
         if (data_len == 0)
-        { // the segment that was sent was either an empty ACK, a SYN, or a FIN, so we can exit the loop.
-            break;
-        }
+            break; // the segment that was sent was either an empty ACK, a SYN, or a FIN, so we can exit the loop.
     }
 
     if (segments_sent > 0) 

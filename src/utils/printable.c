@@ -33,6 +33,7 @@ static bool is_null(const void *ptr, const char *msg)
         
 }
 
+
 void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char *msg)
 {
     if (is_null(buf, "TCP Header: (null)"))
@@ -56,11 +57,11 @@ void log_segment(const uint8_t *buf, const size_t buflen, const bool flow, char 
     size_t hdrlen = hdr->th_off * 4;
     size_t opt_len = hdrlen - sizeof(struct tcphdr);
     
-    /* 1. Create a buffer large enough to hold the formatted string */
+    /* Create a buffer large enough to hold the formatted string */
     char log_buf[2048];
     size_t offset = 0;
 
-    /* 2. Write the base header into the buffer */
+    /* Write the base header into the buffer */
     offset += snprintf(log_buf + offset, sizeof(log_buf) - offset,
         "%s\n" // msg[]
         "%s\n" // direction
@@ -220,20 +221,25 @@ void log_tcb(const tcb_t *tcb, char *msg)
         "\tiss                 : %u\n"
         "\tsnd_una             : %u\n"
         "\tsnd_nxt             : %u\n"
+        "\tsnd_max             : %u\n"
         "\tsnd_wnd             : %u\n"
         "\tirs                 : %u\n"
         "\trcv_nxt             : %u\n"
-        "\trwnd             : %u\n"
+        "\trwnd                : %u\n"
+        "\n"
+        "\tws_enabled          : %d ms\n"
+        "\tsnd_ws_scale        : %d ms\n"
+        "\trcv_ws_scale        : %d ms\n"
         "\n"
         "\tts_rcv_val          : %u ms\n"
-        "\trto                 : %u\n"
+        "\n"
+        "\trxtcur              : %u\n"
         "\tsrtt                : %u\n"
         "\trttvar              : %u\n"
-        "\tcwnd            : %u\n"
-        "\tssthresh        : %u\n"
+        "\n"
+        "\tcwnd                : %u\n"
+        "\tssthresh            : %u\n"
         "\tdupacks             : %u\n"
-        "\trxtcur              : %u\n"
-        //"\ttcpt_rexmt          : %u\n"
         "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
         msg,
 
@@ -251,20 +257,25 @@ void log_tcb(const tcb_t *tcb, char *msg)
         tcb->iss,
         tcb->snd_una,
         tcb->snd_nxt,
+        tcb->snd_max,
         tcb->snd_wnd,
         tcb->irs,
         tcb->rcv_nxt,
         tcb->rwnd,
         
+        tcb->ws_enabled,
+        tcb->snd_ws_scale,
+        tcb->rcv_ws_scale,
+
         tcb->ts_rcv_val,
+
         tcb->rxtcur,
         tcb->srtt,
         tcb->rttvar,
+
         tcb->cwnd,
         tcb->ssthresh,
-        tcb->dupacks,
-        tcb->rxtcur
-        //tcb->tcpt_rexmt
+        tcb->dupacks
     );
 }
 

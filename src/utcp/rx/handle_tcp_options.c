@@ -20,7 +20,7 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
     { // iterate over the options array (ts_opt in send_dgram())
         uint8_t opt_kind = opt_ptr[0];
 
-        /* check for single-byte options (only have the kind byte, no length or value bytes) */
+        /* check for single-byte options (only have the "kind" byte, no length or value bytes) */
         if (opt_kind == TCPOPT_EOL) // End of options list
             break;
         
@@ -57,12 +57,8 @@ bool parse_tcp_options(struct tcphdr *hdr, parsed_tcp_opts_t *opts)
                     opts->has_ws = true;
                     opts->ws_val = opt_ptr[2]; // shift count is 3rd byte (idx 2)
 
-                    /**
-                     * Max window scale is 14.
-                     * - See RFC 7323, Section 2.2
-                     */
-                    if (opts->ws_val > 14)
-                        opts->ws_val = 14; 
+                    // Max window scale is 14 (See RFC 7323, Section 2.2)
+                    opts->ws_val = MIN(opts->ws_val, 14);
                 }
                 break;
 
@@ -104,20 +100,13 @@ void process_tcp_options(tcb_t *tcb, struct tcphdr *hdr, bool is_syn)
 
     if (opts.has_ts)
     {
-        /**
-         * PAWS (See RFC 1323, Section 4): An ACK may contain a payload of data that is
-         * out of order, so we only want to update the peer's timestamp if it is in order.
-         */
+        /* PAWS (See RFC 1323, Section 4): An ACK may contain a payload of data that is
+           out of order, so we only want to update the peer's timestamp if it is in order. */
         if (SEQ_LEQ(hdr->th_seq, tcb->rcv_nxt))
-        {
-            //uint32_t old_ts_val = tcb->ts_rcv_val;
             tcb->ts_rcv_val = opts.ts_val;
-        }
-        
+
         if (hdr->th_flags & TH_ACK) // we only calculate RTT if the packet is ACKing something
             calc_rto(tcb, opts.ts_ecr);
-
-        //LOG_INFO("[rcv_syn] Updated ts_rcv_val from %u to %u", old_ts_val, tcb->ts_rcv_val);
     }
     else if (!is_syn)
         LOG_WARN("[process_tcp_options] TCP header is missing timestamps. Skipping RTT update");
@@ -128,6 +117,6 @@ void process_tcp_options(tcb_t *tcb, struct tcphdr *hdr, bool is_syn)
         tcb->ws_enabled = true;
         tcb->snd_wnd = GET_SCALED_WIN(tcb, hdr);
 
-        LOG_INFO("[process_tcp_options] Peer supports Window Scale. Send shift count: %u", tcb->snd_ws_scale);
+        //LOG_INFO("[process_tcp_options] Peer supports Window Scale. Send shift count: %u", tcb->snd_ws_scale);
     }
 }
