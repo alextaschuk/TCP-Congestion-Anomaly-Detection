@@ -68,7 +68,7 @@ int main(void)
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
-    printf("Client: Ready to send %zuGB file to client...\r\n", file_size_bytes / 1000000000);
+    printf("Client: Begin sending %zuGB file to client...\r\n", file_size_bytes / 5000000000);
     while((bytes_read = fread(snd_buf, 1, 64000, fp)) > 0)
     {
         ssize_t sent = utcp_send(utcp_fd, snd_buf, bytes_read);
