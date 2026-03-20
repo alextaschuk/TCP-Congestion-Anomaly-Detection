@@ -43,11 +43,11 @@ void handle_data(
         tcb->rxtshift = 0;  // reset exponential backoff after a successful ACK (RFC 6298 §5.4)
 
         // slide the snd_wnd over
-        uint32_t old_tx_head = tcb->tx_head;
+        uint64_t old_tx_head = tcb->tx_head;
         tcb->tx_head = tcb->tx_head + newly_acked_bytes;
         tcb->snd_wnd = GET_SCALED_WIN(tcb, hdr);
 
-        LOG_DEBUG("[handle_data] SND_WND UPDATE: tx_head %u -> %u, snd_wnd set to %u. Waking any blocking app threads.", old_tx_head, tcb->tx_head, tcb->snd_wnd);
+        LOG_DEBUG("[handle_data] SND_WND UPDATE: tx_head %lu -> %lu, snd_wnd set to %u. Waking any blocking app threads.", old_tx_head, tcb->tx_head, tcb->snd_wnd);
         pthread_cond_broadcast(&tcb->conn_cond); // wake up blocking thread in utcp_send
 
         // handle the retransmission timer (pause or reset)
@@ -138,19 +138,19 @@ void handle_data(
     { // In-order data (is this the packet we're expecting?)
 
         // We need to save room in the RX buffer for the OOO bytes that will eventually drain into it.
-        uint32_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head) - tcb->ooo_bytes;
-        LOG_DEBUG("[handle_data] Buffer Check: free space=%u, incoming data=%zd", rx_free_space, data_len);
+        uint64_t rx_free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head) - tcb->ooo_bytes;
+        LOG_DEBUG("[handle_data] Buffer Check: free space=%lu, incoming data=%zd", rx_free_space, data_len);
 
         if (data_len <= (ssize_t)rx_free_space)
         { // Write new data from payload into RX
-            uint32_t old_tail = tcb->rx_tail;
+            uint64_t old_tail = tcb->rx_tail;
 
             ring_buf_write(tcb->rx_buf, BUF_SIZE, tcb->rx_tail, data, data_len);
 
             tcb->rx_tail += data_len;
             tcb->rcv_nxt += data_len;
 
-            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: rx_tail %u -> %u, rcv_nxt %u -> %u. Waking any blocking app threads.",
+            LOG_DEBUG("[handle_data] IN-ORDER DATA ACCEPTED: rx_tail %lu -> %lu, rcv_nxt %u -> %u. Waking any blocking app threads.",
                         old_tail, tcb->rx_tail, (uint32_t)(tcb->rcv_nxt - data_len), tcb->rcv_nxt);
 
             pthread_cond_broadcast(&tcb->conn_cond); // wake app thread that is blocking in utcp_recv

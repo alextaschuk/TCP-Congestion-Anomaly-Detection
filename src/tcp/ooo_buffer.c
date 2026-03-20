@@ -11,12 +11,12 @@
 void insert_ooo_segment(tcb_t *tcb, uint32_t seq, uint8_t *data, uint32_t len)
 {
     /* Available space: what isn't already used by in-order or OOO bytes */
-    uint32_t buf_used = tcb->rx_tail - tcb->rx_head;
-    uint32_t available = BUF_SIZE - buf_used - tcb->ooo_bytes;
+    uint64_t buf_used = tcb->rx_tail - tcb->rx_head;
+    uint64_t available = BUF_SIZE - buf_used - tcb->ooo_bytes;
 
     if (len > available)
     {
-        LOG_WARN("[insert_ooo_segment] OOO DROP: No buffer space. buf_used=%u ooo_bytes=%u incoming=%u",
+        LOG_WARN("[insert_ooo_segment] OOO DROP: No buffer space. buf_used=%lu ooo_bytes=%u incoming=%u",
                     buf_used, tcb->ooo_bytes, len);
         return;
     }
@@ -159,7 +159,7 @@ void drain_ooo_queue(tcb_t *tcb)
             break; /* Gap still exists; nothing more to drain */
         }
 
-        uint32_t free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
+        uint64_t free_space = BUF_SIZE - (tcb->rx_tail - tcb->rx_head);
         if (entry->len > free_space)
         {
             LOG_ERROR("[drain_ooo_queue]: recv_buf full during drain! entry->len=%u free=%u", entry->len, free_space);

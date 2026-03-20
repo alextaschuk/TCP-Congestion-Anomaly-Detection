@@ -109,13 +109,13 @@ typedef struct tcb_t
 
     /* Transmit (Send) Buffer */
     uint8_t tx_buf[BUF_SIZE];   /* Transmit (or "send") buffer, which stores unacked bytes that have been sent out. */
-    uint32_t tx_head;           /* Index to read from. */
-    uint32_t tx_tail;           /* Index to write to.  */
+    uint64_t tx_head;           /* Index to read from. */
+    uint64_t tx_tail;           /* Index to write to.  */
 
     /* Receive Buffer */
     uint8_t rx_buf[BUF_SIZE];   /* Receive buffer, which stores acked bytes that you have received and sent ACK for. */
-    uint32_t rx_head;           /* Index to read from. */
-    uint32_t rx_tail;           /* Index to write to.  */
+    uint64_t rx_head;           /* Index to read from. */
+    uint64_t rx_tail;           /* Index to write to.  */
     
     /* Out-of-Order Buffer */
     ooo_segment_t *ooo_head;    /* Head of the out-of-order buffer. */

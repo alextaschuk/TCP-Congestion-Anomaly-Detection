@@ -47,7 +47,7 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
      * Subtract ooo_bytes so the sender cannot fill space that is already
      * reserved by buffered out-of-order segments waiting to drain.
      */
-    uint32_t bytes_in_buffer = tcb->rx_tail - tcb->rx_head;
+    uint64_t bytes_in_buffer = tcb->rx_tail - tcb->rx_head;
     uint32_t current_free_space = BUF_SIZE - bytes_in_buffer - tcb->ooo_bytes;
 
     segment->hdr.th_win = htons(SET_SCALED_WIN(tcb, flags, current_free_space));  
@@ -128,16 +128,17 @@ int retransmit_data(tcb_t *tcb, uint32_t seq)
      */
     size_t opt_len = 12;
 
-    /* How much data in the buffer corresponds to this seq number? */
-    uint32_t data_bytes_sent = (seq > tcb->iss) ? (seq - tcb->iss - 1) : 0;
-    uint32_t buffered_data = 0;
-
-    if (tcb->tx_tail > data_bytes_sent)
-        buffered_data = tcb->tx_tail - data_bytes_sent;
+    /* How much TX buffer data is available from seq onwards?
+     * offset_from_una: how far seq is past the oldest unACKed byte (always ≤ snd_wnd).
+     * bytes_in_tx: total bytes currently held in the TX ring buffer.
+     */
+    uint32_t offset_from_una = seq - tcb->snd_una;
+    uint64_t bytes_in_tx = tcb->tx_tail - tcb->tx_head;
+    uint64_t buffered_data = (bytes_in_tx > offset_from_una) ? bytes_in_tx - offset_from_una : 0;
 
     size_t send_len = MIN(buffered_data, MSS); // Send max 1 MSS of data
 
-    LOG_DEBUG("[retransmit_data] calculations for retransmission: bytes_sent=%u, buffered_data=%u, taking %lu bytes.", data_bytes_sent,
+    LOG_DEBUG("[retransmit_data] calculations for retransmission: offset_from_una=%u, buffered_data=%lu, taking %lu bytes.", offset_from_una,
                 buffered_data, send_len);
 
     int bytes_sent = send_segment(tcb, seq, send_len, opt_len, flags);
@@ -182,15 +183,11 @@ int send_dgram(tcb_t *tcb)
             uint32_t unacked_bytes_in_flight = tcb->snd_nxt - tcb->snd_una; // bytes that have been sent (in flight) (on the wire)
             //LOG_INFO("[send_dgram] Send Window: %u, unACKed bytes in flight: %u", send_window, unacked_bytes_in_flight);
         
-            /**
-             * Calculate the total number of payload bytes that have been sent during the connection's entire session.
-             * This includes the sum of payload bytes - 1 (for the SYN flag), or 0 if only a SYN request has been made.
+            /* Unsent bytes = bytes in TX ring buffer minus those already in flight.
+             * Uses 64-bit tx_tail/tx_head so this stays correct beyond 4 GB.
              */
-            uint32_t data_bytes_sent = SEQ_GT(tcb->snd_nxt, tcb->iss) ? (tcb->snd_nxt - tcb->iss - 1) : 0;
-
-            uint32_t buffered_bytes = 0; // The number of bytes the application has written to TX and are waiting to be sent.
-            if (tcb->tx_tail > data_bytes_sent)
-                buffered_bytes = tcb->tx_tail - data_bytes_sent;
+            uint64_t bytes_in_tx = tcb->tx_tail - tcb->tx_head;
+            uint64_t buffered_bytes = (bytes_in_tx > unacked_bytes_in_flight) ? bytes_in_tx - unacked_bytes_in_flight : 0;
 
             //LOG_DEBUG("[send_dgram] Window Calculation: Used snd_wnd=%u, cwnd=%u, to calculate effective wnd=%u, bytes in flight=%u, bytes buffered=%u",
             //            tcb->snd_wnd, tcb->cwnd, send_window, unacked_bytes_in_flight, buffered_bytes);

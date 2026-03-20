@@ -34,9 +34,9 @@ ssize_t utcp_send(int utcp_fd, const void *buf, size_t payload_len)
 
     while (remaining > 0)
     {
-        uint32_t curr_buffered = snder_tcb->tx_tail - snder_tcb->tx_head;
-        
-        uint32_t free_space = BUF_SIZE - curr_buffered; // how many bytes can we add to the TX buffer?
+        uint64_t curr_buffered = snder_tcb->tx_tail - snder_tcb->tx_head;
+
+        uint64_t free_space = BUF_SIZE - curr_buffered; // how many bytes can we add to the TX buffer?
         if (free_space == 0)
         {
             pthread_cond_wait(&snder_tcb->conn_cond, &snder_tcb->lock);
@@ -93,7 +93,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
     }
 
     /* Read either `app_buf_len` bytes from the RX buffer, or the entire buffer; whichever is smaller. */
-    uint32_t avail_bytes_to_read = tcb->rx_tail - tcb->rx_head;
+    uint64_t avail_bytes_to_read = tcb->rx_tail - tcb->rx_head;
     size_t num_bytes_to_read = MIN(app_buf_len, (size_t)avail_bytes_to_read);
     ring_buf_read(tcb->rx_buf, BUF_SIZE, tcb->rx_head, buf, num_bytes_to_read, 0);
 
@@ -104,7 +104,7 @@ ssize_t utcp_recv(int utcp_fd, uint8_t *buf, size_t app_buf_len)
      * window that's advertised to the sender by recalculating the app's rwnd. ooo_bytes are
      * reserved for out-of-order segments that will drain into the RX buffer.
      */
-    uint32_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
+    uint64_t bytes_in_buf = tcb->rx_tail - tcb->rx_head;
     tcb->rwnd = BUF_SIZE - bytes_in_buf - tcb->ooo_bytes;
 
     // Silly window prevention with Classic Clark's algorithm: only send window update when

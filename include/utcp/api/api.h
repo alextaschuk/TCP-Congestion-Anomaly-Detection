@@ -57,8 +57,8 @@ void update_fsm(int utcp_fd, enum conn_state state);
 struct tcb_t *get_tcb(int utcp_fd);
 
 
-void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, uint8_t *dst, size_t data_len, size_t opt_len);
-void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, const uint8_t *src, size_t len);
+void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint64_t offset, uint8_t *dst, size_t data_len, size_t opt_len);
+void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint64_t offset, const uint8_t *src, size_t len);
 
 /*End function declarations*/
 

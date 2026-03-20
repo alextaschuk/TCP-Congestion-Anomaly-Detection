@@ -88,12 +88,12 @@ void update_fsm(int utcp_fd, enum conn_state state)
 }
 
 
-void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, uint8_t *dst, size_t data_len, size_t opt_len)
+void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint64_t offset, uint8_t *dst, size_t data_len, size_t opt_len)
 {
     if (data_len == 0)
         return;
 
-    uint32_t physical_offset = offset % buf_size;
+    uint64_t physical_offset = offset % buf_size;
 
     if (physical_offset + data_len <= buf_size)
         memcpy(dst + opt_len, &ring_buf[physical_offset], data_len); // Contiguous read. Offset pointer by opt_len to skip options
@@ -109,12 +109,12 @@ void ring_buf_read(const uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, 
 }
 
 
-void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint32_t offset, const uint8_t *src, size_t len)
+void ring_buf_write(uint8_t *ring_buf, uint32_t buf_size, uint64_t offset, const uint8_t *src, size_t len)
 {
     if (len == 0)
         return;
 
-    uint32_t physical_offset = offset % buf_size;
+    uint64_t physical_offset = offset % buf_size;
 
     if (physical_offset + len <= buf_size)
         memcpy(&ring_buf[physical_offset], src, len); // Contiguous write
