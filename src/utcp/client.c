@@ -68,7 +68,7 @@ int main(void)
     size_t bytes_read = 0;
     size_t total_file_bytes = 0;
 
-    printf("Client: Begin sending %zuGB file to client...\r\n", file_size_bytes / 4000000000);
+    printf("Client: Begin sending %zuGB file to client...\r\n", file_size_bytes / 1000000000);
     while((bytes_read = fread(snd_buf, 1, 64000, fp)) > 0)
     {
         ssize_t sent = utcp_send(utcp_fd, snd_buf, bytes_read);
@@ -82,16 +82,14 @@ int main(void)
         printf("Client Application: bytes sent: %zu/%zu\r", total_file_bytes, file_size_bytes);
         fflush(stdout);
     }
+    
+    LOG_INFO("[Client App] File queued successfully. Total bytes: %zu", total_file_bytes);
 
-    tcb_t *active_tcb = get_tcb(utcp_fd); 
-    while(active_tcb->tx_tail - active_tcb->tx_head > 0)
-        usleep(100000); // let everything in TX be sent out
-    sleep(2);
+    while(1){}
 
-        fclose(fp);
-        free(snd_buf);
-        LOG_INFO("[Client App] File queued successfully. Total bytes: %zu", total_file_bytes);
-        return 0;
+    fclose(fp);
+    free(snd_buf);
+    return 0;
     //*/
 
     /*

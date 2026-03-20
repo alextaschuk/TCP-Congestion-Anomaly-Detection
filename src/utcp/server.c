@@ -71,12 +71,12 @@ int main(void)
     if (!fp)
         err_sys("[Server App] Failed to create destination file");
     
-    size_t file_size_bytes = 4000000000;// 5GB
+    size_t file_size_bytes = 2000000000;// 5GB
     //uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
     uint8_t *app_recv_buf = malloc(65536);
     size_t total_recvd = 0;
 
-    printf("Server: Begin receiving %zuGB file from server...\r\n", file_size_bytes / 4000000000);
+    printf("Server: Begin receiving %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_recvd < file_size_bytes)
     {   
         ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, 65536);
@@ -92,11 +92,13 @@ int main(void)
         }
     }
     
+    printf("[Server App] Finished. Received %zu bytes total", total_recvd);
+
     while(new_tcb->rx_tail - new_tcb->rx_head > 0)
         usleep(100000); // let everything in RX go to the application
-    sleep(2);
+    sleep(10);
 
-    LOG_INFO("[Server App] Finished. Received %zu bytes total", total_recvd);
+
     fclose(fp);
     free(app_recv_buf);
     return 0;
