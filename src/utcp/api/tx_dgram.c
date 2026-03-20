@@ -28,12 +28,8 @@ static int send_segment(tcb_t *tcb, uint32_t seq, size_t data_len, size_t opt_le
     /* Stack-allocate the segment (TCP header + options + payload).
      * Max size: 20-byte header + 40-byte options + MSS payload. */
     size_t segment_size = sizeof(struct tcphdr) + opt_len + data_len;
-    uint8_t seg_buf[sizeof(struct tcphdr) + 40 + MSS];
-    if (segment_size > sizeof(seg_buf))
-    {
-        LOG_ERROR("[send_segment] segment_size=%zu exceeds stack buffer (%zu)", segment_size, sizeof(seg_buf));
-        return -1;
-    }
+    uint8_t seg_buf[segment_size];
+
     tcp_segment_t *segment = (tcp_segment_t *)seg_buf;
         
 

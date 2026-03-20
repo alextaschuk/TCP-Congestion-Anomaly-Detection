@@ -77,14 +77,14 @@ int main(void)
         err_sys("[Server App] Failed to create destination file");
     
     size_t file_size_bytes = 1000000000;// 1GB
-    uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
-    //uint8_t *app_recv_buf = malloc(65536);
+    //uint8_t *app_recv_buf = malloc(APP_BUF_SIZE);
+    uint8_t *app_recv_buf = malloc(65536);
     size_t total_recvd = 0;
 
     printf("Server: Ready to receive %zuGB file from server...\r\n", file_size_bytes / 1000000000);
     while(total_recvd < file_size_bytes)
     {   
-        ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, APP_BUF_SIZE);
+        ssize_t bytes_rcvd = utcp_recv(new_tcb->fd, app_recv_buf, 65536);
         if (bytes_rcvd > 0)
         {
             fwrite(app_recv_buf, 1, bytes_rcvd, fp);
