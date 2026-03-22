@@ -49,8 +49,8 @@ typedef struct tcb_t tcb_t;
 
 /* Congestion Control Related */
 //#define CC_ALGO TAHOE /* Determines which CA algo we use. */
-//#define CC_ALGO RENO /* Determines which CA algo we use. */
-#define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
+#define CC_ALGO RENO /* Determines which CA algo we use. */
+//#define CC_ALGO NEW_RENO /* Determines which CA algo we use. */
 
 /* Timer Stuff*/
 #define TCP_TICK_MS 10 /* in millisec, how long the slow tick timer is*/
