@@ -111,6 +111,12 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         tcb->rttvar += delta - (tcb->rttvar >> 2); // RTTVAR_new = RTTVAR_old + (|delta| - RTTVAR_old) / 4
         //LOG_INFO("[calc_rto] Calculated R'. delta = %u, srtt = %u, rttvar = %u", delta, tcb->srtt, tcb->rttvar);
     }
+    
+    // Log the RTT, Smoothed RTT, and RTT Variance in build/log/rtt.csv
+    const char *old_category = current_thread_cat;
+    current_thread_cat = "rtt_data";
+    LOG_INFO("%u,%u,%u", rtt_sample, tcb->srtt >> 3, tcb->rttvar >> 2);
+    current_thread_cat = old_category;
 
     /* Compute the RTO in milliseconds */
     uint32_t current_srtt = tcb->srtt >> 3;

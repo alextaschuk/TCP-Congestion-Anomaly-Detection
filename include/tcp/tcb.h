@@ -100,6 +100,7 @@ typedef struct tcb_t
      * - `TCPT_PERSIST`: persist timer
      * - `TCPT_KEEP`: keepalive timer *or* connection-establishment timer
      * - `TCPT_2MSL`: 2MSL timer *or* FIN_WAIT_2 timer
+     * - `TCPT_DELACK`: delayed ACK timer
      */
     short t_timer[TCPT_NTIMERS];
 
