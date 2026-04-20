@@ -72,12 +72,12 @@ typedef struct tcb_t tcb_t;
 #define TCPTV_PERSMAX 64000               /* maximum value of persist timer (64 sec)*/
 
  /* Convinience macros */
-#define MIN(a,b) ((a) < (b) ? (a) : (b)) /* Return the smaller value between `a` and `b` */
-#define MAX(a,b) ((a) > (b) ? (a) : (b)) /* Return the larger value between `a` and `b` */
-#define SEQ_LT(a, b)  ((int)((a) - (b)) < 0)
-#define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)
-#define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)
-#define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)
+#define MIN(a,b) ((a) < (b) ? (a) : (b))        /* Return the smaller value between `a` and `b` */
+#define MAX(a,b) ((a) > (b) ? (a) : (b))        /* Return the larger value between `a` and `b` */
+#define SEQ_LT(a, b)  ((int)((a) - (b)) < 0)    /* Compares if `a` comes before `b` */
+#define SEQ_LEQ(a, b) ((int)((a) - (b)) <= 0)   /* Compares if `a` comes before or is equal to `b` */
+#define SEQ_GT(a, b)  ((int)((a) - (b)) > 0)    /* Compares if `a` comes after `b` */
+#define SEQ_GEQ(a, b) ((int)((a) - (b)) >= 0)   /* Compares if `a` comes after or is equal to `b` */
 
 /**
  * Calculate the Initial Window (IW), which is the initial value of cwnd.
