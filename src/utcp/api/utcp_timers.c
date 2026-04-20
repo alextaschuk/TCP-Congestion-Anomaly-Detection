@@ -138,7 +138,6 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         tcb->rxtcur = TCPTV_REXMTMAX; // the RTO
     }
     //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rxtcur);
-    return rtt_sample;
 }
 
 
