@@ -72,13 +72,13 @@ void log_lstm_event(struct tcb_t *tcb_t, uint32_t rtt_us, uint32_t newly_acked, 
     const char *old_category = current_thread_cat;
     current_thread_cat = "lstm_logger";
     LOG_INFO(/* timestamp_us, rtt_us, srtt_us, rttvar_us, rto_us, min_rtt_us */
-                    "%llu,      %u,     %u,         %u,     %u,     %llu,"
+                    "%llu,%u,%u,%u,%u,%llu,"
               /* queue_delay_us, rtt_delta_us, rtt_accel_us, rto_delta_us */
-                    "%lld,             %d,          %d,             %d,"
+                    "%lld,%d,%d,%d,"
               /* cwnd, ssthresh, snd_wnd, flight_size, newly_acked */
-                  "%u,     %u,      %u,         %u,         %u,"
+                  "%u,%u,%u,%u,%u,"
               /* inter_ack_us, ca_state, dupacks, rxtshift, is_dup_ack, is_timeout */
-                    "%llu,         %u,      %u,       %u,       %u,         %u",
+                    "%llu,%u,%u,%u,%u,%u",
               (unsigned long long)now_us,
               rtt_us, srtt_us, rttvar_us, rto_us,
               (unsigned long long)min_rtt,
