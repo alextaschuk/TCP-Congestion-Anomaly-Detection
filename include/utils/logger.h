@@ -74,7 +74,7 @@ int init_zlog(char conf_path[]);
 /**
  * @brief Logs one row of LSTM training data to the lstm_data CSV.
  *
- * Call sites (always called with the TCB lock held):
+ * Call sites:
  * 
  *   1. `handle_data()`: Called after `cc_ops_t.ack_received` is called for a valid ACK.
  *      `rtt_us` = the measured RTT that is stored in `tcb->rtt` (0 if no sample for the ACK),
