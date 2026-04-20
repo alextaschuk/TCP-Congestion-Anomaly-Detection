@@ -90,17 +90,17 @@ typedef struct tcb_t tcb_t;
  * If scaling is enabled and it's not a SYN packet, shift the header window
  * left by the scale factor. Otherwise, use the raw header window.
  */
-#define GET_SCALED_WIN(tcb, hdr)                                                                              \
+#define GET_SCALED_WIN(tcb, hdr)                                                                           \
     (((tcb)->ws_enabled && !((hdr)->th_flags & TH_SYN)) ? ((uint32_t)(hdr)->th_win << (tcb)->snd_ws_scale) \
-                                                           : (uint32_t)(hdr)->th_win)
+                                                        : (uint32_t)(hdr)->th_win)
 
 /**
  * Prepares the Window Scale option value for the 16-bit header field.
  * If scaling is confirmed, shift right. If not, clamp to 65535 to prevent overflow.
  */
-#define SET_SCALED_WIN(tcb, flags, free_space)                                                                 \
+#define SET_SCALED_WIN(tcb, flags, free_space)                                                              \
     ((tcb)->ws_enabled && !((flags) & TH_SYN) ? (uint16_t)((free_space) >> (tcb)->rcv_ws_scale)             \
-                                                 : (uint16_t)((free_space) > 65535 ? 65535 : (free_space)))
+                                              : (uint16_t)((free_space) > 65535 ? 65535 : (free_space)))
 
 /* End define macros */
 

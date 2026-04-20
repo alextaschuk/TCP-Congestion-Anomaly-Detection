@@ -66,6 +66,8 @@ void handle_data(
             tcb->cc->ack_received(tcb, newly_acked_bytes);
         else
             LOG_ERROR("[handle_data] Missing CC handler and/or valid ACK handler");
+        
+        log_lstm_event(tcb, tcb->rtt, newly_acked_bytes, false, false);
     }
     else if (ack == tcb-> snd_una)
     { 
@@ -94,6 +96,8 @@ void handle_data(
             
             if (tcb->cc && tcb->cc->duplicate_ack)
                 tcb->cc->duplicate_ack(tcb);
+            
+            log_lstm_event(tcb, 0, 0, true, false);
         }
     }
 

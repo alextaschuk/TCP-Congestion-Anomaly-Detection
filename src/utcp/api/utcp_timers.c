@@ -13,13 +13,7 @@
 
 const int tcp_backoff[MAXRXTSHIFT + 1] = {1, 2, 4, 8, 16, 32, 64, 64, 64, 64, 64, 64, 64};
 
-
-/**
- * Returns the system's monotonic time in milliseconds.
- * 
- * @note This value represents how much time has passed since some starting point, not the actual time.
- */
-static uint64_t utcp_ticker(void)
+uint64_t utcp_ticker(void)
 {
     struct timespec ts;
     
@@ -92,6 +86,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
 {
     uint32_t current_time = tcp_now();
     uint32_t rtt_sample = current_time - segment_ts_ecr; // This is R, or R'
+    tcb->rtt = rtt_sample;
     //LOG_INFO("[calc_rto] Current Time: %u, R / R': %u ms", current_time, rtt_sample);
 
     /* Calculate RTT with Jacobson/Karels Algorithm and set/update the RTO */
@@ -143,6 +138,7 @@ void calc_rto(tcb_t *tcb, uint32_t segment_ts_ecr)
         tcb->rxtcur = TCPTV_REXMTMAX; // the RTO
     }
     //LOG_INFO("[calc_rto] RTO updated to: %u ms", tcb->rxtcur);
+    return rtt_sample;
 }
 
 
@@ -164,6 +160,12 @@ static void handle_rexmt_timeout(tcb_t *tcb)
     tcb->t_timer[TCPT_REXMT] = MIN(new_timer, TCPTV_REXMTMAX);
 
     uint32_t flight_size = tcb->snd_nxt - tcb->snd_una;
+    /* 
+     * Log the timeout event BEFORE rolling back snd_nxt so that the logger
+     * reads the correct non-zero flight_size from the TCB.
+     */
+    log_lstm_event(tcb, 0, 0, false, true);
+
     uint32_t pre_rollback_snd_nxt = tcb->snd_nxt;
     tcb->snd_nxt = tcb->snd_una; // rollback the sequence number
 
@@ -172,7 +174,6 @@ static void handle_rexmt_timeout(tcb_t *tcb)
                 "flight_size=%u bytes. snd_nxt rolled back: %u -> %u (snd_una).",
                 tcb->rxtshift, base_rto, base_rto * TCP_TICK_MS, backoff_mult, new_timer,
                 new_timer * TCP_TICK_MS, flight_size, pre_rollback_snd_nxt, tcb->snd_nxt);
-
 
     if (tcb->cc && tcb->cc->timeout)
     { // delegate to congestion control algo

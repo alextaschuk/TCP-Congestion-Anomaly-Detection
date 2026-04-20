@@ -34,6 +34,13 @@ extern const int tcp_backoff[];
 /* Define functions */
 
 /**
+ * Returns the system's monotonic time in milliseconds.
+ * 
+ * @note This value represents how much time has passed since some starting point, not the actual time.
+ */
+uint64_t utcp_ticker(void);
+
+/**
  * The ticker thread. Every 10ms, this thread is woken up. It loops through all of the active TCBs,
  * and within each TCB, it loops through the active timers and decrements each timer by one
  * tick. If a timer reaches 0 (expires), it is handled via a call to `utcp_timeout`.
