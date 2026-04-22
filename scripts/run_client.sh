@@ -3,6 +3,7 @@
 # script should be run from /build directory via `bash ../scripts/run_client.sh`
 
 rm log/events.csv
+rm log/rtt.csv
 rm log/client.log
 
 bash ../scripts/compile.sh
