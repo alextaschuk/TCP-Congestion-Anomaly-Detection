@@ -91,7 +91,7 @@ typedef struct tcb_t
     uint32_t rtt;       /* The `rtt_sample` (R, or R'), computed in `calc_rto()` */
     uint32_t rxtcur;    /* Current retransmit timeout, RTO (ticks). */
     uint32_t srtt;      /* Smoothed RTT (avg RTT) -- scaled by 8. */
-    uint32_t rttvar;    /* round trip time variation -- scaled by 4. */
+    uint32_t rttvar;    /* round trip time variance -- scaled by 4. */
     uint8_t rxtshift;   /* Number of retransmission timers that have expired. Used to calculate the backoff multiplier when a packet is retransmitted. */
 
     /**
@@ -129,9 +129,9 @@ typedef struct tcb_t
 
     uint64_t min_rtt_seen_us;        /* running minimum RTT (in micro sec); updated on valid RTT sample */
     uint64_t lstm_last_ts_us;        /* timestamp of last logged LSTM event, for inter-event delta */
-    uint32_t lstm_prev_rtt_us;       /* last instantaneous RTT sample (in micro sec), for rtt_delta */
-    uint32_t lstm_prev_rto_us;       /* last RTO value (in micro sec), for rto_delta */
-    int32_t  lstm_prev_rtt_delta_us; /* last rtt_delta (in micro sec), for rtt_accel */
+    uint32_t lstm_prev_rtt_us;       /* last instantaneous RTT sample (in micro sec), for `rtt_delta` */
+    uint32_t lstm_prev_rto_us;       /* last RTO value (in micro sec), for `rto_delta` */
+    int32_t  lstm_prev_rtt_delta_us; /* last rtt_delta (in micro sec), for `rtt_accel` */
 } tcb_t;
 
 #endif
