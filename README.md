@@ -6,9 +6,11 @@
 2. **[Cloning the Repository](#cloning-the-repository)**
 3. **[How to run the client & server](#how-to-run-the-client--server)**
 4. **[Logging](#logging)**
-5. **[Background](#background)**
-6. **[Implementing UDP over TCP (UTCP)](#implementing-udp-over-tcp-utcp)**
-7. **[Results](#results)**
+5. **[Report](#report)**
+	- 5.1 **[Background](#background)**
+	- 5.2 **[Implementing UDP over TCP (UTCP)](#implementing-udp-over-tcp-utcp)**
+	- 5.3 **[Results](#results)**
+	- 5.4 **[LSTM Congestion Anomaly Detection](#lstm-congestion-anomaly-detection)**
 
 ## Prerequisites
 
@@ -173,7 +175,7 @@ In order to test UTCP, I generated a 1GB text file containing random, printable 
 
 #### TCP Tahoe
 
-TCP Tahoe is the simplest congestion control algorithm of the three. In the event of a triple ACK, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight} ,\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS (maximum segment size), and performs a Fast Retransmit by attempting to resend the dropped packet. In the event that the retransmission timer expires, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight} ,\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS, and resends the oldest unACKed segment.
+TCP Tahoe is the simplest congestion control algorithm of the three. In the event of a triple ACK, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight},\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS (maximum segment size), and performs a Fast Retransmit by attempting to resend the dropped packet. In the event that the retransmission timer expires, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight} ,\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS, and resends the oldest unACKed segment.
 
 [tahoe-image]
 
@@ -195,11 +197,11 @@ NewReno is an improved version of Reno that correctly handles partial ACKs. The 
 
 Long Short-Term Memory (LSTM) networks are a type of recurrent neural network (RNN) designed to solve the vanishing gradient problem, an issue that standard RNNs have in capturing long-term dependencies. An LSTM maintains a memory cell, which is controlled by three gates. The memory cell allows the LSTM to select which information to retain or discard, based on how relevant it deems the information, helping the network remember older information for longer periods of time.
 
-My goal was to train an LSTM that could detect when the network was headed towards a congestion event using RTT data. I wanted one of the training features to be a threshold ratio that uses a formula similar to the RTO timer’s duration formula[^5]. The duration of the RTO timer is calculated with $\mathrm{RTO}=\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}$, where $\mathrm{SRTT}$ is the smoothed RTT, $G$ is the OS’s clock granularity, $K=4$, and $\mathrm{RTTVAR}$ is RTT variance. \mathrm{SRTT} is an exponentially weighted moving average formula of the RTT. It smooths out RTT calculations, meaning older RTT values are weighted less, which gives a more accurate general idea of what the RTT looks like. $\mathrm{RTTVAR}$ is an estimate of how much a subsequent RTT value ($R’$) deviates from the $\mathrm{SRTT}$. ($K\cdot\mathrm{RTTVAR)}$ is added to the $\mathrm{SRTT}$ for the duration of the RTO as a safety net for the timer.  This allows unstable networks to have a longer RTO duration, while more stable networks have a shorter, less generous timer.
+My goal was to train an LSTM that could detect when the network was headed towards a congestion event using RTT data. I wanted one of the training features to be a threshold ratio that uses a formula similar to the RTO timer’s duration formula[^5]. The duration of the RTO timer is calculated with $\mathrm{RTO}=\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}$, where $\mathrm{SRTT}$ is the smoothed RTT, $G$ is the OS’s clock granularity, $K=4$, and $\mathrm{RTTVAR}$ is RTT variance. \mathrm{SRTT} is an exponentially weighted moving average formula of the RTT. It smooths out RTT calculations, meaning older RTT values are weighted less, which gives a more accurate general idea of what the RTT looks like. $\mathrm{RTTVAR}$ is an estimate of how much a subsequent RTT value ($R’$) deviates from the $\mathrm{SRTT}$. ($K\cdot\mathrm{RTTVAR}$) is added to the $\mathrm{SRTT}$ for the duration of the RTO as a safety net for the timer.  This allows unstable networks to have a longer RTO duration, while more stable networks have a shorter, less generous timer.
 
 My idea was to use a threshold ratio comparing the current RTT to the current RTO. The closer the ratio is to 1, the closer the network is to timing out due to congestion. The threshold is computed as:
 
-$\fbox{\mathrm{threshold\_ratio}=\frac{\mathrm{RTT}}{\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}}}$
+$$\mathrm{threshold\_ratio}=\frac{\mathrm{RTT}}{\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}}$$
 
 In the equation, all variables are the same as in the RTO formula, with the only difference being that $K=2$. I used a smaller K value in the formula because I wanted the threshold to indicate that the network has entered a “danger zone” that could lead to a congestion event, rather than only finding RTT values during the event, where it would be too late to prevent it. In practice, the threshold ratio feature was one of seven used in total.
 The LSTM was trained on data from 252 runs in which the local client sent a 1GB text file of random characters to the Azure VM, using NewReno as the congestion control algorithm. Due to time constraints, I was unable to collect data on runs using Reno or Tahoe. Each time the client received a packet during a run, the packet’s data was logged to a CSV file, which contains:
@@ -210,13 +212,13 @@ The LSTM was trained on data from 252 runs in which the local client sent a 1GB 
 
 First, each CSV file is loaded and normalized by the median of the run’s minimum RTT value. The run’s utilization, a feature used for training and validation, is then computed by:
 
-$\fbox{\mathrm{utilization}=\frac{\mathrm{BIF}}{\min{\left(\mathrm{cwnd},\ \ \mathrm{snd\_wnd}\right)}}}$
+$$\mathrm{utilization}=\frac{\mathrm{bytes in flight}}{\min{\left(\mathrm{cwnd},\ \ \mathrm{snd\_wnd}\right)}}$$
 
 This value indicates how full the client’s congestion window is for a given row. Next, the normalized data is aggregated into 15ms bins. All rows that fall within a bin are collapsed into a single row, either by their average value (e.g., $\mathrm{SRTT}$) or by the maximum value (e.g., queue delay). If a run returns fewer than 201 bins, it is discarded because the LSTM’s input size is 200 bins. The threshold ratio is computed for each bin, and any columns with extreme outliers ($-10 < x < 10$, where $x$ is a column’s value) are removed.
 
 The data is then labeled by congestion events. A bin that contains a congestion event is labeled as such, and the number of bins just before the congestion bin to be labeled as positive is computed as:
 
-$\fbox{\mathrm{n\_bins}=\max{\left(10,\ \frac{\mathrm{SRT}\mathrm{\operatorname{T}}_{\mathrm{pre}}}{15\ \mathrm{ms}}\cdot2\right)}}$
+$$\mathrm{n\_bins}=\max{\left(10,\ \frac{\mathrm{SRT}\mathrm{\operatorname{T}}_{\mathrm{pre}}}{15\ \mathrm{ms}}\cdot2\right)}$$
 
 This scales the $\mathrm{SRTT}$ of the path leading to the congestion event so that ~2 RTTs of history are labeled as positive. When a contiguous set of bins that contains a congestion event occurs, only the first bin is labeled as containing the congestion.
 
