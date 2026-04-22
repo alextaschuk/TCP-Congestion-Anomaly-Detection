@@ -177,13 +177,13 @@ In order to test UTCP, I generated a 1GB text file containing random, printable 
 
 TCP Tahoe is the simplest congestion control algorithm of the three. In the event of a triple ACK, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight},\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS (maximum segment size), and performs a Fast Retransmit by attempting to resend the dropped packet. In the event that the retransmission timer expires, Tahoe sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight} ,\ 2\cdot\mathrm{MSS} \right)}$, drops the `cwnd` to 1 MSS, and resends the oldest unACKed segment.
 
-[tahoe-image]
+<img width="1958" height="983" alt="image" src="https://github.com/user-attachments/assets/13be968c-e45f-4d9a-904f-0be67fe1ab11" />
 
 #### Reno
 
 Reno manages triple ACKs and timeouts more effectively than Tahoe. When a triple ACK occurs, Reno sets the `ssthresh` to $\max{\left(\frac{1}{2}\cdot\mathrm{bytes\ in\ flight} ,\ 2\cdot\mathrm{MSS} \right)}$ (same as Tahoe), and performs a Fast Retransmit. It then sets the `cwnd` to the new `ssthresh` value plus 3 MSS ($\mathrm{ssthresh}+3\cdot\mathrm{MSS}$), and enters Fast Recovery, during which it increases the `cwnd` by 1 MSS for each subsequent duplicate ACK. When a new non-duplicate ACK is received, Reno drops the `cwnd` down to the `ssthresh`, skips Slow Start, and immediately reenters Congestion Avoidance.
 
-[reno-image]
+<img width="1958" height="983" alt="image" src="https://github.com/user-attachments/assets/88bf4d93-901f-48a2-b3ff-17f7f7857bb0" />
 
 #### NewReno
 
@@ -191,7 +191,7 @@ A significant drawback of Reno is that when it enters Fast Recovery, the algorit
 
 NewReno is an improved version of Reno that correctly handles partial ACKs. The algorithm uses a `recovery` variable to track the highest sequence number that was sent before a packet was lost. While transmission is in the Fast Recovery stage, when NewReno receives a partial ACK, it assumes that the next packet was also lost, performs a Fast Retransmit for that packet, and stays in Fast Recovery. Only when the sender receives an ACK whose value is greater than or equal to recovery does NewReno exit Fast Recovery and reenter Congestion Avoidance.
 
-[new-reno-image]
+<img width="1958" height="983" alt="image" src="https://github.com/user-attachments/assets/56248352-e4d9-457f-b611-75174c6bdd23" />
 
 ### LSTM Congestion Anomaly Detection
 
@@ -201,7 +201,7 @@ My goal was to train an LSTM that could detect when the network was headed towar
 
 My idea was to use a threshold ratio comparing the current RTT to the current RTO. The closer the ratio is to 1, the closer the network is to timing out due to congestion. The threshold is computed as:
 
-$$\mathrm{threshold\_ratio}=\frac{\mathrm{RTT}}{\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}}$$
+$$\mathrm{threshold}\_\mathrm{ratio}=\frac{\mathrm{RTT}}{\mathrm{SRTT}+K\cdot\mathrm{RTTVAR}}$$
 
 In the equation, all variables are the same as in the RTO formula, with the only difference being that $K=2$. I used a smaller K value in the formula because I wanted the threshold to indicate that the network has entered a “danger zone” that could lead to a congestion event, rather than only finding RTT values during the event, where it would be too late to prevent it. In practice, the threshold ratio feature was one of seven used in total.
 The LSTM was trained on data from 252 runs in which the local client sent a 1GB text file of random characters to the Azure VM, using NewReno as the congestion control algorithm. Due to time constraints, I was unable to collect data on runs using Reno or Tahoe. Each time the client received a packet during a run, the packet’s data was logged to a CSV file, which contains:
@@ -218,13 +218,13 @@ This value indicates how full the client’s congestion window is for a given ro
 
 The data is then labeled by congestion events. A bin that contains a congestion event is labeled as such, and the number of bins just before the congestion bin to be labeled as positive is computed as:
 
-$$\mathrm{n\_bins}=\max{\left(10,\ \frac{\mathrm{SRT}\mathrm{\operatorname{T}}_{\mathrm{pre}}}{15\ \mathrm{ms}}\cdot2\right)}$$
+$$\mathrm{n}\_\mathrm{bins}=\max{\left(10,\ \frac{\mathrm{SRTT}\_{\mathrm{pre}}}{15\ \mathrm{ms}}\cdot2\right)}$$
 
 This scales the $\mathrm{SRTT}$ of the path leading to the congestion event so that ~2 RTTs of history are labeled as positive. When a contiguous set of bins that contains a congestion event occurs, only the first bin is labeled as containing the congestion.
 
 The model was trained via Google Colab on an Nvidia A100 GPU with 80GB of VRAM. It was trained as a stacked LSTM with two recurrent layers for binary classification. The dataset was split 60/20/20 for training, validation, and testing, with the split applied at the run level so that all the windows for a given run only appear once. The input tensor’s shape is (`BATCH_SIZE=128`, `BIN_COUNT=200`, `N_FEATURES=7`). Each batch contains 128 windows that are processed in parallel, where each window consists of 200 consecutive 15ms bins, and each bin stores the 7 input features to train on. The first LSTM layer has 128 units (a 128-dimensional hidden state). It reads each window from the input one timestep at a time, then passes its full output sequence to the second layer. The second layer has 64 units and reduces each window’s sequence down to a single 64-dimensional output vector. The output is passed to a dense head, which maps the output to a probability between 0 and 1, which represents the likelihood that the next bin is part of a pre-onset congestion window. In total, there were 121,153 trainable parameters. The model was set to train up to 50 epochs, with an early-stopping patience of 8 based on a Precision-Recall Area Under the Curve (PR-AUC) value. It stopped early after epoch 19, and epoch 11’s weights were restored because they produced the best results. 
 
-[training and validation loss & pr-auc image]
+<img width="624" height="204" alt="TRAINVAL" src="https://github.com/user-attachments/assets/8766cfaf-8785-42b3-8334-fe1ae2db1803" />
 
 Loss measures the model’s performance over time. The training loss curve shows how well the model performs on training data, and the validation loss curve shows how well the model performs on validation data, which is a dataset it has never seen before. The training loss shows a downward trend for most of the learning period, while the validation loss plateaued after epoch 6. There was an unusual spike in validation loss at epoch 5. It is hard to tell what caused the validation loss curve to spike at epoch 5 and then plateau from epoch 6 onward, as many factors could have played a role (e.g., the learning rate may have taken a bad step that temporarily pushed the weights into a worse region before recovering). The gap between the two curves at epoch 11 (the best epoch) is quite significant, and the validation loss is lower than the training loss throughout.
 
@@ -234,11 +234,11 @@ I believe the model’s poor validation performance is primarily due to insuffic
 
 After the model was trained, it was evaluated on the test set (the remaining 20% of the data). The model achieved $\mathrm{PR-AUC}=0.237$ (23.7%) and $\mathrm{ROC-AUC}=0.755$ (75.5%). $\mathrm{PR-AUC}$ was treated as the primary metric because the positive class (windows with pre-onset congestion) was rare, making $\mathrm{ROC-AUC}$ (receiver operating characteristic AUC) optimistic. $\mathrm{ROC-AUC}$ rewards correct rejection of abundant negatives, whereas $\mathrm{PR-AUC}$ reflects performance on the minority class (windows with pre-onset congestion) directly. The test $\mathrm{PR-AUC}$ score matches the validation $\mathrm{PR-AUC}$ score (~0.24 at the peak epoch), indicating the model generalized without overfitting to the validation set.
 
-[PR curve iamge]
+<img width="624" height="208" alt="PRCURVE" src="https://github.com/user-attachments/assets/fc32b7cd-7d8a-446c-b950-54f186b20bfb" />
 
 The most optimal threshold value was determined with `precision_recall_curve()`. The function finds the threshold that returns the highest F1 score. The F1 score is the harmonic mean of precision and recall at a single threshold. This metric is used to evaluate a classification model’s performance. For my model, the most optimal threshold value was 0.42.
 
-[confusion matrix image]
+<img width="640" height="480" alt="confusion_matrix" src="https://github.com/user-attachments/assets/a547d0a2-fba6-4dce-a2ec-0b042ef57ff9" />
 
 The model was re-evaluated on the test set using the optimal threshold. The test set was highly imbalanced, with 220,217 normal windows and 5,083 pre-onset congestion windows (~2.3%). The confusion matrix shows 1,128 true positives, 1,634 false positives, 3,955 false negatives, and 218,533 true negatives. The model achieved $\mathrm{precision}=0.41$, $\mathrm{recall}=0.22$, and $\mathrm{F1}=0.29$ for classifying windows with pre-onset congestion. False positives occurred on ~0.74% of normal windows, indicating the model rarely misflags a non-pre-onset window.
 
