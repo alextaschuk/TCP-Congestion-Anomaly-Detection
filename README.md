@@ -149,7 +149,7 @@ Several of TCP’s features have been implemented into UTCP, including:
 All UTCP application-side functions are designed to mirror a BSD socket function:
 
 `utcp_sock()`
-- Binds a UDP socket, spins up the listen and ticker threads, initializes a TCB for a new UTCP socket, and returns the UTCP socket descriptor. The new TCB is in the `CLOSED` state. This is equivalent to the BSD `sock()` function.
+- Binds a UDP socket, spins up the listen and ticker threads, initializes a TCB for a new UTCP socket, and returns the UTCP socket descriptor. The new TCB is in the `CLOSED` state. This is equivalent to the BSD `socket()` function.
 
 `utcp_bind(int utcp_fd, sockaddr_in peer)`
 - Binds a UTCP port, UDP port, and IPv4 address to the TCB with socket descriptor `utcp_fd`. This is equivalent to the BSD `bind()` function.
